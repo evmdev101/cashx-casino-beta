@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>All Games | CASHX Casino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="wallet-modal.js"></script>
+
+  <style>
+    :root {
+      --navy:        #0d0a16;
+      --navy-mid:    #110d1c;
+      --navy-card:   #130f1f;
+      --navy-light:  #1a1228;
+      --gold:        #f5a623;
+      --gold-dim:    #c47f0e;
+      --gold-glow:   rgba(245,166,35,.2);
+      --purple:      #c855f7;
+      --purple-glow: rgba(200,85,247,.18);
+      --green:       #3dffa0;
+      --red:         #ff4455;
+      --text:        #dce0f0;
+      --text-dim:    #525878;
+      --border:      rgba(200,85,247,.18);
+      --border-hover:rgba(200,85,247,.45);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    @keyframes bodyFadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    body {
+      font-family: 'Barlow', sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      overflow-x: hidden;
+      animation: bodyFadeIn 0.4s ease forwards;
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9000;
+      opacity: .032;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    /* Top Navbar */
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      background: rgba(8,5,18,.35);
+      border-bottom: 1px solid rgba(200,85,247,.15);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      z-index: 600;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      border-bottom: 1px solid rgba(200,85,247,.6);
+      box-shadow: 0 2px 18px rgba(200,85,247,.2);
+    }
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200,85,247,.3);
+      padding: .12rem .3rem;
+    }
+    .btn-connect {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: .9rem;
+      letter-spacing: 2px;
+      color: #fff;
+      background: linear-gradient(135deg, #ff4d6d, #f5a623);
+      border: none;
+      padding: .45rem 1.3rem;
+      cursor: pointer;
+      border-radius: 50px;
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      transition: box-shadow .3s, transform .2s;
+    }
+    .btn-connect:hover {
+      box-shadow: 0 0 28px rgba(255,77,109,.55), 0 0 16px rgba(245,166,35,.3);
+      transform: translateY(-3px) scale(1.06);
+    }
+
+    /* Wallet dropdown */
+    .wallet-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: rgba(13,10,22,.97);
+      border: 1px solid rgba(200,85,247,.25);
+      border-radius: 14px;
+      padding: 6px;
+      min-width: 160px;
+      z-index: 700;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6);
+      animation: dropIn .18s ease;
+    }
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .wallet-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .6rem .9rem;
+      border-radius: 10px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .wallet-dropdown-item:hover { background: rgba(200,85,247,.15); color: #fff; }
+    .wallet-dropdown-item.danger:hover { background: rgba(255,68,85,.15); color: var(--red); }
+    .wallet-dropdown-sep { height: 1px; background: rgba(200,85,247,.12); margin: 4px 0; }
+
+    /* Sidebar */
+    .sidebar {
+      position: fixed;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: min(520px, calc(100vh - 130px));
+      background: rgba(110,30,180,.18);
+      border: 1px solid rgba(200,85,247,.75);
+      border-radius: 32px;
+      padding: 20px 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      z-index: 500;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .sidebar:hover {
+      transform: translateY(-50%) translateX(6px);
+      border-color: rgba(180,180,200,.55);
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+    .nav-pill {
+      width: 62px; height: 62px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.55rem;
+      text-decoration: none;
+      color: rgba(220,224,240,.45);
+      background: rgba(255,255,255,.06);
+      transition: background .2s, color .2s, box-shadow .2s, transform .15s;
+      cursor: pointer;
+    }
+    .nav-pill:hover { background: rgba(200,85,247,.22); color: rgba(220,224,240,.95); transform: scale(1.08); }
+    .nav-pill.active-purple { background: linear-gradient(135deg, #c855f7, #8b1fcc); color: #fff; box-shadow: 0 4px 22px rgba(200,85,247,.5); }
+    .nav-pill.active { background: linear-gradient(135deg, var(--gold), var(--gold-dim)); color: #000; box-shadow: 0 4px 22px rgba(245,166,35,.5); }
+    .nav-pill-divider { height: 1px; width: 100%; background: linear-gradient(90deg, transparent, rgba(200,85,247,.45), transparent); margin-top: auto; margin-bottom: 6px; }
+
+    /* Layout */
+    .main { margin-left: 90px; padding-top: 80px; min-height: 100vh; }
+
+    /* Page header */
+    .page-header {
+      padding: 3rem 3rem 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+      gap: .5rem;
+    }
+    .page-label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 4px;
+      color: var(--purple);
+      text-transform: uppercase;
+    }
+    .page-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.5rem, 5vw, 3.8rem);
+      letter-spacing: 3px;
+      color: #fff;
+    }
+    .beta-note {
+      max-width: 720px;
+      margin-top: .35rem;
+      padding: .7rem 1rem;
+      border: 1px solid rgba(245,166,35,.25);
+      border-radius: 8px;
+      background: rgba(245,166,35,.08);
+      color: rgba(245,230,205,.88);
+      font-size: .9rem;
+      line-height: 1.5;
+    }
+
+    /* Live feed */
+    .live-feed-section {
+      padding: 2rem 3rem 0;
+    }
+    .live-feed-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+    }
+    .live-feed-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.6rem;
+      letter-spacing: 2px;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+    }
+    .live-pulse {
+      display: inline-block;
+      width: 9px; height: 9px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: pulse-dot 1.5s infinite;
+    }
+    @keyframes pulse-dot { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+    .refresh-hint {
+      display: flex;
+      align-items: center;
+      gap: .45rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+    }
+    .refresh-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 2s infinite;
+    }
+    .table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .data-table { width: 100%; border-collapse: collapse; font-size: .87rem; }
+    .data-table th {
+      padding: .65rem 1.1rem;
+      text-align: left;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--navy-card);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .data-table td {
+      padding: .7rem 1.1rem;
+      border-bottom: 1px solid rgba(200,85,247,.07);
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .data-table tr:last-child td { border-bottom: none; }
+    .data-table tr:hover td { background: rgba(200,85,247,.04); }
+    .empty-cell {
+      text-align: center;
+      color: var(--text-dim);
+      font-family: 'Michroma', sans-serif;
+      font-size: .65rem;
+      letter-spacing: 2px;
+      padding: 2.5rem 1rem !important;
+    }
+    .num { font-family: 'Space Mono', monospace; font-size: .82rem; }
+    .type-badge {
+      font-family: 'Michroma', sans-serif;
+      font-size: .5rem;
+      letter-spacing: 1.5px;
+      padding: .2rem .55rem;
+      border-radius: 4px;
+    }
+    .type-cw { background: rgba(200,85,247,.12); color: var(--purple); border: 1px solid rgba(200,85,247,.3); }
+    .type-db { background: rgba(245,166,35,.10); color: var(--gold);   border: 1px solid rgba(245,166,35,.3); }
+    .btn-join-link {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .8rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      color: var(--green);
+      background: rgba(61,255,160,.08);
+      border: 1px solid rgba(61,255,160,.28);
+      padding: .3rem .95rem;
+      border-radius: 6px;
+      text-decoration: none;
+      display: inline-block;
+      transition: background .2s, box-shadow .2s;
+    }
+    .btn-join-link:hover { background: rgba(61,255,160,.16); box-shadow: 0 0 14px rgba(61,255,160,.3); }
+    .badge-in-game {
+      display: inline-block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .52rem;
+      letter-spacing: 1.5px;
+      padding: .22rem .6rem;
+      text-transform: uppercase;
+      color: var(--purple);
+      background: rgba(200,85,247,.1);
+      border: 1px solid rgba(200,85,247,.35);
+      border-radius: 6px;
+    }
+
+    /* Filter tabs */
+    .filter-bar {
+      display: flex;
+      gap: .6rem;
+      justify-content: center;
+      padding: 2rem 3rem 0;
+      flex-wrap: wrap;
+    }
+    .filter-tab {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .9rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: .5rem 1.4rem;
+      border-radius: 50px;
+      border: 1px solid rgba(200,85,247,.2);
+      background: rgba(255,255,255,.04);
+      color: rgba(220,224,240,.5);
+      cursor: pointer;
+      transition: background .2s, border-color .2s, color .2s, box-shadow .2s;
+    }
+    .filter-tab:hover {
+      background: rgba(200,85,247,.12);
+      border-color: rgba(200,85,247,.4);
+      color: rgba(220,224,240,.9);
+    }
+    .filter-tab.active {
+      background: linear-gradient(135deg, #c855f7, #8b1fcc);
+      border-color: transparent;
+      color: #fff;
+      box-shadow: 0 4px 20px rgba(200,85,247,.4);
+    }
+
+    /* Games grid */
+    .games-section {
+      padding: 2.5rem 3rem 4rem;
+    }
+    .all-games-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 400px));
+      gap: 1.6rem;
+      justify-content: center;
+    }
+
+    /* Game card */
+    .game-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.07);
+      border-radius: 18px;
+      height: 320px;
+      cursor: pointer;
+      transition: transform .3s cubic-bezier(.25,.46,.45,.94), box-shadow .3s ease, border-color .3s;
+    }
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.78) 0%, rgba(0,0,0,.25) 50%, rgba(0,0,0,.04) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+    .game-card:not(.disabled):hover {
+      transform: translateY(-12px);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6), 0 0 40px rgba(200,85,247,.18);
+      border-color: rgba(200,85,247,.65);
+      z-index: 3;
+    }
+    .game-card.disabled { cursor: default; opacity: .55; filter: grayscale(.4); }
+
+    .game-card-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      transition: transform .55s cubic-bezier(.25,.46,.45,.94);
+    }
+    .game-card:not(.disabled):hover .game-card-bg { transform: scale(1.07); }
+
+    /* Play overlay */
+    .game-card-play-overlay {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%) scale(0.72);
+      width: 64px; height: 64px;
+      background: rgba(200,85,247,.88);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity .25s, transform .28s cubic-bezier(.34,1.56,.64,1);
+      z-index: 3;
+      pointer-events: none;
+      box-shadow: 0 0 32px rgba(200,85,247,.65);
+    }
+    .game-card:not(.disabled):hover .game-card-play-overlay {
+      opacity: 1;
+      transform: translate(-50%, -50%) scale(1);
+    }
+
+    /* Badge */
+    .game-badge {
+      position: absolute;
+      top: 1rem; left: 1rem;
+      z-index: 2;
+      font-family: 'Michroma', sans-serif;
+      font-size: .52rem;
+      letter-spacing: 2px;
+      padding: .22rem .65rem;
+      text-transform: uppercase;
+      border-radius: 4px;
+    }
+    .badge-live { background: rgba(61,255,160,.12); color: var(--green); border: 1px solid rgba(61,255,160,.3); }
+    .badge-soon { background: rgba(90,96,122,.12); color: var(--text-dim); border: 1px solid rgba(90,96,122,.28); }
+
+    /* Compact coming-soon card (no image area) */
+    .game-card-soon {
+      position: relative;
+      border: 1px solid rgba(90,96,122,.22);
+      border-radius: 16px;
+      background: rgba(14,10,26,.7);
+      backdrop-filter: blur(10px);
+      padding: 1.2rem 1.4rem 1.3rem;
+      display: flex;
+      flex-direction: column;
+      gap: .55rem;
+      opacity: .7;
+      cursor: default;
+    }
+    .game-card-soon .game-badge {
+      position: static;
+      display: inline-block;
+      align-self: flex-start;
+      margin-bottom: .1rem;
+    }
+    .game-card-soon .game-card-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.7rem;
+      letter-spacing: 2px;
+      color: rgba(220,224,240,.55);
+      line-height: 1;
+      text-shadow: none;
+    }
+    .game-card-soon .game-card-desc {
+      font-size: .83rem;
+      color: rgba(220,224,240,.35);
+      line-height: 1.45;
+    }
+    .game-card-soon .game-card-tag {
+      display: inline-block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .5rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: .2rem .55rem;
+      border-radius: 4px;
+      color: var(--text-dim);
+      background: rgba(90,96,122,.1);
+      border: 1px solid rgba(90,96,122,.22);
+      align-self: flex-start;
+    }
+
+    /* Card body */
+    .game-card-body {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 1.4rem 1.6rem;
+      z-index: 2;
+    }
+    .game-card-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.8rem;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(0,0,0,.8);
+      line-height: 1;
+      margin-bottom: .3rem;
+    }
+    .game-card-desc {
+      font-size: .8rem;
+      color: rgba(220,224,240,.6);
+      line-height: 1.45;
+    }
+    .game-card-tag {
+      display: inline-block;
+      margin-top: .7rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: .5rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: .2rem .55rem;
+      border-radius: 4px;
+      color: var(--purple);
+      background: rgba(200,85,247,.1);
+      border: 1px solid rgba(200,85,247,.25);
+    }
+
+    /* Expanded game card (image top + body below + play button) */
+    .game-card-expanded {
+      background: rgba(10,5,20,.3);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px;
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color .3s ease, transform .3s cubic-bezier(.25,.46,.45,.94), box-shadow .3s ease;
+    }
+    .game-card-expanded:hover {
+      border-color: rgba(200,85,247,.65);
+      transform: translateY(-12px);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6), 0 0 40px rgba(200,85,247,.18);
+    }
+    .game-card-expanded.disabled {
+      cursor: default;
+      opacity: .58;
+      filter: grayscale(.55);
+      border-color: rgba(90,96,122,.2);
+    }
+    .game-card-expanded.disabled:hover {
+      transform: none;
+      box-shadow: none;
+      border-color: rgba(90,96,122,.2);
+    }
+    .game-card-expanded.disabled .gce-image {
+      background:
+        radial-gradient(circle at 25% 25%, rgba(200,85,247,.22), transparent 34%),
+        linear-gradient(135deg, rgba(28,25,42,.95), rgba(7,5,14,.96));
+    }
+    .game-card-expanded.disabled .gce-badge {
+      color: rgba(220,224,240,.62);
+      background: rgba(90,96,122,.2);
+      border-color: rgba(90,96,122,.35);
+    }
+    .game-card-expanded.disabled .gce-btn {
+      color: rgba(220,224,240,.58);
+      background: rgba(90,96,122,.18);
+      cursor: default;
+    }
+    .gce-image {
+      height: 240px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .mines-card-image {
+      height: 240px;
+      background-size: cover;
+      background-position: 52% center;
+      background-repeat: no-repeat;
+    }
+    .gce-image::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(to bottom, transparent, rgba(5,2,12,.92));
+      pointer-events: none;
+    }
+    .gce-badge {
+      position: absolute;
+      top: 12px; left: 12px;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(61,255,160,.18);
+      border: 1px solid rgba(61,255,160,.4);
+      border-radius: 6px;
+      padding: .25rem .6rem;
+    }
+    .gce-body {
+      padding: 1.4rem 1.6rem 1.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      flex: 1;
+      background: rgba(5,2,12,.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .gce-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.1rem;
+      letter-spacing: 3px;
+      color: #fff;
+      line-height: 1;
+    }
+    .gce-mode {
+      align-self: flex-start;
+      font-family: 'Michroma', sans-serif;
+      font-size: .58rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(245,166,35,.1);
+      border: 1px solid rgba(245,166,35,.32);
+      border-radius: 6px;
+      padding: .32rem .62rem;
+    }
+    .gce-mode.multiplayer {
+      color: var(--purple);
+      background: rgba(200,85,247,.1);
+      border-color: rgba(200,85,247,.34);
+    }
+    .gce-mode.prototype {
+      color: var(--blue);
+      background: rgba(68,170,255,.1);
+      border-color: rgba(68,170,255,.34);
+    }
+    .gce-desc {
+      font-size: .9rem;
+      color: rgba(255,255,255,.75);
+      line-height: 1.6;
+    }
+    .gce-btn {
+      display: block;
+      width: 100%;
+      margin-top: .7rem;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(135deg, #c855f7, #8b1fcc);
+      border: none;
+      border-radius: 12px;
+      padding: 1rem 1rem;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+      text-align: center;
+    }
+    .gce-btn:hover { opacity: .88; transform: translateY(-1px); }
+
+    /* Fade-in */
+    .fade-in { opacity: 0; transform: translateY(20px); transition: opacity .6s ease, transform .6s ease; }
+    .fade-in.visible { opacity: 1; transform: translateY(0); }
+    .fade-in.delay-1 { transition-delay: .08s; }
+    .fade-in.delay-2 { transition-delay: .16s; }
+    .fade-in.delay-3 { transition-delay: .24s; }
+
+    /* Once visible, restore the card's own hover transition */
+    .game-card-expanded.fade-in.visible {
+      transition: border-color .3s ease, transform .3s cubic-bezier(.25,.46,.45,.94), box-shadow .3s ease;
+    }
+    /* Higher specificity hover rule to beat .fade-in.visible's transform */
+    .game-card-expanded.fade-in.visible:hover {
+      transform: translateY(-12px);
+      border-color: rgba(200,85,247,.65);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6), 0 0 40px rgba(200,85,247,.18);
+    }
+    .game-card-expanded.disabled.fade-in.visible:hover {
+      transform: none;
+      border-color: rgba(90,96,122,.2);
+      box-shadow: none;
+    }
+
+    /* Footer */
+    footer {
+      margin-left: 0;
+      padding: 2rem 3rem;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-left {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      line-height: 1.9;
+    }
+    .footer-links { display: flex; gap: 1.2rem; }
+    .footer-link {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color .2s;
+    }
+    .footer-link:hover { color: var(--gold); }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .games-section, .page-header, .filter-bar { padding-left: 1.4rem; padding-right: 1.4rem; }
+      .all-games-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top Navbar -->
+<nav class="topnav">
+  <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+  <button class="btn-connect" id="connectBtn" onclick="connectWallet()">
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>
+    Connect
+  </button>
+</nav>
+
+<!-- Sidebar -->
+<aside class="sidebar">
+  <a href="index.html"    class="nav-pill"          title="Home"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h5v-5h4v5h5v-8h3z"/></svg></a>
+  <a href="all-games.html" class="nav-pill active-purple" title="Games">🎰</a>
+  <div class="nav-pill-divider"></div>
+  <a href="https://x.com/TomkiwMich70997"  target="_blank" rel="noopener" class="nav-pill" title="Twitter / X">𝕏</a>
+  <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" title="Telegram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Live Games Feed -->
+  <div class="live-feed-section">
+    <div class="live-feed-head">
+      <div class="live-feed-title">
+        <span class="live-pulse"></span> Live Games
+      </div>
+      <div class="refresh-hint"><div class="refresh-dot"></div>15s refresh</div>
+    </div>
+    <div class="table-wrap">
+      <table class="data-table">
+        <thead>
+          <tr>
+            <th>ID</th>
+            <th>Type</th>
+            <th>Entry</th>
+            <th>Players</th>
+            <th>Pot</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody id="liveGamesBody">
+          <tr><td colspan="6" class="empty-cell">Loading live games…</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="page-header fade-in">
+    <div class="page-label">All Games</div>
+    <h1 class="page-title">Choose Your Game</h1>
+    <p class="beta-note">Beta release: these games use beta RNG and real on-chain transactions. Play responsibly and use amounts you are comfortable testing with.</p>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="filter-bar">
+    <button class="filter-tab active" data-filter="all">All Games</button>
+    <button class="filter-tab" data-filter="live">Live</button>
+    <button class="filter-tab" data-filter="vs-house">VS House</button>
+    <button class="filter-tab" data-filter="multiplayer">Multiplayer</button>
+    <button class="filter-tab" data-filter="prototype">Prototype</button>
+    <button class="filter-tab" data-filter="community">Community</button>
+    <button class="filter-tab" data-filter="soon">Coming Soon</button>
+  </div>
+
+  <!-- Games grid -->
+  <div class="games-section">
+    <div class="all-games-grid" id="gamesGrid">
+
+      <!-- Dice -->
+      <div class="game-card-expanded fade-in" data-status="live" data-type="vs-house" onclick="location.href='dice.html'">
+        <div class="gce-image" style="background-image: url('game-dice.png')">
+          <span class="gce-badge">● Live</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Dice</div>
+          <div class="gce-mode">VS House</div>
+          <p class="gce-desc">Roll over or under 50. Every settled bet burns 3%. Winners receive 1.95x on-chain.</p>
+          <button class="gce-btn" onclick="event.stopPropagation(); location.href='dice.html'">▶ Play Now</button>
+        </div>
+      </div>
+
+      <!-- Card War -->
+      <div class="game-card-expanded fade-in delay-1" data-status="live" data-type="multiplayer" onclick="location.href='games.html?game=0'">
+        <div class="gce-image" style="background-image: url('card-war-bg.png')">
+          <span class="gce-badge">● Live</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Card War</div>
+          <div class="gce-mode multiplayer">Multiplayer</div>
+          <p class="gce-desc">Draw the highest card. Ace wins. Ties re-draw until there's a winner. 5% burns forever.</p>
+          <button class="gce-btn" onclick="event.stopPropagation(); location.href='games.html?game=0'">▶ Play Now</button>
+        </div>
+      </div>
+
+      <!-- Mines -->
+  <div class="game-card-expanded fade-in delay-3" data-status="live" data-type="vs-house" onclick="location.href='mines-game/live.html'">
+        <div class="gce-image mines-card-image" style="background-image: url('mines-card-featured.png')">
+          <span class="gce-badge">● Live</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Mines</div>
+          <div class="gce-mode">VS House</div>
+    <p class="gce-desc">Start on-chain, then reveal tiles instantly with a committed backend seed. Cash out after safe picks. Every settled game burns 3%.</p>
+    <button class="gce-btn" onclick="event.stopPropagation(); location.href='mines-game/live.html'">▶ Play Now</button>
+        </div>
+      </div>
+
+      <!-- Coin Flip -->
+      <div class="game-card-expanded disabled fade-in delay-3" data-status="soon" data-type="future">
+        <div class="gce-image">
+          <span class="gce-badge">Coming Soon</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Coin Flip</div>
+          <p class="gce-desc">Pick heads or tails in a fast 50/50 style game built for simple bets and clear burn mechanics.</p>
+          <button class="gce-btn" disabled>Coming Soon</button>
+        </div>
+      </div>
+
+      <!-- Plinko -->
+      <div class="game-card-expanded disabled fade-in delay-3" data-status="soon" data-type="future">
+        <div class="gce-image">
+          <span class="gce-badge">Coming Soon</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Plinko</div>
+          <p class="gce-desc">Drop the ball through a risk board and land in weighted payout buckets.</p>
+          <button class="gce-btn" disabled>Coming Soon</button>
+        </div>
+      </div>
+
+      <!-- Wheel -->
+      <div class="game-card-expanded disabled fade-in delay-3" data-status="soon" data-type="future">
+        <div class="gce-image">
+          <span class="gce-badge">Coming Soon</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Wheel</div>
+          <p class="gce-desc">Choose a risk level, spin the wheel, and chase multiplier slots.</p>
+          <button class="gce-btn" disabled>Coming Soon</button>
+        </div>
+      </div>
+
+      <!-- Blackjack -->
+      <div class="game-card-expanded disabled fade-in delay-3" data-status="soon" data-type="future">
+        <div class="gce-image">
+          <span class="gce-badge">Coming Soon</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Blackjack</div>
+          <p class="gce-desc">A classic card table planned for a later provably fair deck system.</p>
+          <button class="gce-btn" disabled>Coming Soon</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-left">
+      CASHX CASINO · PULSECHAIN · PLAY RESPONSIBLY
+    </div>
+    <div class="footer-links">
+      <a href="index.html" class="footer-link">Home</a>
+      <a href="beta.html" class="footer-link">Beta Info</a>
+      <a href="fairness.html" class="footer-link">Fairness</a>
+      <a href="verifier.html" class="footer-link">Verifier</a>
+      <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="footer-link">Telegram</a>
+      <a href="https://x.com/TomkiwMich70997" target="_blank" rel="noopener" class="footer-link">Twitter / X</a>
+      <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="footer-link">Report Bug</a>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+'use strict';
+
+// Filter tabs
+const tabs  = document.querySelectorAll('.filter-tab');
+const cards = document.querySelectorAll('#gamesGrid .game-card, #gamesGrid .game-card-expanded, #gamesGrid .game-card-soon');
+
+tabs.forEach(tab => {
+  tab.addEventListener('click', () => {
+    tabs.forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+
+    const filter = tab.dataset.filter;
+    cards.forEach(card => {
+      const match = filter === 'all'
+        || card.dataset.status === filter
+        || card.dataset.type === filter;
+      card.style.display = match ? '' : 'none';
+    });
+  });
+});
+
+// Scroll fade-in
+const fadeObserver = new IntersectionObserver(entries => {
+  entries.forEach(e => {
+    if (e.isIntersecting) { e.target.classList.add('visible'); fadeObserver.unobserve(e.target); }
+  });
+}, { threshold: 0.1 });
+document.querySelectorAll('.fade-in').forEach(el => fadeObserver.observe(el));
+
+// Wallet connect
+const WALLET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
+let connectedAddress = null;
+
+async function connectWallet() {
+  const btn = document.getElementById('connectBtn');
+  if (!window.showWalletModal) { alert('Wallet modal not loaded — please refresh.'); return; }
+  btn.textContent = 'Connecting…';
+  try {
+    const { address } = await window.showWalletModal();
+    connectedAddress = address;
+    const short = address.slice(0, 6) + '…' + address.slice(-4);
+    btn.innerHTML = WALLET_SVG + ' ' + short;
+    btn.style.background = 'linear-gradient(135deg, #c855f7, #8b1fcc)';
+    btn.onclick = () => showWalletMenu(address);
+    refreshLiveGames();
+  } catch (err) {
+    // 'dismissed' = user closed modal — just reset button
+    btn.innerHTML = WALLET_SVG + ' Connect';
+    btn.style.background = '';
+    btn.onclick = connectWallet;
+  }
+}
+
+function showWalletMenu(address) {
+  closeWalletMenu();
+  const btn = document.getElementById('connectBtn');
+  btn.style.position = 'relative';
+  const menu = document.createElement('div');
+  menu.className = 'wallet-dropdown';
+  menu.id = 'walletMenu';
+  menu.innerHTML = `
+    <div class="wallet-dropdown-item" onclick="event.stopPropagation(); copyAddress('${address}')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+      Copy Address
+    </div>
+    <div class="wallet-dropdown-sep"></div>
+    <div class="wallet-dropdown-item danger" onclick="event.stopPropagation(); disconnectWallet()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>
+      Disconnect
+    </div>`;
+  btn.appendChild(menu);
+  setTimeout(() => document.addEventListener('click', outsideClick), 10);
+}
+
+function outsideClick(e) {
+  if (!e.target.closest('#walletMenu') && !e.target.closest('#connectBtn')) closeWalletMenu();
+}
+function closeWalletMenu() {
+  const m = document.getElementById('walletMenu');
+  if (m) m.remove();
+  document.removeEventListener('click', outsideClick);
+}
+function copyAddress(address) {
+  navigator.clipboard.writeText(address);
+  const item = document.querySelector('.wallet-dropdown-item');
+  if (item) { item.textContent = 'Copied!'; setTimeout(closeWalletMenu, 800); }
+}
+function disconnectWallet() {
+  closeWalletMenu();
+  connectedAddress = null;
+  const btn = document.getElementById('connectBtn');
+  btn.innerHTML = WALLET_SVG + ' Connect';
+  btn.style.background = '';
+  btn.onclick = connectWallet;
+}
+
+// Live games feed
+const LIVE_ABI = [
+  'function getActiveGames() view returns (uint256[])',
+  'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
+];
+const liveRpc      = new ethers.providers.JsonRpcProvider('https://pulsechain-rpc.publicnode.com');
+const liveContract = new ethers.Contract('0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39', LIVE_ABI, liveRpc);
+
+function fmtEntry(amount) {
+  const n = parseFloat(ethers.utils.formatUnits(amount, 18));
+  return (n >= 1_000_000 ? (n / 1_000_000).toFixed(0) + 'M' : (n / 1_000).toFixed(0) + 'K') + ' CASHX';
+}
+
+async function refreshLiveGames() {
+  const tbody = document.getElementById('liveGamesBody');
+  if (!tbody) return;
+  try {
+    const ids = await liveContract.getActiveGames();
+    if (ids.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No live games right now — check back soon!</td></tr>';
+      return;
+    }
+    const limited = ids.slice(-30);
+    const games   = await Promise.all(limited.map(id => liveContract.getGame(id)));
+    const cardWarGames = games
+      .map((g, i) => ({ g, id: limited[i].toString() }))
+      .filter(({ g }) => Number(g.gameType) === 0);
+    if (cardWarGames.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No Card War tables open right now — create one!</td></tr>';
+      return;
+    }
+    tbody.innerHTML = cardWarGames.map(({ g, id }) => {
+      const pot  = g.entryAmount.mul(g.maxPlayers);
+      const inGame = connectedAddress &&
+        Array.from(g.players).some(p => p.toLowerCase() === connectedAddress.toLowerCase());
+      const actionCell = inGame
+        ? '<span class="badge-in-game">IN GAME</span>'
+        : '<a class="btn-join-link" href="games.html?game=0">JOIN →</a>';
+      return '<tr>' +
+        '<td class="num">#' + id + '</td>' +
+        '<td><span class="type-badge type-cw">CARD WAR</span></td>' +
+        '<td>' + fmtEntry(g.entryAmount) + '</td>' +
+        '<td>' + g.playerCount + '/' + g.maxPlayers + '</td>' +
+        '<td class="num">' + fmtEntry(pot) + '</td>' +
+        '<td>' + actionCell + '</td>' +
+      '</tr>';
+    }).join('');
+  } catch (e) {
+    console.warn('Live games feed:', e);
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Could not load — RPC may be busy</td></tr>';
+  }
+}
+
+refreshLiveGames();
+setInterval(refreshLiveGames, 15_000);
+
+// Auto-reconnect if already authorised
+(async () => {
+  if (!window.ethereum) return;
+  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  if (accounts.length) {
+    connectedAddress = accounts[0];
+    const short = accounts[0].slice(0, 6) + '…' + accounts[0].slice(-4);
+    const btn = document.getElementById('connectBtn');
+    btn.innerHTML = WALLET_SVG + ' ' + short;
+    btn.style.background = 'linear-gradient(135deg, #c855f7, #8b1fcc)';
+    btn.onclick = () => showWalletMenu(accounts[0]);
+    refreshLiveGames(); // re-render now that we know the wallet
+  }
+})();
+</script>
+</body>
+</html>

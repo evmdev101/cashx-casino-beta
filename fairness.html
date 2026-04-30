@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Fairness & RNG | CASHX Casino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --navy: #0d0a16;
+      --panel: rgba(8, 4, 18, .9);
+      --panel-soft: rgba(14, 8, 28, .82);
+      --gold: #f5a623;
+      --purple: #c855f7;
+      --green: #3dffa0;
+      --red: #ff4455;
+      --text: #dce0f0;
+      --text-dim: #8d93b0;
+      --border: rgba(200, 85, 247, .28);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      font-family: 'Barlow', sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(8, 4, 18, .82), rgba(8, 4, 18, .96)),
+        url('hero-casino.png') center top / cover fixed no-repeat,
+        var(--navy);
+    }
+
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: .032;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      background: rgba(8, 5, 18, .72);
+      border-bottom: 1px solid rgba(200, 85, 247, .42);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200, 85, 247, .35);
+      padding: .12rem .3rem;
+    }
+
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .86rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color .16s;
+    }
+    .nav-links a:hover,
+    .nav-links a.active { color: #fff; }
+
+    main {
+      width: min(1100px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 4rem 0 3rem;
+    }
+
+    .hero {
+      padding: 4rem 0 2.5rem;
+      max-width: 850px;
+    }
+
+    .label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .64rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: .9rem;
+    }
+
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.4rem, 9vw, 7rem);
+      line-height: .9;
+      letter-spacing: 3px;
+      color: #fff;
+      text-shadow: 0 0 26px rgba(200, 85, 247, .35);
+      margin-bottom: 1rem;
+    }
+
+    .hero p {
+      max-width: 720px;
+      color: #cfd3ea;
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0 3rem;
+    }
+
+    .stat {
+      min-height: 112px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      background: rgba(8, 4, 18, .78);
+      border-radius: 8px;
+    }
+    .stat strong {
+      display: block;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      margin-bottom: .25rem;
+    }
+    .stat span {
+      color: var(--text-dim);
+      line-height: 1.55;
+      font-size: .94rem;
+    }
+
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .72fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 1.35rem;
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .38);
+    }
+
+    .panel + .panel { margin-top: 1.25rem; }
+
+    h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      color: #fff;
+      margin-bottom: .85rem;
+    }
+
+    h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 1.7px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 1.1rem 0 .35rem;
+    }
+
+    p, li {
+      color: #c7cbe0;
+      line-height: 1.65;
+      font-size: .98rem;
+    }
+
+    ul { padding-left: 1.15rem; }
+    li + li { margin-top: .45rem; }
+
+    code {
+      font-family: 'Space Mono', monospace;
+      color: #fff;
+      background: rgba(200, 85, 247, .14);
+      border: 1px solid rgba(200, 85, 247, .22);
+      border-radius: 5px;
+      padding: .08rem .3rem;
+      font-size: .86em;
+    }
+
+    .callout {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid rgba(245, 166, 35, .32);
+      background: rgba(245, 166, 35, .09);
+      border-radius: 8px;
+      color: #f7ddb5;
+    }
+
+    .fee-row {
+      display: grid;
+      grid-template-columns: 130px 1fr;
+      gap: .9rem;
+      padding: .9rem 0;
+      border-top: 1px solid rgba(200, 85, 247, .16);
+    }
+    .fee-row:first-child { border-top: 0; padding-top: 0; }
+    .fee-row b {
+      font-family: 'Michroma', sans-serif;
+      font-size: .7rem;
+      letter-spacing: 1.5px;
+      color: var(--green);
+      text-transform: uppercase;
+    }
+
+    .address {
+      overflow-wrap: anywhere;
+      font-family: 'Space Mono', monospace;
+      font-size: .82rem;
+      color: #eef1ff;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: 1.25rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: .65rem 1.05rem;
+      border-radius: 6px;
+      border: 1px solid rgba(245, 166, 35, .45);
+      color: #111;
+      background: linear-gradient(135deg, var(--gold), #d88a0d);
+      text-decoration: none;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1.8px;
+    }
+    .btn.secondary {
+      color: #fff;
+      background: rgba(200, 85, 247, .12);
+      border-color: rgba(200, 85, 247, .42);
+    }
+
+    footer {
+      width: min(1100px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 1.5rem 0 2rem;
+      border-top: 1px solid rgba(200, 85, 247, .18);
+      color: var(--text-dim);
+      font-family: 'Michroma', sans-serif;
+      font-size: .56rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+    footer a:hover { color: #fff; }
+
+    @media (max-width: 820px) {
+      .topnav { height: auto; min-height: 74px; align-items: flex-start; flex-direction: column; gap: .55rem; padding: 1rem; }
+      .topnav-brand { font-size: 1.75rem; }
+      .nav-links { flex-wrap: wrap; }
+      main { padding-top: 2rem; }
+      .status-strip,
+      .content-grid { grid-template-columns: 1fr; }
+      .hero { padding-top: 2rem; }
+      .fee-row { grid-template-columns: 1fr; gap: .25rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="all-games.html">Games</a>
+      <a href="fairness.html" class="active">Fairness</a>
+      <a href="beta.html">Beta Info</a>
+      <a href="verifier.html">Verifier</a>
+      <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener">Telegram</a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="label">Beta transparency</div>
+      <h1>Fairness & RNG</h1>
+      <p>
+        CASHX Casino is a beta project built for community gaming and CASHX burns. The current contracts use a simpler on-chain randomness design while the project is still early. It is more transparent than the first version, but it is not the same as Chainlink VRF or a full provably fair verifier.
+      </p>
+      <div class="actions">
+        <a class="btn" href="all-games.html">Play Games</a>
+        <a class="btn secondary" href="https://scan.pulsechain.com/" target="_blank" rel="noopener">View On-Chain</a>
+      </div>
+    </section>
+
+    <section class="status-strip">
+      <div class="stat">
+        <strong>Beta RNG</strong>
+        <span>Uses player commitments and future block data where practical. Good for beta testing, not final casino-grade randomness.</span>
+      </div>
+      <div class="stat">
+        <strong>3% / 5%</strong>
+        <span>Dice burns 3% of settled bets. Multiplayer burns 5% of each completed pot.</span>
+      </div>
+      <div class="stat">
+        <strong>Next Step</strong>
+        <span>The long-term upgrade path is VRF or a public provably fair verification flow.</span>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div>
+        <section class="panel">
+          <h2>How Dice RNG Works</h2>
+          <p>
+            Dice uses a commit and reveal flow. Before placing the bet, the site creates a random secret in the browser and sends only a hash of that secret to the contract. After the next block is available, the player reveals the secret and the contract combines it with future block data to create the roll.
+          </p>
+          <h3>Plain-English Flow</h3>
+          <ul>
+            <li>The player submits a hidden commitment before the result block exists.</li>
+            <li>The contract stores the bet and sets the target block to the next block.</li>
+            <li>The player reveals the secret after the target block is mined.</li>
+            <li>The roll is generated from the target blockhash, player address, secret, bet id, and contract address.</li>
+          </ul>
+          <div class="callout">
+            This is stronger than using only <code>block.timestamp</code> or the current block, but a block producer may still have some influence. For that reason, this beta version should not be described as VRF or fully provably fair.
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>How Multiplayer RNG Works</h2>
+          <p>
+            Multiplayer games wait until the lobby fills, then the contract sets settlement to a future block. After that block exists, anyone can settle the game. The result is generated from the settlement blockhash and game data.
+          </p>
+          <h3>Why Settlement Is Separate</h3>
+          <ul>
+            <li>Players cannot know the settlement blockhash when the lobby is still filling.</li>
+            <li>The game does not resolve in the same transaction as the final join.</li>
+            <li>If a game is not settled in time, the contract includes an expiry refund path.</li>
+          </ul>
+        </section>
+      </div>
+
+      <aside>
+        <section class="panel">
+          <h2>Fees & Burns</h2>
+          <div class="fee-row">
+            <b>Dice</b>
+            <p>Every settled dice bet burns 3%. Winning bets pay 1.95x total. Losing bet leftovers stay in the contract reserve so the game can keep paying future winners.</p>
+          </div>
+          <div class="fee-row">
+            <b>Card War</b>
+            <p>Players fund the pot. The winner receives 95% of the completed pot and 5% is burned forever.</p>
+          </div>
+          <div class="fee-row">
+            <b>Live Mines</b>
+            <p>Every settled mines game burns 3%. If the player hits a mine, the remaining bet stays in the contract reserve. If the player cashes out, payout comes from the reserve.</p>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Contract Addresses</h2>
+          <h3>Dice Game</h3>
+          <p class="address">0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977</p>
+          <h3>Multiplayer Games</h3>
+          <p class="address">0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39</p>
+          <h3>Live Mines</h3>
+          <p class="address">0x684e6B760FC931BB858b3bf3dFC056e550b13D90</p>
+          <h3>CASHX Token</h3>
+          <p class="address">0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665</p>
+        </section>
+
+        <section class="panel">
+          <h2>What This Means</h2>
+          <p>
+            The beta contracts are transparent and playable, but they are not the final fairness architecture. The responsible upgrade path is to move to VRF or add a public verifier before presenting the games as production casino infrastructure.
+          </p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    CASHX Casino - PulseChain - Beta RNG - <a href="beta.html">Beta Info</a> - <a href="verifier.html">Verifier</a> - Play Responsibly
+  </footer>
+</body>
+</html>

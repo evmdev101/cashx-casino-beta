@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>$CASHX Mines</title>
+  <link rel="icon" href="../favicon.ico" type="image/x-icon" />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Michroma&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="../wallet-modal.js"></script>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <aside class="sidebar">
+    <a href="../index.html" class="nav-pill" title="Home"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h5v-5h4v5h5v-8h3z"/></svg></a>
+    <a href="../all-games.html" class="nav-pill active-purple" title="Games">🎰</a>
+    <div class="nav-pill-divider"></div>
+    <a href="https://x.com/TomkiwMich70997" target="_blank" rel="noopener" class="nav-pill" title="Twitter / X">𝕏</a>
+    <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" title="Telegram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.488-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
+  </aside>
+
+  <nav class="topnav">
+    <a href="../index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+    <div class="topnav-right">
+      <span class="wallet-label" id="networkLabel">PulseChain</span>
+      <button class="connect-btn" id="connectBtn" type="button">Connect Wallet</button>
+    </div>
+  </nav>
+
+  <div class="page-wrap">
+    <main class="mines-card">
+      <section class="mines-controls">
+        <div class="brand-row">
+          <span class="brand-mark">◆</span>
+          <div>
+            <h1>Mines</h1>
+            <p>Manual on-chain beta · select tiles before locking</p>
+          </div>
+        </div>
+
+        <label class="field compact-field">
+          <span>Balance</span>
+          <output id="balanceOutput">Connect wallet</output>
+        </label>
+
+        <label class="field">
+          <span>Bet Amount</span>
+          <div class="stepper">
+            <button type="button" id="halveBetBtn">-</button>
+            <input id="betInput" type="number" min="10" step="10" value="500" />
+            <button type="button" id="doubleBetBtn">+</button>
+          </div>
+        </label>
+
+        <label class="field">
+          <span>Mines</span>
+          <select id="mineSelect">
+            <option value="3" selected>3 Mines</option>
+            <option value="5">5 Mines</option>
+            <option value="8">8 Mines</option>
+            <option value="12">12 Mines</option>
+            <option value="16">16 Mines</option>
+            <option value="20">20 Mines</option>
+            <option value="24">24 Mines</option>
+          </select>
+        </label>
+
+        <label class="field compact-field">
+          <span>Selected Tiles</span>
+          <output id="pickCountOutput">0 selected</output>
+        </label>
+
+        <button class="primary-btn" id="startBtn" type="button">Lock Bet</button>
+        <button class="cashout-btn" id="cashoutBtn" type="button" disabled>Reveal Result</button>
+      </section>
+
+      <section class="mines-board-panel">
+        <div class="game-head">
+          <div>
+            <span class="eyebrow">5x5 Grid · Provably Fair</span>
+            <h2>Select Safe Tiles</h2>
+          </div>
+          <div class="status-dot">Live Contract</div>
+        </div>
+
+        <div class="stats-strip">
+          <div>
+            <span>Payout</span>
+            <strong id="multiplierOutput">1.00x</strong>
+          </div>
+          <div>
+            <span>If Add Tile</span>
+            <strong id="nextMultiplierOutput">1.08x</strong>
+          </div>
+          <div>
+            <span>Profit</span>
+            <strong id="profitOutput">0</strong>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="board" aria-label="Mines board"></div>
+          <div class="round-banner" id="roundBanner">Choose tiles before locking</div>
+        </div>
+      </section>
+
+      <section class="burn-section">
+        <div class="burn-label">🔥 Total CASHX Burned From Mines</div>
+        <div class="burn-value" id="totalBurned">—</div>
+        <div class="burn-sub">live contract · verified on-chain</div>
+      </section>
+    </main>
+
+    <section class="games-section">
+      <div class="section-head">
+        <span class="section-title">RECENT MINES GAMES</span>
+        <span class="live-tag">● Live · on-chain feed</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Player</th>
+              <th>Result</th>
+              <th>Bet</th>
+              <th>Mines</th>
+              <th>Multiplier</th>
+              <th>Burn</th>
+            </tr>
+          </thead>
+          <tbody id="recentGamesBody">
+            <tr><td colspan="7" class="empty-cell">Connect or refresh to load recent Mines games.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="games-section">
+      <div class="section-head">
+        <span class="section-title">YOUR MINES GAMES</span>
+        <span class="live-tag">● Connected wallet</span>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Result</th>
+              <th>Bet</th>
+              <th>Picks</th>
+              <th>Mode</th>
+              <th>Payout</th>
+              <th>TX</th>
+            </tr>
+          </thead>
+          <tbody id="yourGamesBody">
+            <tr><td colspan="7" class="empty-cell">Connect your wallet to load your Mines games.</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <footer>
+      $CASHX Mines · Live Beta · <a href="../beta.html">Beta Info</a> · <a href="../verifier.html?mode=mines">Verifier</a> · Manual contract play
+    </footer>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>

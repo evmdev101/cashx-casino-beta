@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Beta Info & Risk | CASHX Casino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <style>
+    :root {
+      --navy: #0d0a16;
+      --panel: rgba(8, 4, 18, .9);
+      --gold: #f5a623;
+      --purple: #c855f7;
+      --green: #3dffa0;
+      --red: #ff4455;
+      --text: #dce0f0;
+      --text-dim: #8d93b0;
+      --border: rgba(200, 85, 247, .28);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Barlow', sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(8, 4, 18, .82), rgba(8, 4, 18, .96)),
+        url('hero-casino.png') center top / cover fixed no-repeat,
+        var(--navy);
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 20;
+      opacity: .032;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 2rem;
+      background: rgba(8, 5, 18, .72);
+      border-bottom: 1px solid rgba(200, 85, 247, .42);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      white-space: nowrap;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200, 85, 247, .35);
+      padding: .12rem .3rem;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .86rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color .16s;
+    }
+    .nav-links a:hover,
+    .nav-links a.active { color: #fff; }
+    main {
+      width: min(1120px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 4rem 0 3rem;
+    }
+    .hero {
+      max-width: 880px;
+      padding: 3.5rem 0 2.5rem;
+    }
+    .label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .64rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: .9rem;
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.4rem, 9vw, 7rem);
+      line-height: .9;
+      letter-spacing: 3px;
+      color: #fff;
+      text-shadow: 0 0 26px rgba(200, 85, 247, .35);
+      margin-bottom: 1rem;
+    }
+    .hero p {
+      max-width: 760px;
+      color: #cfd3ea;
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+    .status-strip {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+      margin: 1.5rem 0 2.2rem;
+    }
+    .stat {
+      min-height: 118px;
+      padding: 1rem;
+      border: 1px solid var(--border);
+      background: rgba(8, 4, 18, .78);
+      border-radius: 8px;
+    }
+    .stat strong {
+      display: block;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 1.5px;
+      color: var(--gold);
+      margin-bottom: .25rem;
+    }
+    .stat span {
+      color: var(--text-dim);
+      line-height: 1.55;
+      font-size: .94rem;
+    }
+    .content-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) minmax(320px, .72fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 1.35rem;
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .38);
+    }
+    .panel + .panel { margin-top: 1.25rem; }
+    h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      color: #fff;
+      margin-bottom: .85rem;
+    }
+    h3 {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 1.7px;
+      text-transform: uppercase;
+      color: var(--gold);
+      margin: 1.1rem 0 .35rem;
+    }
+    p, li {
+      color: #c7cbe0;
+      line-height: 1.65;
+      font-size: .98rem;
+    }
+    ul { padding-left: 1.15rem; }
+    li + li { margin-top: .45rem; }
+    .callout {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid rgba(245, 166, 35, .32);
+      background: rgba(245, 166, 35, .09);
+      border-radius: 8px;
+      color: #f7ddb5;
+    }
+    .danger {
+      border-color: rgba(255, 68, 85, .32);
+      background: rgba(255, 68, 85, .08);
+      color: #ffc9cf;
+    }
+    .address-card {
+      display: block;
+      padding: .82rem 0;
+      border-top: 1px solid rgba(200, 85, 247, .16);
+    }
+    .address-card:first-of-type { border-top: 0; padding-top: 0; }
+    .address-card b {
+      display: block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .62rem;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--green);
+      margin-bottom: .35rem;
+    }
+    .address-card a {
+      overflow-wrap: anywhere;
+      font-family: 'Space Mono', monospace;
+      font-size: .82rem;
+      color: #8db7ff;
+      text-decoration: none;
+    }
+    .address-card a:hover { color: #fff; text-decoration: underline; }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: 1.25rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 42px;
+      padding: .65rem 1.05rem;
+      border-radius: 6px;
+      border: 1px solid rgba(245, 166, 35, .45);
+      color: #111;
+      background: linear-gradient(135deg, var(--gold), #d88a0d);
+      text-decoration: none;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1.8px;
+    }
+    .btn.secondary {
+      color: #fff;
+      background: rgba(200, 85, 247, .12);
+      border-color: rgba(200, 85, 247, .42);
+    }
+    footer {
+      width: min(1120px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 1.5rem 0 2rem;
+      border-top: 1px solid rgba(200, 85, 247, .18);
+      color: var(--text-dim);
+      font-family: 'Michroma', sans-serif;
+      font-size: .56rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+    footer a:hover { color: #fff; }
+    @media (max-width: 820px) {
+      .topnav { align-items: flex-start; flex-direction: column; padding: 1rem; }
+      .topnav-brand { font-size: 1.75rem; }
+      main { padding-top: 2rem; }
+      .status-strip,
+      .content-grid { grid-template-columns: 1fr; }
+      .hero { padding-top: 2rem; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="all-games.html">Games</a>
+      <a href="fairness.html">Fairness</a>
+      <a href="verifier.html">Verifier</a>
+      <a href="beta.html" class="active">Beta Info</a>
+      <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener">Report Bug</a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="label">Official beta information</div>
+      <h1>Beta Info & Risk</h1>
+      <p>
+        CASHX Casino is live as a community beta. The games are playable on-chain, but the contracts are not audited and the current RNG design is still beta. Use small amounts, verify contract links, and report bugs before the project is treated as production software.
+      </p>
+      <div class="actions">
+        <a class="btn" href="all-games.html">Play Beta</a>
+        <a class="btn secondary" href="fairness.html">Read Fairness</a>
+        <a class="btn secondary" href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener">Report Bug</a>
+      </div>
+    </section>
+
+    <section class="status-strip">
+      <div class="stat">
+        <strong>Beta</strong>
+        <span>Community testing release. Bugs, failed RPC calls, wallet issues, and UI edge cases are possible.</span>
+      </div>
+      <div class="stat">
+        <strong>Unaudited</strong>
+        <span>Contracts compile and are transparent, but they have not received an independent security audit.</span>
+      </div>
+      <div class="stat">
+        <strong>Small Bets</strong>
+        <span>Use amounts you are comfortable testing with. Never play with funds you cannot afford to lose.</span>
+      </div>
+    </section>
+
+    <div class="content-grid">
+      <div>
+        <section class="panel">
+          <h2>Beta Ground Rules</h2>
+          <ul>
+            <li>This is a beta release for community testing and CASHX burn games.</li>
+            <li>Wallet approvals and game actions are real on-chain transactions on PulseChain.</li>
+            <li>Wins are not guaranteed. Every game has risk and may result in loss.</li>
+            <li>The current randomness approach is explained on the Fairness page and should not be described as Chainlink VRF.</li>
+            <li>Only use the official links shared by the CASHX Casino team. Watch for fake sites and copied contracts.</li>
+          </ul>
+          <div class="callout danger">
+            CASHX Casino does not ask for seed phrases, private keys, recovery phrases, or wallet passwords. If anyone asks for those, it is not official support.
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Game Funding & Payouts</h2>
+          <p>
+            CASHX Casino games use funded on-chain contracts to pay winners. The game pages do not display live prize-pool balances because those numbers can be misleading in a casino UI: a high balance can look like a jackpot, and a low balance can look alarming even when payout limits and reserves are working as designed.
+          </p>
+          <p>
+            VS House games are funded from their contract reserves and include payout caps, bet limits, and burn mechanics. Multiplayer games are funded by the players in each completed pot. Public contract addresses are listed here for anyone who wants to inspect balances and transactions directly on PulseScan.
+          </p>
+          <div class="callout">
+            The simple player-facing rule is: games are funded on-chain, results are verifiable, and CASHX burns are shown publicly. Detailed liquidity checks belong on transparency pages and block explorers, not on the game cards.
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Responsible Play</h2>
+          <p>
+            Play responsibly and stay within your own limits. If a game stops being fun, take a break. Do not chase losses, borrow funds to play, or treat beta gameplay as income.
+          </p>
+          <div class="callout">
+            Access may be restricted by your local laws. You are responsible for knowing whether crypto wagering or casino-style games are allowed where you live.
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>Bug Reports</h2>
+          <p>
+            When reporting a bug, include the game, wallet type, transaction hash if available, a screenshot, and what you expected to happen. This helps issues get fixed quickly.
+          </p>
+          <div class="actions">
+            <a class="btn" href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener">Report On Telegram</a>
+          </div>
+        </section>
+      </div>
+
+      <aside>
+        <section class="panel">
+          <h2>Official Contracts</h2>
+          <span class="address-card">
+            <b>Dice Game</b>
+            <a href="https://scan.pulsechain.com/address/0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977" target="_blank" rel="noopener">0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977</a>
+          </span>
+          <span class="address-card">
+            <b>Multiplayer Games</b>
+            <a href="https://scan.pulsechain.com/address/0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39" target="_blank" rel="noopener">0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39</a>
+          </span>
+          <span class="address-card">
+            <b>Live Mines Game</b>
+            <a href="https://scan.pulsechain.com/address/0x684e6B760FC931BB858b3bf3dFC056e550b13D90" target="_blank" rel="noopener">0x684e6B760FC931BB858b3bf3dFC056e550b13D90</a>
+          </span>
+          <span class="address-card">
+            <b>CASHX Token</b>
+            <a href="https://scan.pulsechain.com/address/0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665" target="_blank" rel="noopener">0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665</a>
+          </span>
+        </section>
+
+        <section class="panel">
+          <h2>Current Game Models</h2>
+          <h3>Dice</h3>
+          <p>VS House. 3% burn on settled bets. Winning bets pay 1.95x total.</p>
+          <h3>Card War</h3>
+          <p>Multiplayer. Winner receives 95% of the completed pot and 5% burns.</p>
+          <h3>Mines</h3>
+          <p>VS House. Live tile reveals with a committed backend seed, payout caps, protected reserves, and 3% burn on settled games.</p>
+        </section>
+
+        <section class="panel">
+          <h2>Launch Status</h2>
+          <p>
+            Good for a small beta group. Before a larger public push, the strongest next steps are source verification, an independent contract review, and continued live testing with small amounts.
+          </p>
+        </section>
+      </aside>
+    </div>
+  </main>
+
+  <footer>
+    CASHX Casino - PulseChain - Beta Release - <a href="fairness.html">Fairness</a> - <a href="verifier.html">Verifier</a> - Play Responsibly
+  </footer>
+</body>
+</html>

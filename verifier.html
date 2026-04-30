@@ -1,0 +1,1253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Result Verifier | CASHX Casino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+
+  <style>
+    :root {
+      --navy: #0d0a16;
+      --panel: rgba(8, 4, 18, .9);
+      --gold: #f5a623;
+      --purple: #c855f7;
+      --green: #3dffa0;
+      --red: #ff4455;
+      --text: #dce0f0;
+      --text-dim: #8d93b0;
+      --border: rgba(200, 85, 247, .28);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      min-height: 100vh;
+      font-family: 'Barlow', sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(8, 4, 18, .82), rgba(8, 4, 18, .96)),
+        url('hero-casino.png') center top / cover fixed no-repeat,
+        var(--navy);
+    }
+    .topnav {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      min-height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 1rem 2rem;
+      background: rgba(8, 5, 18, .72);
+      border-bottom: 1px solid rgba(200, 85, 247, .42);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      white-space: nowrap;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200, 85, 247, .35);
+      padding: .12rem .3rem;
+    }
+    .nav-links {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .86rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    .nav-links a {
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color .16s;
+    }
+    .nav-links a:hover,
+    .nav-links a.active { color: #fff; }
+    main {
+      width: min(1120px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 4rem 0 3rem;
+    }
+    .hero {
+      max-width: 880px;
+      padding: 3.5rem 0 2.5rem;
+    }
+    .label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .64rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+      color: var(--purple);
+      margin-bottom: .9rem;
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.4rem, 9vw, 7rem);
+      line-height: .9;
+      letter-spacing: 3px;
+      color: #fff;
+      text-shadow: 0 0 26px rgba(200, 85, 247, .35);
+      margin-bottom: 1rem;
+    }
+    .hero p {
+      max-width: 760px;
+      color: #cfd3ea;
+      font-size: 1.05rem;
+      line-height: 1.7;
+    }
+    .verifier-grid {
+      display: grid;
+      grid-template-columns: minmax(0, .75fr) minmax(0, 1.25fr);
+      gap: 1.25rem;
+      align-items: start;
+    }
+    .panel {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 1.35rem;
+      box-shadow: 0 18px 55px rgba(0, 0, 0, .38);
+    }
+    .panel + .panel { margin-top: 1.25rem; }
+    h2 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      color: #fff;
+      margin-bottom: .85rem;
+    }
+    p, li {
+      color: #c7cbe0;
+      line-height: 1.65;
+      font-size: .98rem;
+    }
+    .tabs {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .6rem;
+      margin-bottom: 1rem;
+    }
+    .tab {
+      border: 1px solid rgba(200, 85, 247, .28);
+      background: rgba(200, 85, 247, .08);
+      color: var(--text);
+      border-radius: 6px;
+      min-height: 42px;
+      cursor: pointer;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 2px;
+    }
+    .tab.active {
+      color: #111;
+      border-color: rgba(245, 166, 35, .7);
+      background: linear-gradient(135deg, var(--gold), #d88a0d);
+    }
+    .form-row { margin-top: .9rem; }
+    .advanced-row {
+      margin-top: .9rem;
+      border: 1px solid rgba(191, 51, 255, .24);
+      border-radius: 8px;
+      background: rgba(8, 3, 20, .58);
+      overflow: hidden;
+    }
+    .advanced-row summary {
+      cursor: pointer;
+      padding: .8rem .9rem;
+      color: #f1d7ff;
+      font-family: "Orbitron", sans-serif;
+      font-weight: 900;
+      font-size: .72rem;
+      letter-spacing: .12rem;
+      text-transform: uppercase;
+      list-style: none;
+    }
+    .advanced-row summary::-webkit-details-marker { display: none; }
+    .advanced-body {
+      padding: 0 .9rem .9rem;
+      border-top: 1px solid rgba(191, 51, 255, .18);
+    }
+    label {
+      display: block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .58rem;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: .38rem;
+    }
+    input {
+      width: 100%;
+      min-height: 44px;
+      border: 1px solid rgba(200, 85, 247, .28);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, .32);
+      color: #fff;
+      padding: .65rem .8rem;
+      font-family: 'Space Mono', monospace;
+      font-size: .86rem;
+      outline: none;
+    }
+    input:focus {
+      border-color: rgba(245, 166, 35, .7);
+      box-shadow: 0 0 18px rgba(245, 166, 35, .14);
+    }
+    .hint {
+      color: var(--text-dim);
+      font-size: .86rem;
+      margin-top: .45rem;
+    }
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: .75rem;
+      margin-top: 1.25rem;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 44px;
+      padding: .65rem 1.05rem;
+      border-radius: 6px;
+      border: 1px solid rgba(245, 166, 35, .45);
+      color: #111;
+      background: linear-gradient(135deg, var(--gold), #d88a0d);
+      text-decoration: none;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1.8px;
+      cursor: pointer;
+    }
+    .btn.secondary {
+      color: #fff;
+      background: rgba(200, 85, 247, .12);
+      border-color: rgba(200, 85, 247, .42);
+    }
+    .status {
+      min-height: 48px;
+      padding: .85rem 1rem;
+      border: 1px solid rgba(200, 85, 247, .24);
+      background: rgba(0, 0, 0, .24);
+      border-radius: 8px;
+      color: var(--text-dim);
+      margin-bottom: 1rem;
+    }
+    .status.ok {
+      color: #d7ffe9;
+      border-color: rgba(61, 255, 160, .34);
+      background: rgba(61, 255, 160, .08);
+    }
+    .status.bad {
+      color: #ffc9cf;
+      border-color: rgba(255, 68, 85, .34);
+      background: rgba(255, 68, 85, .08);
+    }
+    .result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: .75rem;
+    }
+    .kv {
+      border: 1px solid rgba(200, 85, 247, .16);
+      background: rgba(0, 0, 0, .22);
+      border-radius: 6px;
+      padding: .8rem;
+      min-width: 0;
+    }
+    .kv b {
+      display: block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 1.4px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: .35rem;
+    }
+    .kv span,
+    .kv a {
+      overflow-wrap: anywhere;
+      font-family: 'Space Mono', monospace;
+      font-size: .82rem;
+      color: #eef1ff;
+      text-decoration: none;
+    }
+    .kv a:hover { color: var(--gold); text-decoration: underline; }
+    .full { grid-column: 1 / -1; }
+    .players {
+      display: grid;
+      gap: .55rem;
+      margin-top: .75rem;
+    }
+    .player-row {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 90px 80px;
+      gap: .6rem;
+      align-items: center;
+      padding: .7rem;
+      border: 1px solid rgba(200, 85, 247, .16);
+      background: rgba(0, 0, 0, .18);
+      border-radius: 6px;
+      font-family: 'Space Mono', monospace;
+      font-size: .78rem;
+    }
+    .winner { color: var(--green); }
+    .callout {
+      margin-top: 1rem;
+      padding: 1rem;
+      border: 1px solid rgba(245, 166, 35, .32);
+      background: rgba(245, 166, 35, .09);
+      border-radius: 8px;
+      color: #f7ddb5;
+    }
+    footer {
+      width: min(1120px, calc(100% - 2rem));
+      margin: 0 auto;
+      padding: 1.5rem 0 2rem;
+      border-top: 1px solid rgba(200, 85, 247, .18);
+      color: var(--text-dim);
+      font-family: 'Michroma', sans-serif;
+      font-size: .56rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+    footer a { color: var(--gold); text-decoration: none; }
+    footer a:hover { color: #fff; }
+    @media (max-width: 880px) {
+      .topnav { align-items: flex-start; flex-direction: column; padding: 1rem; }
+      .topnav-brand { font-size: 1.75rem; }
+      main { padding-top: 2rem; }
+      .verifier-grid,
+      .result-grid { grid-template-columns: 1fr; }
+      .player-row { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="all-games.html">Games</a>
+      <a href="fairness.html">Fairness</a>
+      <a href="verifier.html" class="active">Verifier</a>
+      <a href="beta.html">Beta Info</a>
+    </div>
+  </nav>
+
+  <main>
+    <section class="hero">
+      <div class="label">Public result verifier</div>
+      <h1>Verify A Result</h1>
+      <p>
+        Enter a Dice bet ID, Multiplayer game ID, Mines game ID, or paste a transaction hash. This page pulls public on-chain data and recomputes the result in your browser using the same randomness math as the beta contracts.
+      </p>
+    </section>
+
+    <div class="verifier-grid">
+      <aside>
+        <section class="panel">
+          <h2>Choose Result</h2>
+          <div class="tabs">
+            <button class="tab active" id="diceTab" type="button" onclick="setMode('dice')">Dice Bet</button>
+            <button class="tab" id="multiTab" type="button" onclick="setMode('multi')">Multiplayer</button>
+            <button class="tab" id="minesTab" type="button" onclick="setMode('mines')">Mines</button>
+          </div>
+
+          <div class="form-row">
+            <label id="idLabel" for="verifyId">Dice Bet ID Or Reveal / Roll TX Hash</label>
+            <input id="verifyId" placeholder="Paste the transaction hash here" />
+            <div class="hint" id="idHint">Best option: paste the revealBet or roll transaction hash here. The verifier will find the bet ID and secret automatically.</div>
+          </div>
+
+          <details class="advanced-row" id="secretRow">
+            <summary>Advanced: manual secret fallback</summary>
+            <div class="advanced-body">
+              <div class="form-row">
+                <label for="secretInput">Revealed 32-byte secret</label>
+                <input id="secretInput" placeholder="Usually leave this blank" />
+                <div class="hint">Only use this if automatic lookup fails. A transaction hash belongs in the main box above, not here.</div>
+              </div>
+              <div class="form-row" id="picksRow" style="display:none">
+                <label for="picksInput">Mines tile picks</label>
+                <input id="picksInput" placeholder="Example: 0, 4, 12" />
+                <div class="hint">Only needed if event lookup fails. Tiles are zero-based, matching the contract.</div>
+              </div>
+            </div>
+          </details>
+
+          <div class="actions">
+            <button class="btn" type="button" onclick="verifyCurrent()">Verify Result</button>
+            <a class="btn secondary" href="fairness.html">How RNG Works</a>
+          </div>
+        </section>
+
+        <section class="panel">
+          <h2>What It Checks</h2>
+          <p id="explainText">
+            Dice verification checks the commit hash, target block hash, revealed secret, recomputed 1-99 roll, win/loss condition, and burn amount.
+          </p>
+          <div class="callout">
+            This beta verifier is a transparency tool. It does not change results and it does not require wallet connection.
+          </div>
+        </section>
+      </aside>
+
+      <section class="panel">
+        <h2>Verification Output</h2>
+        <div class="status" id="statusBox">Enter an ID and run the verifier.</div>
+        <div class="result-grid" id="resultGrid"></div>
+      </section>
+    </div>
+  </main>
+
+  <footer>
+    CASHX Casino - PulseChain - <a href="beta.html">Beta Info</a> - <a href="fairness.html">Fairness</a> - Play Responsibly
+  </footer>
+
+  <script>
+    'use strict';
+
+    const DICE_GAME_ADDRESS   = '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
+    const ASYNC_GAMES_ADDRESS = '0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39';
+    const MINES_GAME_ADDRESS  = '0xF5Ba5129dD41acb8aF5050aF1EcA84dD497E3095';
+    const LIVE_MINES_GAME_ADDRESS = '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
+    const RPC_URL             = 'https://rpc.pulsechain.com';
+
+    const DICE_ABI = [
+      'function pendingBets(uint256) view returns (address player, bool over, uint256 amount, bytes32 commitHash, uint256 targetBlock, bool settled)',
+      'function revealBet(uint256 betId, bytes32 secret)',
+      'event BetPlaced(uint256 indexed betId, address indexed player, bool over, uint256 bet, uint256 targetBlock)',
+      'event Roll(uint256 indexed betId, address indexed player, uint8 result, bool over, uint256 bet, bool won)',
+      'event BetRevealed(uint256 indexed betId, address indexed player, bytes32 secret, bytes32 targetBlockHash)',
+    ];
+    const ASYNC_ABI = [
+      'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
+      'event GameResolved(uint256 indexed gameId, address indexed winner, uint256 payout, uint256 burned)',
+    ];
+    const MINES_ABI = [
+      'function pendingGames(uint256) view returns (address player, uint256 amount, uint8 mineCount, uint8 pickCount, bytes32 commitHash, uint256 targetBlock, bool settled)',
+      'function calculatePayout(uint256 betAmount, uint8 mineCount, uint8 pickCount) view returns (uint256)',
+      'function revealGame(uint256 gameId, uint8[] picks, bytes32 secret)',
+      'event GamePlaced(uint256 indexed gameId, address indexed player, uint256 bet, uint8 mineCount, uint8 pickCount, uint256 targetBlock)',
+      'event GameRevealed(uint256 indexed gameId, address indexed player, uint8[] picks, bytes32 secret, bytes32 targetBlockHash)',
+      'event GameSettled(uint256 indexed gameId, address indexed player, bool won, uint256 bet, uint256 payout, uint256 burned, uint256 multiplierBps)',
+    ];
+    const LIVE_MINES_ABI = [
+      'function games(uint256) view returns (address player, uint256 amount, uint8 mineCount, bytes32 serverSeedHash, bool settled)',
+      'function generateMineMask(uint256 gameId, address player, uint8 mineCount, bytes32 serverSeed) view returns (uint256)',
+      'function calculatePayout(uint256 betAmount, uint8 mineCount, uint8 safePicks) view returns (uint256)',
+      'event GameStarted(uint256 indexed gameId, address indexed player, uint256 bet, uint8 mineCount, bytes32 serverSeedHash)',
+      'event GameSettled(uint256 indexed gameId, address indexed player, bool won, uint256 bet, uint256 payout, uint256 burned, uint256 multiplierBps, uint256 revealedMask, uint256 mineMask, bytes32 serverSeed)',
+    ];
+
+    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+    const diceContract = new ethers.Contract(DICE_GAME_ADDRESS, DICE_ABI, provider);
+    const asyncContract = new ethers.Contract(ASYNC_GAMES_ADDRESS, ASYNC_ABI, provider);
+    const minesContract = new ethers.Contract(MINES_GAME_ADDRESS, MINES_ABI, provider);
+    const liveMinesContract = new ethers.Contract(LIVE_MINES_GAME_ADDRESS, LIVE_MINES_ABI, provider);
+    const diceIface = new ethers.utils.Interface(DICE_ABI);
+    const asyncIface = new ethers.utils.Interface(ASYNC_ABI);
+    const minesIface = new ethers.utils.Interface(MINES_ABI);
+    const liveMinesIface = new ethers.utils.Interface(LIVE_MINES_ABI);
+    let mode = 'dice';
+
+    function setMode(nextMode) {
+      mode = nextMode;
+      document.getElementById('diceTab').classList.toggle('active', mode === 'dice');
+      document.getElementById('multiTab').classList.toggle('active', mode === 'multi');
+      document.getElementById('minesTab').classList.toggle('active', mode === 'mines');
+      document.getElementById('secretRow').style.display = (mode === 'dice' || mode === 'mines') ? 'block' : 'none';
+      document.getElementById('picksRow').style.display = mode === 'mines' ? 'block' : 'none';
+
+      if (mode === 'dice') {
+        document.getElementById('idLabel').textContent = 'Dice Bet ID Or Reveal / Roll TX Hash';
+        document.getElementById('verifyId').placeholder = 'Paste the transaction hash here';
+        document.getElementById('idHint').textContent = 'Best option: paste the revealBet or roll transaction hash here. The verifier will find the bet ID and secret automatically.';
+        document.getElementById('explainText').textContent = 'Dice verification checks the commit hash, target block hash, revealed secret, recomputed 1-99 roll, win/loss condition, and burn amount.';
+      } else if (mode === 'mines') {
+        document.getElementById('idLabel').textContent = 'Mines Game ID Or Reveal / Settle TX Hash';
+        document.getElementById('verifyId').placeholder = 'Paste the settle transaction hash here';
+        document.getElementById('idHint').textContent = 'Best option for Live Mines: paste the GameSettled transaction hash. The verifier pulls the revealed server seed automatically.';
+        document.getElementById('explainText').textContent = 'Live Mines verification checks the backend seed hash, generated mine mask, revealed tiles, win/loss result, payout, and burn amount.';
+      } else {
+        document.getElementById('idLabel').textContent = 'Multiplayer Game ID Or TX Hash';
+        document.getElementById('verifyId').placeholder = 'Example: 8 or 0x transaction hash';
+        document.getElementById('idHint').textContent = 'Multiplayer game IDs are shown as lobby/game numbers. You can also paste a GameResolved transaction hash.';
+        document.getElementById('explainText').textContent = 'Multiplayer verification checks the settlement block hash, generated player results, winning address, payout, and burn amount.';
+      }
+      setStatus('Enter an ID and run the verifier.', '');
+      document.getElementById('resultGrid').innerHTML = '';
+    }
+
+    async function verifyCurrent() {
+      const raw = document.getElementById('verifyId').value.trim();
+      if (!raw) {
+        setStatus('Enter an ID or transaction hash first.', 'bad');
+        return;
+      }
+      try {
+        let resolved = await resolveVerifierInput(raw, mode);
+        if (mode === 'dice') {
+          resolved = await rescueDiceTxHashFromSecretField(raw, resolved);
+        }
+        if (mode === 'mines') {
+          resolved = await rescueMinesTxHashFromAdvancedFields(raw, resolved);
+        }
+        if (mode === 'dice') await verifyDice(resolved.id, resolved);
+        else if (mode === 'mines') await verifyMines(resolved.id, resolved);
+        else await verifyMultiplayer(resolved.id, resolved);
+      } catch (err) {
+        setStatus(readableError(err), 'bad');
+      }
+    }
+
+    async function resolveVerifierInput(raw, activeMode) {
+      if (/^\d+$/.test(raw)) return { id: raw, source: 'id' };
+      if (!ethers.utils.isHexString(raw, 32)) {
+        throw new Error('Enter a numeric ID or a full 0x transaction hash.');
+      }
+
+      setStatus('Reading transaction receipt...', '');
+      const receipt = await provider.getTransactionReceipt(raw);
+      if (!receipt) throw new Error('Transaction not found on PulseChain RPC.');
+
+      if (activeMode === 'dice') {
+        const tx = await provider.getTransaction(raw).catch(() => null);
+        if (tx && tx.to && tx.to.toLowerCase() === DICE_GAME_ADDRESS.toLowerCase()) {
+          try {
+            const parsedTx = diceIface.parseTransaction({ data: tx.data, value: tx.value });
+            if (parsedTx.name === 'revealBet') {
+              return {
+                id: parsedTx.args.betId.toString(),
+                txHash: raw,
+                eventName: parsedTx.name,
+                secret: parsedTx.args.secret,
+              };
+            }
+          } catch (_) {}
+        }
+
+        let found = null;
+        for (const log of receipt.logs) {
+          if (log.address.toLowerCase() !== DICE_GAME_ADDRESS.toLowerCase()) continue;
+          try {
+            const parsed = diceIface.parseLog(log);
+            if (parsed.name === 'BetRevealed') {
+              return {
+                id: parsed.args.betId.toString(),
+                txHash: raw,
+                eventName: parsed.name,
+                secret: parsed.args.secret,
+              };
+            }
+            if (parsed.name === 'Roll' || parsed.name === 'BetPlaced') {
+              found = { id: parsed.args.betId.toString(), txHash: raw, eventName: parsed.name };
+            }
+          } catch (_) {}
+        }
+        if (found) return found;
+        throw new Error('That transaction does not contain a Dice bet event.');
+      }
+
+      if (activeMode === 'mines') {
+        ensureMinesVerifierReady();
+        const tx = await provider.getTransaction(raw).catch(() => null);
+        if (tx && tx.to && tx.to.toLowerCase() === LIVE_MINES_GAME_ADDRESS.toLowerCase()) {
+          try {
+            const parsedTx = liveMinesIface.parseTransaction({ data: tx.data, value: tx.value });
+            if (parsedTx.name === 'settleGame') {
+              return {
+                id: parsedTx.args.gameId.toString(),
+                txHash: raw,
+                eventName: parsedTx.name,
+                live: true,
+                revealedMask: parsedTx.args.revealedMask,
+                won: parsedTx.args.won,
+                serverSeed: parsedTx.args.serverSeed,
+              };
+            }
+          } catch (_) {}
+        }
+        if (tx && tx.to && tx.to.toLowerCase() === MINES_GAME_ADDRESS.toLowerCase()) {
+          try {
+            const parsedTx = minesIface.parseTransaction({ data: tx.data, value: tx.value });
+            if (parsedTx.name === 'revealGame') {
+              return {
+                id: parsedTx.args.gameId.toString(),
+                txHash: raw,
+                eventName: parsedTx.name,
+                picks: parsedTx.args.picks.map(n => Number(n)),
+                secret: parsedTx.args.secret,
+              };
+            }
+          } catch (_) {}
+        }
+
+        let found = null;
+        for (const log of receipt.logs) {
+          if (log.address.toLowerCase() === LIVE_MINES_GAME_ADDRESS.toLowerCase()) {
+            try {
+              const parsed = liveMinesIface.parseLog(log);
+              if (parsed.args && parsed.args.gameId) {
+                return {
+                  id: parsed.args.gameId.toString(),
+                  txHash: raw,
+                  eventName: parsed.name,
+                  live: true,
+                  settlement: parsed.name === 'GameSettled' ? parsed.args : null,
+                };
+              }
+            } catch (_) {}
+          }
+          if (log.address.toLowerCase() !== MINES_GAME_ADDRESS.toLowerCase()) continue;
+          try {
+            const parsed = minesIface.parseLog(log);
+            if (parsed.name === 'GameRevealed') {
+              return {
+                id: parsed.args.gameId.toString(),
+                txHash: raw,
+                eventName: parsed.name,
+                picks: parsed.args.picks.map(n => Number(n)),
+                secret: parsed.args.secret,
+              };
+            }
+            if (parsed.args && parsed.args.gameId) {
+              found = { id: parsed.args.gameId.toString(), txHash: raw, eventName: parsed.name };
+            }
+          } catch (_) {}
+        }
+        if (found) return found;
+        throw new Error('That transaction does not contain a Mines game event.');
+      }
+
+      for (const log of receipt.logs) {
+        if (log.address.toLowerCase() !== ASYNC_GAMES_ADDRESS.toLowerCase()) continue;
+        try {
+          const parsed = asyncIface.parseLog(log);
+          if (parsed.args && parsed.args.gameId) {
+            return { id: parsed.args.gameId.toString(), txHash: raw, eventName: parsed.name };
+          }
+        } catch (_) {}
+      }
+      throw new Error('That transaction does not contain a Multiplayer game event.');
+    }
+
+    async function rescueDiceTxHashFromSecretField(raw, resolvedInput) {
+      const secretInput = document.getElementById('secretInput');
+      const possibleTxHash = secretInput.value.trim();
+      if (!/^\d+$/.test(raw) || !ethers.utils.isHexString(possibleTxHash, 32)) return resolvedInput;
+
+      try {
+        const txResolved = await resolveVerifierInput(possibleTxHash, 'dice');
+        if (txResolved && txResolved.txHash) {
+          if (txResolved.id !== String(resolvedInput.id)) {
+            throw new Error('The transaction hash in the advanced box belongs to bet #' + txResolved.id + ', but the main box says bet #' + resolvedInput.id + '. Put that transaction hash in the main box instead.');
+          }
+          secretInput.value = '';
+          document.getElementById('verifyId').value = possibleTxHash;
+          setStatus('I moved that transaction hash into the right place and pulled the reveal data automatically.', '');
+          return txResolved;
+        }
+      } catch (err) {
+        if (/belongs to bet/.test(err.message || '')) throw err;
+      }
+      return resolvedInput;
+    }
+
+    async function rescueMinesTxHashFromAdvancedFields(raw, resolvedInput) {
+      const secretInput = document.getElementById('secretInput');
+      const possibleTxHash = secretInput.value.trim();
+      if (!/^\d+$/.test(raw) || !ethers.utils.isHexString(possibleTxHash, 32)) return resolvedInput;
+
+      try {
+        const txResolved = await resolveVerifierInput(possibleTxHash, 'mines');
+        if (txResolved && txResolved.txHash) {
+          if (txResolved.id !== String(resolvedInput.id)) {
+            throw new Error('The transaction hash in the advanced box belongs to Mines game #' + txResolved.id + ', but the main box says game #' + resolvedInput.id + '. Put that transaction hash in the main box instead.');
+          }
+          secretInput.value = '';
+          document.getElementById('picksInput').value = '';
+          document.getElementById('verifyId').value = possibleTxHash;
+          setStatus('I moved that Mines transaction hash into the right place and pulled the reveal data automatically.', '');
+          return txResolved;
+        }
+      } catch (err) {
+        if (/belongs to Mines game/.test(err.message || '')) throw err;
+      }
+      return resolvedInput;
+    }
+
+    async function verifyDice(betId, resolvedInput) {
+      setStatus('Loading dice bet and reveal data...', '');
+      const grid = document.getElementById('resultGrid');
+      grid.innerHTML = '';
+
+      try {
+        const bet = await diceContract.pendingBets(betId);
+        if (bet.player === ethers.constants.AddressZero) {
+          setStatus('No dice bet found for that ID.', 'bad');
+          return;
+        }
+
+        const revealFromBlock = bet.targetBlock.toNumber() + 1;
+        const revealToBlock = bet.targetBlock.toNumber() + 250;
+        const [reveals, rolls] = await Promise.all([
+          diceContract.queryFilter(diceContract.filters.BetRevealed(betId), revealFromBlock, revealToBlock).catch(() => []),
+          diceContract.queryFilter(diceContract.filters.Roll(betId), revealFromBlock, revealToBlock).catch(() => []),
+        ]);
+
+        let secret = document.getElementById('secretInput').value.trim();
+        if (!secret && resolvedInput && resolvedInput.secret) secret = resolvedInput.secret;
+        if (!secret && reveals.length) secret = reveals[reveals.length - 1].args.secret;
+        if (!secret || !ethers.utils.isHexString(secret, 32)) {
+          setStatus('I found the bet, but this RPC did not return its reveal event. Paste the reveal TX hash instead and I can pull the secret automatically.', 'bad');
+        renderGrid([
+          kv('Bet ID', '#' + betId),
+          kv('Input Source', inputSourceLabel(resolvedInput)),
+          kv('Player', addressLink(bet.player)),
+          kv('Commit Hash', bet.commitHash),
+          kv('Reveal Search Window', revealFromBlock + ' to ' + revealToBlock),
+          kv('Target Block', bet.targetBlock.toString()),
+            kv('Settled', bet.settled ? 'Yes' : 'No'),
+          ]);
+          return;
+        }
+
+        const block = await provider.getBlock(bet.targetBlock.toNumber());
+        const entropy = block && block.hash;
+        if (!entropy) throw new Error('Target block hash unavailable from RPC.');
+
+        const commitCheck = ethers.utils.solidityKeccak256(['address', 'bytes32'], [bet.player, secret]);
+        const seed = ethers.utils.solidityKeccak256(
+          ['bytes32', 'address', 'bytes32', 'uint256', 'address'],
+          [entropy, bet.player, secret, betId, DICE_GAME_ADDRESS]
+        );
+        const result = ethers.BigNumber.from(seed).mod(99).add(1).toNumber();
+        const won = bet.over ? result > 50 : result < 50;
+        const burnAmount = bet.amount.mul(3).div(100);
+        const rollEvent = rolls.length ? rolls[rolls.length - 1].args : null;
+        const eventMatches = rollEvent
+          ? Number(rollEvent.result) === result && rollEvent.won === won
+          : null;
+        const commitMatches = commitCheck.toLowerCase() === bet.commitHash.toLowerCase();
+        const verified = commitMatches && (eventMatches !== false);
+
+        setStatus(verified ? 'Verified: recomputed dice result matches the contract data.' : 'Mismatch: recomputed data does not match the contract result.', verified ? 'ok' : 'bad');
+        renderGrid([
+          kv('Bet ID', '#' + betId),
+          kv('Input Source', inputSourceLabel(resolvedInput)),
+          kv('Player', addressLink(bet.player)),
+          kv('Direction', bet.over ? 'Over 50' : 'Under 50'),
+          kv('Bet Amount', fmtCashx(bet.amount) + ' CASHX'),
+          kv('Target Block', blockLink(bet.targetBlock.toString())),
+          kv('Target Block Hash', entropy, 'full'),
+          kv('Secret', secret, 'full'),
+          kv('Commit Hash Matches', commitMatches ? 'Yes' : 'No'),
+          kv('Computed Roll', String(result)),
+          kv('Computed Outcome', won ? 'Win' : 'Loss'),
+          kv('Contract Roll Event', rollEvent ? Number(rollEvent.result) + ' / ' + (rollEvent.won ? 'Win' : 'Loss') : 'Not found in reveal window'),
+          kv('Event Matches', eventMatches === null ? 'No event found' : (eventMatches ? 'Yes' : 'No')),
+          kv('Burn Amount', fmtCashx(burnAmount) + ' CASHX'),
+        ]);
+      } catch (err) {
+        setStatus('Could not verify dice bet: ' + readableError(err), 'bad');
+      }
+    }
+
+    async function verifyMines(gameId, resolvedInput) {
+      ensureMinesVerifierReady();
+      if (resolvedInput && resolvedInput.live) {
+        await verifyLiveMines(gameId, resolvedInput);
+        return;
+      }
+      try {
+        const liveGame = await liveMinesContract.games(gameId);
+        if (liveGame.player !== ethers.constants.AddressZero) {
+          await verifyLiveMines(gameId, resolvedInput);
+          return;
+        }
+      } catch (_) {}
+
+      setStatus('Loading Mines game and reveal data...', '');
+      document.getElementById('resultGrid').innerHTML = '';
+
+      try {
+        const game = await minesContract.pendingGames(gameId);
+        if (game.player === ethers.constants.AddressZero) {
+          setStatus('No Mines game found for that ID.', 'bad');
+          return;
+        }
+
+        const revealFromBlock = game.targetBlock.toNumber() + 1;
+        const revealToBlock = game.targetBlock.toNumber() + 250;
+        const [reveals, settlements] = await Promise.all([
+          minesContract.queryFilter(minesContract.filters.GameRevealed(gameId), revealFromBlock, revealToBlock).catch(() => []),
+          minesContract.queryFilter(minesContract.filters.GameSettled(gameId), revealFromBlock, revealToBlock).catch(() => []),
+        ]);
+
+        let secret = document.getElementById('secretInput').value.trim();
+        if (!secret && resolvedInput && resolvedInput.secret) secret = resolvedInput.secret;
+        if (!secret && reveals.length) secret = reveals[reveals.length - 1].args.secret;
+
+        let picks = resolvedInput && resolvedInput.picks ? resolvedInput.picks.slice() : parsePicksInput();
+        if (!picks && reveals.length) picks = reveals[reveals.length - 1].args.picks.map(n => Number(n));
+
+        if (!secret || !ethers.utils.isHexString(secret, 32) || !picks) {
+          setStatus('I found the Mines game, but need the reveal data. Paste the revealGame transaction hash in the main box, or enter the secret and picks in Advanced.', 'bad');
+          renderGrid([
+            kv('Game ID', '#' + gameId),
+            kv('Input Source', inputSourceLabel(resolvedInput)),
+            kv('Player', addressLink(game.player)),
+            kv('Bet Amount', fmtCashx(game.amount) + ' CASHX'),
+            kv('Mines', String(Number(game.mineCount))),
+            kv('Pick Count', String(Number(game.pickCount))),
+            kv('Target Block', blockLink(game.targetBlock.toString())),
+            kv('Reveal Search Window', revealFromBlock + ' to ' + revealToBlock),
+            kv('Settled', game.settled ? 'Yes' : 'No'),
+          ]);
+          return;
+        }
+
+        validateMinesPicks(picks, Number(game.pickCount));
+
+        const block = await provider.getBlock(game.targetBlock.toNumber());
+        const entropy = block && block.hash;
+        if (!entropy) throw new Error('Target block hash unavailable from RPC.');
+
+        const commitCheck = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
+          ['address', 'uint8', 'uint8[]', 'bytes32'],
+          [game.player, Number(game.mineCount), picks, secret]
+        ));
+        const commitMatches = commitCheck.toLowerCase() === game.commitHash.toLowerCase();
+        const mineTiles = generateMines(gameId, game.player, Number(game.mineCount), entropy);
+        const hitTile = picks.find(pick => mineTiles.includes(pick));
+        const won = hitTile === undefined;
+        const payout = won ? calculateMinesPayout(game.amount, Number(game.mineCount), Number(game.pickCount)) : ethers.BigNumber.from(0);
+        const burnAmount = game.amount.mul(300).div(10000);
+        const multiplierBps = won ? payout.mul(10000).div(game.amount) : ethers.BigNumber.from(0);
+        const settlement = settlements.length ? settlements[settlements.length - 1].args : null;
+        const eventMatches = settlement
+          ? settlement.won === won &&
+            settlement.payout.eq(payout) &&
+            settlement.burned.eq(burnAmount) &&
+            settlement.multiplierBps.eq(multiplierBps)
+          : null;
+        const verified = commitMatches && (eventMatches !== false);
+
+        setStatus(verified ? 'Verified: recomputed Mines result matches the contract data.' : 'Mismatch: recomputed Mines data does not match the contract result.', verified ? 'ok' : 'bad');
+        renderGrid([
+          kv('Game ID', '#' + gameId),
+          kv('Input Source', inputSourceLabel(resolvedInput)),
+          kv('Player', addressLink(game.player)),
+          kv('Bet Amount', fmtCashx(game.amount) + ' CASHX'),
+          kv('Mines', String(Number(game.mineCount))),
+          kv('Pick Count', String(Number(game.pickCount))),
+          kv('Target Block', blockLink(game.targetBlock.toString())),
+          kv('Target Block Hash', entropy, 'full'),
+          kv('Secret', secret, 'full'),
+          kv('Commit Hash Matches', commitMatches ? 'Yes' : 'No'),
+          kv('Revealed Picks', formatTileList(picks), 'full'),
+          kv('Generated Mines', formatTileList(mineTiles), 'full'),
+          kv('Computed Outcome', won ? 'Win' : 'Loss'),
+          kv('Hit Tile', won ? 'None' : String(hitTile)),
+          kv('Payout', fmtCashx(payout) + ' CASHX'),
+          kv('Burn Amount', fmtCashx(burnAmount) + ' CASHX'),
+          kv('Multiplier', won ? (multiplierBps.toNumber() / 10000).toFixed(4) + 'x' : '0x'),
+          kv('Contract Event Matches', eventMatches === null ? 'No settlement event found' : (eventMatches ? 'Yes' : 'No')),
+        ]);
+      } catch (err) {
+        setStatus('Could not verify Mines game: ' + readableError(err), 'bad');
+      }
+    }
+
+    async function verifyLiveMines(gameId, resolvedInput) {
+      setStatus('Loading Live Mines game and settlement data...', '');
+      document.getElementById('resultGrid').innerHTML = '';
+
+      try {
+        const game = await liveMinesContract.games(gameId);
+        if (game.player === ethers.constants.AddressZero) {
+          setStatus('No Live Mines game found for that ID.', 'bad');
+          return;
+        }
+
+        const latest = await provider.getBlockNumber();
+        let settlement = resolvedInput && resolvedInput.settlement ? resolvedInput.settlement : null;
+        if (!settlement) {
+          const events = await liveMinesContract.queryFilter(
+            liveMinesContract.filters.GameSettled(gameId),
+            Math.max(0, latest - 120000),
+            latest
+          ).catch(() => []);
+          settlement = events.length ? events[events.length - 1].args : null;
+        }
+
+        if (!settlement) {
+          setStatus('Live Mines game found, but no settlement event yet. Paste the cashout/mine settlement transaction after it confirms.', 'bad');
+          renderGrid([
+            kv('Game ID', '#' + gameId),
+            kv('Input Source', inputSourceLabel(resolvedInput)),
+            kv('Player', addressLink(game.player)),
+            kv('Bet Amount', fmtCashx(game.amount) + ' CASHX'),
+            kv('Mines', String(Number(game.mineCount))),
+            kv('Server Seed Hash', game.serverSeedHash, 'full'),
+            kv('Settled', game.settled ? 'Yes' : 'No'),
+          ]);
+          return;
+        }
+
+        const serverSeedHash = ethers.utils.keccak256(settlement.serverSeed);
+        const seedMatches = serverSeedHash.toLowerCase() === game.serverSeedHash.toLowerCase();
+        const mineMask = generateLiveMineMask(gameId, game.player, Number(game.mineCount), settlement.serverSeed);
+        const contractMineMask = settlement.mineMask;
+        const mineMaskMatches = contractMineMask.eq(mineMask);
+        const revealedMask = settlement.revealedMask;
+        const revealedTiles = maskToTiles(revealedMask);
+        const mineTiles = maskToTiles(mineMask);
+        const hitMine = !revealedMask.and(mineMask).isZero();
+        const won = !hitMine;
+        const outcomeMatches = won === settlement.won;
+        const safePicks = revealedTiles.filter(tile => !mineTiles.includes(tile)).length;
+        const payout = won ? calculateMinesPayout(game.amount, Number(game.mineCount), safePicks) : ethers.BigNumber.from(0);
+        const burnAmount = game.amount.mul(300).div(10000);
+        const multiplierBps = won ? payout.mul(10000).div(game.amount) : ethers.BigNumber.from(0);
+        const eventMatches = settlement.bet.eq(game.amount) &&
+          settlement.payout.eq(payout) &&
+          settlement.burned.eq(burnAmount) &&
+          settlement.multiplierBps.eq(multiplierBps);
+        const verified = seedMatches && mineMaskMatches && outcomeMatches && eventMatches;
+
+        setStatus(verified ? 'Verified: Live Mines seed, mines, result, payout, and burn all match.' : 'Mismatch: Live Mines data does not recompute cleanly.', verified ? 'ok' : 'bad');
+        renderGrid([
+          kv('Game ID', '#' + gameId),
+          kv('Input Source', inputSourceLabel(resolvedInput)),
+          kv('Player', addressLink(game.player)),
+          kv('Bet Amount', fmtCashx(game.amount) + ' CASHX'),
+          kv('Mines', String(Number(game.mineCount))),
+          kv('Server Seed Hash Matches', seedMatches ? 'Yes' : 'No'),
+          kv('Server Seed', settlement.serverSeed, 'full'),
+          kv('Revealed Tiles', formatTileList(revealedTiles), 'full'),
+          kv('Generated Mines', formatTileList(mineTiles), 'full'),
+          kv('Computed Outcome', won ? 'Cashout' : 'Mine Hit'),
+          kv('Safe Reveals', String(safePicks)),
+          kv('Payout', fmtCashx(payout) + ' CASHX'),
+          kv('Burn Amount', fmtCashx(burnAmount) + ' CASHX'),
+          kv('Multiplier', won ? (multiplierBps.toNumber() / 10000).toFixed(4) + 'x' : '0x'),
+          kv('Mine Mask Matches Contract', mineMaskMatches ? 'Yes' : 'No'),
+          kv('Contract Event Matches', eventMatches && outcomeMatches ? 'Yes' : 'No'),
+        ]);
+      } catch (err) {
+        setStatus('Could not verify Live Mines game: ' + readableError(err), 'bad');
+      }
+    }
+
+    async function verifyMultiplayer(gameId, resolvedInput) {
+      setStatus('Loading multiplayer game and settlement data...', '');
+      document.getElementById('resultGrid').innerHTML = '';
+
+      try {
+        const g = await asyncContract.getGame(gameId);
+        if (Number(g.maxPlayers) < 2) {
+          setStatus('No multiplayer game found for that ID.', 'bad');
+          return;
+        }
+        if (!g.resolved) {
+          setStatus('Game found, but it is not resolved yet. Verification is available after settlement.', 'bad');
+          renderGrid([
+            kv('Game ID', '#' + gameId),
+            kv('Input Source', inputSourceLabel(resolvedInput)),
+            kv('Game Type', gameTypeName(g.gameType)),
+            kv('Players', Number(g.playerCount) + '/' + Number(g.maxPlayers)),
+            kv('Ready To Settle', g.readyToSettle ? 'Yes' : 'No'),
+            kv('Settle Block', g.settleBlock.gt(0) ? blockLink(g.settleBlock.toString()) : 'Not set'),
+          ]);
+          return;
+        }
+
+        const block = await provider.getBlock(g.settleBlock.toNumber());
+        const entropy = block && block.hash;
+        if (!entropy) throw new Error('Settlement block hash unavailable from RPC.');
+
+        const simulation = simulateAsyncGame(g, gameId, entropy);
+        const contractResults = Array.from(g.results).slice(0, Number(g.playerCount)).map(n => Number(n));
+        const resultsMatch = contractResults.every((value, i) => value === simulation.results[i]);
+        const winnerMatches = g.winner.toLowerCase() === simulation.winner.toLowerCase();
+        const totalPot = g.entryAmount.mul(g.maxPlayers);
+        const payout = totalPot.mul(95).div(100);
+        const burned = totalPot.sub(payout);
+        const verified = resultsMatch && winnerMatches;
+
+        setStatus(verified ? 'Verified: recomputed multiplayer result matches the contract data.' : 'Mismatch: recomputed result does not match the contract data.', verified ? 'ok' : 'bad');
+
+        const playerRows = simulation.players.map((player, i) =>
+          '<div class="player-row">' +
+            '<span>' + addressLink(player) + '</span>' +
+            '<span>Result: ' + simulation.results[i] + '</span>' +
+            '<span class="' + (player.toLowerCase() === simulation.winner.toLowerCase() ? 'winner' : '') + '">' +
+              (player.toLowerCase() === simulation.winner.toLowerCase() ? 'Winner' : 'Lost') +
+            '</span>' +
+          '</div>'
+        ).join('');
+
+        renderGrid([
+          kv('Game ID', '#' + gameId),
+          kv('Input Source', inputSourceLabel(resolvedInput)),
+          kv('Game Type', gameTypeName(g.gameType)),
+          kv('Players', Number(g.playerCount) + '/' + Number(g.maxPlayers)),
+          kv('Settle Block', blockLink(g.settleBlock.toString())),
+          kv('Settle Block Hash', entropy, 'full'),
+          kv('Winner Matches', winnerMatches ? 'Yes' : 'No'),
+          kv('Results Match', resultsMatch ? 'Yes' : 'No'),
+          kv('Payout', fmtCashx(payout) + ' CASHX'),
+          kv('Burned', fmtCashx(burned) + ' CASHX'),
+          kv('Round Used', String(simulation.round + 1)),
+          kv('Player Results', '<div class="players">' + playerRows + '</div>', 'full raw'),
+        ]);
+      } catch (err) {
+        setStatus('Could not verify multiplayer game: ' + readableError(err), 'bad');
+      }
+    }
+
+    function simulateAsyncGame(g, gameId, entropy) {
+      const n = Number(g.playerCount);
+      const players = Array.from(g.players).slice(0, n);
+      let active = Array.from({ length: n }, () => true);
+      let results = Array.from({ length: n }, () => 0);
+      let finalRound = 0;
+
+      for (let round = 0; round < 20; round++) {
+        finalRound = round;
+        for (let i = 0; i < n; i++) {
+          if (active[i]) results[i] = generateAsyncResult(g.gameType, gameId, players[i], round, entropy);
+        }
+
+        let maxResult = 0;
+        for (let i = 0; i < n; i++) {
+          if (active[i] && results[i] > maxResult) maxResult = results[i];
+        }
+
+        let topCount = 0;
+        for (let i = 0; i < n; i++) {
+          if (!active[i]) continue;
+          if (results[i] < maxResult) active[i] = false;
+          else topCount++;
+        }
+
+        if (topCount === 1) break;
+      }
+
+      const winnerIndex = active.findIndex(Boolean);
+      return { players, results, winner: players[winnerIndex], round: finalRound };
+    }
+
+    function generateAsyncResult(gameType, gameId, player, round, entropy) {
+      const seed = ethers.utils.solidityKeccak256(
+        ['bytes32', 'address', 'uint256', 'uint8', 'address'],
+        [entropy, player, gameId, round, ASYNC_GAMES_ADDRESS]
+      );
+
+      if (Number(gameType) === 0) {
+        return ethers.BigNumber.from(seed).mod(13).add(2).toNumber();
+      }
+
+      const die1 = ethers.BigNumber.from(seed).mod(6).add(1).toNumber();
+      const seed2 = ethers.utils.solidityKeccak256(['bytes32', 'uint8'], [seed, 2]);
+      const die2 = ethers.BigNumber.from(seed2).mod(6).add(1).toNumber();
+      return die1 + die2;
+    }
+
+    function ensureMinesVerifierReady() {
+      if (MINES_GAME_ADDRESS.toLowerCase() === ethers.constants.AddressZero.toLowerCase()) {
+        throw new Error('Mines verifier is built, but the deployed Mines contract address is not set yet. Deploy MinesGame, then paste its address into MINES_GAME_ADDRESS in verifier.html.');
+      }
+    }
+
+    function parsePicksInput() {
+      const raw = document.getElementById('picksInput').value.trim();
+      if (!raw) return null;
+      return raw.split(/[,\s]+/)
+        .filter(Boolean)
+        .map(value => {
+          const pick = Number(value);
+          if (!Number.isInteger(pick)) throw new Error('Mines picks must be whole numbers.');
+          return pick;
+        });
+    }
+
+    function validateMinesPicks(picks, expectedCount) {
+      if (!Array.isArray(picks) || picks.length !== expectedCount) {
+        throw new Error('Expected ' + expectedCount + ' Mines picks, but got ' + (picks ? picks.length : 0) + '.');
+      }
+      const seen = new Set();
+      picks.forEach(pick => {
+        if (!Number.isInteger(pick) || pick < 0 || pick >= 25) {
+          throw new Error('Mines pick out of range: ' + pick + '. Contract tiles are 0-24.');
+        }
+        if (seen.has(pick)) throw new Error('Duplicate Mines pick: ' + pick + '.');
+        seen.add(pick);
+      });
+    }
+
+    function generateMines(gameId, player, mineCount, entropy) {
+      const mines = [];
+      const seen = new Set();
+      let nonce = 0;
+
+      while (mines.length < mineCount) {
+        const seed = ethers.utils.solidityKeccak256(
+          ['bytes32', 'uint256', 'address', 'address', 'uint256'],
+          [entropy, gameId, player, MINES_GAME_ADDRESS, nonce]
+        );
+        const tile = ethers.BigNumber.from(seed).mod(25).toNumber();
+        if (!seen.has(tile)) {
+          seen.add(tile);
+          mines.push(tile);
+        }
+        nonce++;
+      }
+
+      return mines;
+    }
+
+    function generateLiveMineMask(gameId, player, mineCount, serverSeed) {
+      let mineMask = ethers.BigNumber.from(0);
+      let placed = 0;
+      let nonce = 0;
+
+      while (placed < mineCount) {
+        const seed = ethers.utils.solidityKeccak256(
+          ['bytes32', 'uint256', 'address', 'uint8', 'address', 'uint256'],
+          [serverSeed, gameId, player, mineCount, LIVE_MINES_GAME_ADDRESS, nonce]
+        );
+        const tile = ethers.BigNumber.from(seed).mod(25).toNumber();
+        const bit = ethers.BigNumber.from(1).shl(tile);
+        if (mineMask.and(bit).isZero()) {
+          mineMask = mineMask.or(bit);
+          placed++;
+        }
+        nonce++;
+      }
+
+      return mineMask;
+    }
+
+    function maskToTiles(maskValue) {
+      const mask = ethers.BigNumber.from(maskValue);
+      const tiles = [];
+      for (let i = 0; i < 25; i++) {
+        if (!mask.and(ethers.BigNumber.from(1).shl(i)).isZero()) tiles.push(i);
+      }
+      return tiles;
+    }
+
+    function calculateMinesPayout(betAmount, mineCount, pickCount) {
+      let safeNumerator = ethers.BigNumber.from(1);
+      let safeDenominator = ethers.BigNumber.from(1);
+      for (let i = 0; i < pickCount; i++) {
+        safeNumerator = safeNumerator.mul(25 - mineCount - i);
+        safeDenominator = safeDenominator.mul(25 - i);
+      }
+      return betAmount.mul(safeDenominator).mul(9700).div(safeNumerator).div(10000);
+    }
+
+    function formatTileList(tiles) {
+      return tiles.join(', ') + ' <span style="color:#8d93b0">(0-based)</span>';
+    }
+
+    function setStatus(message, type) {
+      const el = document.getElementById('statusBox');
+      el.textContent = message;
+      el.className = 'status ' + (type || '');
+    }
+
+    function renderGrid(items) {
+      document.getElementById('resultGrid').innerHTML = items.join('');
+    }
+
+    function kv(label, value, flags) {
+      const isFull = flags && flags.includes('full');
+      const isRaw = flags && flags.includes('raw');
+      return '<div class="kv ' + (isFull ? 'full' : '') + '">' +
+        '<b>' + label + '</b>' +
+        (isRaw ? value : '<span>' + value + '</span>') +
+      '</div>';
+    }
+
+    function fmtCashx(value) {
+      const n = parseFloat(ethers.utils.formatUnits(value, 18));
+      return n.toLocaleString('en-US', { maximumFractionDigits: 2 });
+    }
+
+    function gameTypeName(gameType) {
+      return Number(gameType) === 0 ? 'Card War' : 'Dice Battle';
+    }
+
+    function inputSourceLabel(resolvedInput) {
+      if (!resolvedInput || resolvedInput.source === 'id') return 'Direct ID';
+      return 'TX Hash' + (resolvedInput.eventName ? ' · ' + resolvedInput.eventName : '');
+    }
+
+    function shortAddress(address) {
+      return address.slice(0, 6) + '…' + address.slice(-4);
+    }
+
+    function addressLink(address) {
+      return '<a href="https://scan.pulsechain.com/address/' + address + '" target="_blank" rel="noopener">' +
+        shortAddress(address) +
+      '</a>';
+    }
+
+    function blockLink(blockNumber) {
+      return '<a href="https://scan.pulsechain.com/block/' + blockNumber + '" target="_blank" rel="noopener">' +
+        blockNumber +
+      '</a>';
+    }
+
+    function readableError(err) {
+      return err.reason || (err.data && err.data.message) || err.message || 'Unknown error';
+    }
+
+    function initVerifierFromUrl() {
+      const params = new URLSearchParams(window.location.search);
+      const requestedMode = (params.get('mode') || '').toLowerCase();
+      if (requestedMode === 'multi' || requestedMode === 'multiplayer') {
+        setMode('multi');
+      } else if (requestedMode === 'mines' || requestedMode === 'mine') {
+        setMode('mines');
+      } else {
+        setMode('dice');
+      }
+
+      const value = params.get('tx') || params.get('id') || params.get('game') || params.get('bet');
+      if (!value) return;
+
+      document.getElementById('verifyId').value = value.trim();
+      verifyCurrent();
+    }
+
+    initVerifierFromUrl();
+  </script>
+</body>
+</html>

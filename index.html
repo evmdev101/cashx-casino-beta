@@ -1,0 +1,1808 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CASHX Casino | PulseChain</title>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+
+  <!-- ethers.js v5 — read-only, no wallet needed on lobby -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="wallet-modal.js"></script>
+
+  <style>
+    /* Variables */
+    :root {
+      --navy:        #0d0a16;
+      --navy-mid:    #110d1c;
+      --navy-card:   #130f1f;
+      --navy-light:  #1a1228;
+      --gold:        #f5a623;
+      --gold-dim:    #c47f0e;
+      --gold-glow:   rgba(245,166,35,.2);
+      --purple:      #c855f7;
+      --purple-glow: rgba(200,85,247,.18);
+      --green:       #3dffa0;
+      --red:         #ff4455;
+      --text:        #dce0f0;
+      --text-dim:    #525878;
+      --border:      rgba(200,85,247,.18);
+      --border-hover:rgba(200,85,247,.45);
+      --sidebar-w: 62px;
+    }
+
+    /* Reset */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    @keyframes bodyFadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
+
+    body {
+      font-family: 'Barlow', sans-serif;
+      background: var(--navy);
+      color: var(--text);
+      overflow-x: hidden;
+      animation: bodyFadeIn 0.4s ease forwards;
+    }
+
+    /* Grain texture overlay */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9000;
+      opacity: .032;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    /* Top Navbar */
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      background: rgba(8,5,18,.35);
+      border-bottom: 1px solid rgba(200,85,247,.15);
+      animation: topnavGlow 10s ease-in-out infinite;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      z-index: 600;
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+    }
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200,85,247,.3);
+      padding: .12rem .3rem;
+    }
+    .btn-connect {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: .9rem;
+      letter-spacing: 2px;
+      color: #fff;
+      background: linear-gradient(135deg, #ff4d6d, #f5a623);
+      border: none;
+      padding: .45rem 1.3rem;
+      cursor: pointer;
+      border-radius: 50px;
+      display: inline-flex;
+      align-items: center;
+      gap: .4rem;
+      transition: box-shadow .3s, transform .2s;
+    }
+    .btn-connect:hover {
+      box-shadow: 0 0 28px rgba(255,77,109,.55), 0 0 16px rgba(245,166,35,.3);
+      transform: translateY(-3px) scale(1.06);
+    }
+
+    /* Wallet dropdown */
+    .wallet-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: rgba(13,10,22,.97);
+      border: 1px solid rgba(200,85,247,.25);
+      border-radius: 14px;
+      padding: 6px;
+      min-width: 160px;
+      z-index: 700;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6);
+      animation: dropIn .18s ease;
+    }
+    @keyframes dropIn {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .wallet-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .6rem .9rem;
+      border-radius: 10px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text);
+      cursor: pointer;
+      transition: background .15s, color .15s;
+      white-space: nowrap;
+    }
+    .wallet-dropdown-item:hover { background: rgba(200,85,247,.15); color: #fff; }
+    .wallet-dropdown-item.danger:hover { background: rgba(255,68,85,.15); color: var(--red); }
+    .wallet-dropdown-sep { height: 1px; background: rgba(200,85,247,.12); margin: 4px 0; }
+
+    /* Sidebar pill */
+    .sidebar {
+      position: fixed;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: min(520px, calc(100vh - 130px));
+      background: rgba(110,30,180,.18);
+      border: 1px solid rgba(200,85,247,.75);
+      border-radius: 32px;
+      padding: 20px 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      z-index: 500;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      transition: transform .25s ease, border-color .25s ease, box-shadow .25s ease;
+    }
+    .sidebar:hover {
+      transform: translateY(-50%) translateX(6px);
+      border-color: rgba(180,180,200,.55);
+      box-shadow: 0 14px 40px rgba(0,0,0,.45);
+    }
+    .nav-pill {
+      width: 62px;
+      height: 62px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.55rem;
+      text-decoration: none;
+      color: rgba(220,224,240,.45);
+      background: rgba(255,255,255,.06);
+      transition: background .2s, color .2s, box-shadow .2s, transform .15s;
+      cursor: pointer;
+    }
+    .nav-pill:hover {
+      background: rgba(200,85,247,.22);
+      color: rgba(220,224,240,.95);
+      transform: scale(1.08);
+    }
+    .nav-pill.active {
+      background: linear-gradient(135deg, var(--gold), var(--gold-dim));
+      color: #000;
+      box-shadow: 0 4px 22px rgba(245,166,35,.5);
+    }
+    .nav-pill.active-purple {
+      background: linear-gradient(135deg, #c855f7, #8b1fcc);
+      color: #fff;
+      box-shadow: 0 4px 22px rgba(200,85,247,.5);
+    }
+    .nav-pill.active-teal {
+      background: linear-gradient(135deg, #c855f7, #8b1fcc);
+      color: #000;
+      box-shadow: 0 4px 22px rgba(61,255,160,.45);
+    }
+    .nav-pill-divider {
+      height: 1px;
+      width: 100%;
+      background: linear-gradient(90deg, transparent, rgba(200,85,247,.45), transparent);
+      margin-top: auto;
+      margin-bottom: 6px;
+    }
+
+    /* Main wrapper */
+    .main {
+      margin-left: 90px;
+      min-height: 100vh;
+    }
+
+    /* Hero */
+    .hero {
+      position: relative;
+      margin-left: -90px;
+      width: calc(100% + 90px);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+      background:
+        url('hero-casino.png') center top/cover no-repeat,
+        var(--navy-mid);
+    }
+
+    /* Animated glowing border around hero */
+    .hero::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 4;
+      animation: heroFrame 10s ease-in-out infinite;
+    }
+    @keyframes topnavGlow {
+      0%, 100% { box-shadow: 0 2px 12px rgba(200,85,247,.4); border-bottom-color: rgba(200,85,247,.8); }
+      50%       { box-shadow: 0 2px 12px rgba(245,166,35,.4);  border-bottom-color: rgba(245,166,35,.8); }
+    }
+    @keyframes heroFrame {
+      0%, 100% {
+        box-shadow:
+          inset 0 1px 0 0 rgba(200,85,247,1),
+          inset 0 -1px 0 0 rgba(245,166,35,1),
+          inset 1px 0 0 0 rgba(200,85,247,.85),
+          inset -1px 0 0 0 rgba(245,166,35,.85),
+          inset 0 0 90px rgba(200,85,247,.08),
+          0 0 28px rgba(200,85,247,.2),
+          0 0 28px rgba(245,166,35,.14);
+      }
+      50% {
+        box-shadow:
+          inset 0 1px 0 0 rgba(245,166,35,1),
+          inset 0 -1px 0 0 rgba(200,85,247,1),
+          inset 1px 0 0 0 rgba(245,166,35,.85),
+          inset -1px 0 0 0 rgba(200,85,247,.85),
+          inset 0 0 90px rgba(245,166,35,.08),
+          0 0 28px rgba(245,166,35,.2),
+          0 0 28px rgba(200,85,247,.14);
+      }
+    }
+
+    /* particle canvas */
+    #heroCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+
+    .hero-content {
+      position: absolute;
+      bottom: 8rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 2;
+      padding: 2rem;
+      max-width: 700px;
+      text-align: center;
+    }
+
+    .hero-tagline {
+      display: inline-block;
+      margin-top: 1.6rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(.72rem, 1.8vw, .9rem);
+      font-weight: 900;
+      letter-spacing: 3.4px;
+      color: #ffffff;
+      line-height: 1.85;
+      text-transform: uppercase;
+      padding: .35rem 0;
+      -webkit-text-stroke: .35px rgba(255,255,255,.85);
+      text-shadow:
+        0 1px 1px rgba(0,0,0,1),
+        0 0 12px rgba(0,0,0,1),
+        0 0 28px rgba(0,0,0,.95);
+    }
+    .hero-beta-note {
+      display: inline-block;
+      margin-top: 1rem;
+      padding: .55rem .9rem;
+      border: 1px solid rgba(245,166,35,.28);
+      border-radius: 8px;
+      background: rgba(5,2,12,.68);
+      color: rgba(245,230,205,.9);
+      font-size: .88rem;
+      line-height: 1.45;
+      max-width: 680px;
+    }
+
+    .hero-scroll-arrow {
+      position: absolute;
+      bottom: 2.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 5;
+      cursor: pointer;
+      width: 44px;
+      height: 44px;
+      border: 2px solid rgba(255,255,255,.75);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: border-color .2s, background .2s;
+    }
+    .hero-scroll-arrow:hover {
+      border-color: #fff;
+      background: rgba(255,255,255,.1);
+    }
+    .hero-scroll-arrow svg { display: block; }
+
+    .hero-eyebrow {
+      font-family: 'Michroma', sans-serif;
+      font-size: .7rem;
+      letter-spacing: 5px;
+      color: var(--purple);
+      text-transform: uppercase;
+      margin-bottom: 1rem;
+      opacity: .9;
+    }
+
+    .hero-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(4rem, 10vw, 7.5rem);
+      line-height: .95;
+      letter-spacing: 4px;
+      color: #fff;
+      text-shadow:
+        0 0 80px rgba(245,166,35,.25),
+        0 4px 30px rgba(0,0,0,.8);
+      margin-bottom: .6rem;
+    }
+    .hero-title .gold { color: var(--gold); }
+
+    .hero-sub {
+      font-family: 'Michroma', sans-serif;
+      font-size: clamp(.8rem, 2vw, 1.05rem);
+      letter-spacing: 3px;
+      color: var(--text-dim);
+      margin-bottom: 2.2rem;
+    }
+
+    .hero-ctas {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-bottom: 2.5rem;
+    }
+
+    .btn-gold {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(90deg, #c855f7 0%, #f5a623 50%, #c855f7 100%);
+      background-size: 200% 100%;
+      background-position: right center;
+      border: none;
+      padding: .9rem 2.5rem;
+      cursor: pointer;
+      text-decoration: none;
+      border-radius: 50px;
+      display: inline-block;
+      transition: background-position .5s ease, box-shadow .3s, transform .2s;
+    }
+    .btn-gold:hover {
+      background-position: left center;
+      box-shadow: 0 0 35px rgba(200,85,247,.55), 0 0 20px rgba(245,166,35,.3);
+      transform: translateY(-2px) scale(1.04);
+    }
+
+    .btn-outline {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 3px;
+      color: rgba(220,224,240,.8);
+      background: linear-gradient(90deg, transparent 0%, rgba(200,85,247,.55) 50%, transparent 100%);
+      background-size: 200% 100%;
+      background-position: right center;
+      border: 1px solid rgba(200,85,247,.35);
+      padding: .9rem 2.5rem;
+      cursor: pointer;
+      text-decoration: none;
+      border-radius: 50px;
+      display: inline-block;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      transition: background-position .5s ease, box-shadow .3s, transform .2s, border-color .3s, color .3s;
+    }
+    .btn-outline:hover {
+      background-position: left center;
+      border-color: rgba(200,85,247,.7);
+      box-shadow: 0 0 28px rgba(200,85,247,.4);
+      transform: translateY(-2px) scale(1.04);
+      color: #fff;
+    }
+
+    .hero-burn {
+      display: inline-flex;
+      align-items: center;
+      gap: .6rem;
+      background: rgba(0,0,0,.45);
+      border: 1px solid rgba(255,68,85,.2);
+      padding: .6rem 1.4rem;
+      font-family: 'Space Mono', monospace;
+      font-size: clamp(.75rem, 2vw, .9rem);
+      color: #ff8c99;
+      letter-spacing: 1px;
+    }
+    .hero-burn .fire { font-size: 1.1rem; }
+    .hero-burn-num {
+      color: #fff;
+      font-weight: 700;
+    }
+
+    /* Stats strip */
+    .stats-strip {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      border-bottom: 1px solid var(--border);
+    }
+    .stat-item {
+      padding: 1.6rem 1.8rem;
+      border-right: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .stat-item:last-child { border-right: none; }
+    .stat-icon { font-size: 1.6rem; flex-shrink: 0; }
+    .stat-label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+      margin-bottom: .3rem;
+    }
+    .stat-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--gold);
+    }
+    .live-dot {
+      display: inline-block;
+      width: 7px;
+      height: 7px;
+      background: var(--green);
+      border-radius: 50%;
+      margin-right: .4rem;
+      box-shadow: 0 0 6px var(--green);
+      animation: pulse-dot 2s infinite;
+      vertical-align: middle;
+    }
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50%       { opacity: .4; }
+    }
+
+    /* Section wrapper */
+    .section {
+      padding: 4.5rem 3rem;
+    }
+    .section-head {
+      margin-bottom: 2.5rem;
+    }
+    .section-label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 4px;
+      color: var(--purple);
+      text-transform: uppercase;
+      margin-bottom: .5rem;
+    }
+    .section-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 5vw, 3rem);
+      letter-spacing: 2px;
+      color: #fff;
+    }
+
+    /* Games grid */
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 1rem;
+    }
+
+    /* Image card base */
+    .game-card {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,.07);
+      height: 300px;
+      cursor: pointer;
+      transition: transform .3s cubic-bezier(.25,.46,.45,.94), box-shadow .3s ease, border-color .3s;
+    }
+    /* Bottom-up dark gradient so text is always readable */
+    .game-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,.72) 0%, rgba(0,0,0,.28) 45%, rgba(0,0,0,.02) 100%);
+      z-index: 1;
+      pointer-events: none;
+    }
+    /* Hover: card lifts and glows purple */
+    .game-card:not(.disabled):hover {
+      transform: translateY(-12px);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6), 0 0 40px rgba(200,85,247,.18);
+      border-color: rgba(200,85,247,.65);
+      z-index: 3;
+    }
+    .game-card.disabled { cursor: default; opacity: .65; }
+
+    /* Inner image layer — zooms slightly on hover for depth */
+    .game-card-bg {
+      position: absolute;
+      inset: 0;
+      background-size: cover;
+      background-position: center;
+      transition: transform .55s cubic-bezier(.25,.46,.45,.94);
+    }
+    .game-card:not(.disabled):hover .game-card-bg { transform: scale(1.07); }
+
+    /* Badges pinned to top-left */
+    .game-badge {
+      position: absolute;
+      top: 1rem; left: 1rem;
+      z-index: 2;
+      display: inline-block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      padding: .2rem .6rem;
+      text-transform: uppercase;
+    }
+    .badge-live { background: rgba(61,255,160,.12); color: var(--green);   border: 1px solid rgba(61,255,160,.3); }
+    .badge-soon { background: rgba(90,96,122,.1);   color: var(--text-dim); border: 1px solid rgba(90,96,122,.25); }
+
+    /* Text content pinned to bottom */
+    .game-card-body {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 1.4rem 1.6rem;
+      z-index: 2;
+    }
+    .game-card-name {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      color: #fff;
+      text-shadow: 0 2px 12px rgba(0,0,0,.8);
+      margin-bottom: .35rem;
+      line-height: 1;
+    }
+    .game-card-desc {
+      font-size: .83rem;
+      color: rgba(220,224,240,.65);
+      line-height: 1.45;
+      margin-bottom: .85rem;
+    }
+
+    .btn-play {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .82rem;
+      font-weight: 700;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(245,166,35,.08);
+      border: 1px solid rgba(245,166,35,.3);
+      padding: .4rem 1.2rem;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      transition: background .2s, border-color .2s, box-shadow .2s;
+    }
+    .btn-play:hover {
+      background: rgba(245,166,35,.15);
+      border-color: var(--gold);
+      box-shadow: 0 0 16px rgba(245,166,35,.2);
+    }
+    .btn-play:disabled, .btn-play.disabled {
+      color: var(--text-dim);
+      background: transparent;
+      border-color: rgba(90,96,122,.25);
+      cursor: not-allowed;
+      box-shadow: none;
+    }
+
+    /* Burns title row */
+    .burns-title-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-top: .4rem;
+    }
+    .stat-cards-row {
+      display: flex;
+      gap: 1.2rem;
+      flex-wrap: wrap;
+      width: 100%;
+    }
+    .stat-card {
+      background: rgba(14,9,28,.82);
+      border: 1px solid rgba(200,85,247,.22);
+      border-radius: 18px;
+      padding: 1.6rem 2rem 1.5rem;
+      flex: 1;
+      min-width: 260px;
+      display: flex;
+      flex-direction: column;
+      gap: .4rem;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+    .stat-card-header {
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      margin-bottom: .35rem;
+    }
+    .stat-card-icon {
+      font-size: 1.4rem;
+      line-height: 1;
+    }
+    .stat-card-label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .58rem;
+      letter-spacing: 2.5px;
+      color: var(--purple);
+      text-transform: uppercase;
+    }
+    .stat-card-label span {
+      display: inline-block;
+      width: 28px;
+      height: 2px;
+      background: linear-gradient(90deg, var(--purple), transparent);
+      margin-left: .45rem;
+      vertical-align: middle;
+      opacity: .7;
+    }
+    .stat-card-value {
+      font-family: 'Space Mono', monospace;
+      font-size: 2.6rem;
+      font-weight: 700;
+      color: var(--purple);
+      line-height: 1.05;
+      letter-spacing: -1px;
+    }
+    .stat-card-value em {
+      font-style: normal;
+      font-size: 1.15rem;
+      color: rgba(220,224,240,.45);
+      margin-left: .3rem;
+      letter-spacing: 0;
+    }
+    .stat-card-sub {
+      font-size: .82rem;
+      color: rgba(220,224,240,.38);
+      font-family: 'Barlow', sans-serif;
+      margin-top: .15rem;
+    }
+    /* keep old id working for JS */
+    .all-burns-num { display: none; }
+
+    /* Recent burns */
+    .burns-table-wrap {
+      overflow-x: auto;
+      border: 1px solid var(--border);
+    }
+    .burns-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: .88rem;
+    }
+    .burns-table th {
+      padding: .75rem 1.2rem;
+      text-align: left;
+      font-family: 'Michroma', sans-serif;
+      font-size: .58rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      background: var(--navy-card);
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+    .burns-table td {
+      padding: .75rem 1.2rem;
+      border-bottom: 1px solid rgba(200,85,247,.08);
+      color: var(--text);
+      font-family: 'Barlow', sans-serif;
+      white-space: nowrap;
+    }
+    .burns-table tr:last-child td { border-bottom: none; }
+    .burns-table tr:hover td { background: rgba(200,85,247,.04); }
+
+    .burns-table .num { font-family: 'Space Mono', monospace; font-size: .82rem; }
+
+    .pill-win, .pill-loss {
+      display: inline-block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 1.5px;
+      padding: .2rem .55rem;
+    }
+    .pill-win  { color: var(--green);  background: rgba(61,255,160,.1);   border: 1px solid rgba(61,255,160,.25); }
+    .pill-loss { color: var(--red);    background: rgba(255,68,85,.1);    border: 1px solid rgba(255,68,85,.25); }
+    .pill-game { color: var(--purple); background: rgba(200,85,247,.1);   border: 1px solid rgba(200,85,247,.3); }
+
+    .tx-link {
+      font-family: 'Space Mono', monospace;
+      font-size: .75rem;
+      color: var(--purple);
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: none;
+      opacity: .85;
+      transition: opacity .2s;
+    }
+    .tx-link:hover { opacity: 1; text-decoration: underline; }
+
+    .address-link {
+      font-family: 'Space Mono', monospace;
+      font-size: .75rem;
+      color: #4b8dff;
+      background: transparent;
+      border: 0;
+      cursor: pointer;
+      padding: 0;
+      text-decoration: none;
+    }
+    .address-link:hover { color: #8db7ff; text-decoration: underline; }
+    .address-popover {
+      position: fixed;
+      z-index: 12000;
+      width: 210px;
+      background: rgba(13,18,32,.98);
+      border: 1px solid rgba(120,145,190,.28);
+      box-shadow: 0 18px 50px rgba(0,0,0,.5);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: .72rem;
+    }
+    .address-popover-short {
+      padding: .8rem .95rem .65rem;
+      color: rgba(220,224,240,.55);
+      border-bottom: 1px solid rgba(120,145,190,.18);
+      word-break: break-all;
+    }
+    .address-popover-action {
+      display: block;
+      width: 100%;
+      padding: .72rem .95rem;
+      color: #fff;
+      background: transparent;
+      border: 0;
+      text-align: left;
+      text-decoration: none;
+      cursor: pointer;
+      font: inherit;
+    }
+    .address-popover-action:hover { background: rgba(200,85,247,.1); }
+    .address-popover-action.copy {
+      color: #da7cff;
+      border-top: 1px solid rgba(120,145,190,.18);
+    }
+
+    .burns-empty {
+      padding: 2rem;
+      text-align: center;
+      color: var(--text-dim);
+      font-family: 'Michroma', sans-serif;
+      font-size: .7rem;
+      letter-spacing: 2px;
+    }
+
+    .burns-refresh {
+      margin-top: .8rem;
+      display: flex;
+      align-items: center;
+      gap: .6rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+    }
+    .refresh-dot {
+      width: 5px; height: 5px;
+      border-radius: 50%;
+      background: var(--green);
+      animation: pulse-dot 2s infinite;
+    }
+
+    /* How it works */
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1.6rem;
+    }
+    .step-card {
+      background: rgba(10,5,20,.35);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 20px;
+      padding: 2.4rem 2rem 2rem;
+      text-align: center;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+      transition: transform .3s cubic-bezier(.25,.46,.45,.94), border-color .3s, box-shadow .3s;
+    }
+    /* Colored top accent bar */
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, transparent, var(--purple), transparent);
+      opacity: .7;
+    }
+    .step-card:hover {
+      transform: translateY(-10px);
+      border-color: rgba(200,85,247,.45);
+      box-shadow: 0 24px 60px rgba(0,0,0,.5), 0 0 30px rgba(200,85,247,.12);
+    }
+    .step-num-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: rgba(200,85,247,.12);
+      border: 1px solid rgba(200,85,247,.3);
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem;
+      font-weight: 700;
+      color: var(--purple);
+      letter-spacing: 1px;
+      margin: 0 auto 1.4rem;
+    }
+    .step-emoji-wrap {
+      width: 72px;
+      height: 72px;
+      border-radius: 50%;
+      background: rgba(200,85,247,.07);
+      border: 1px solid rgba(200,85,247,.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 1.4rem;
+      font-size: 2rem;
+    }
+    .step-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: 3px;
+      color: #fff;
+      margin-bottom: .8rem;
+    }
+    .step-desc {
+      font-size: .88rem;
+      color: rgba(220,224,240,.55);
+      line-height: 1.7;
+    }
+
+    /* Footer */
+    footer {
+      padding: 2rem 3rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    .footer-left {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 1.5px;
+      color: var(--text-dim);
+      line-height: 1.9;
+    }
+    .footer-links {
+      display: flex;
+      gap: 1.2rem;
+    }
+    .footer-link {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 1px;
+      color: var(--text-dim);
+      text-decoration: none;
+      transition: color .2s;
+    }
+    .footer-link:hover { color: var(--gold); }
+
+    /* Fade-in on scroll */
+    .fade-in {
+      opacity: 0;
+      transform: translateY(22px);
+      transition: opacity .65s ease, transform .65s ease;
+    }
+    .fade-in.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    .fade-in.delay-1 { transition-delay: .1s; }
+    .fade-in.delay-2 { transition-delay: .2s; }
+    .fade-in.delay-3 { transition-delay: .3s; }
+
+    /* Responsive */
+    @media (max-width: 900px) {
+      .games-grid  { grid-template-columns: 1fr; }
+      .game-card   { height: 260px; }
+      .steps-grid  { grid-template-columns: 1fr; }
+      .stats-strip { grid-template-columns: 1fr; }
+      .stat-item   { border-right: none; border-bottom: 1px solid var(--border); }
+      .stat-item:last-child { border-bottom: none; }
+    }
+
+    @media (max-width: 768px) {
+      .sidebar { display: none; }
+      .main { margin-left: 0; }
+      .section { padding: 3rem 1.4rem; }
+      footer { padding: 1.5rem 1.4rem; flex-direction: column; align-items: flex-start; }
+    }
+
+    @media (max-width: 480px) {
+      .hero-ctas { flex-direction: column; align-items: center; }
+      .btn-gold, .btn-outline { width: 100%; max-width: 260px; text-align: center; }
+    }
+
+    /* Featured games (home page) */
+    .featured-games-wrap {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .featured-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 400px));
+      gap: 1.6rem;
+      justify-content: center;
+      width: 100%;
+    }
+
+    /* Expanded card style matching all-games page */
+    .feat-card {
+      background: rgba(10,5,20,.3);
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 20px;
+      cursor: pointer;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: border-color .3s ease, transform .3s cubic-bezier(.25,.46,.45,.94), box-shadow .3s ease;
+    }
+    .feat-card:hover {
+      border-color: rgba(200,85,247,.65);
+      transform: translateY(-12px);
+      box-shadow: 0 30px 70px rgba(0,0,0,.6), 0 0 40px rgba(200,85,247,.18);
+    }
+    .feat-card-image {
+      height: 240px;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .feat-card-image.mines-featured {
+      background-position: 52% center;
+    }
+    .feat-card-image::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 80px;
+      background: linear-gradient(to bottom, transparent, rgba(5,2,12,.92));
+      pointer-events: none;
+    }
+    .feat-card-badge {
+      position: absolute;
+      top: 12px; left: 12px;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: #fff;
+      background: rgba(61,255,160,.18);
+      border: 1px solid rgba(61,255,160,.4);
+      border-radius: 6px;
+      padding: .25rem .6rem;
+    }
+    .feat-card-body {
+      padding: 1.4rem 1.6rem 1.7rem;
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      flex: 1;
+      background: rgba(5,2,12,.82);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .feat-card-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.1rem;
+      letter-spacing: 3px;
+      color: #fff;
+      line-height: 1;
+    }
+    .feat-card-mode {
+      align-self: flex-start;
+      font-family: 'Michroma', sans-serif;
+      font-size: .58rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--gold);
+      background: rgba(245,166,35,.1);
+      border: 1px solid rgba(245,166,35,.32);
+      border-radius: 6px;
+      padding: .32rem .62rem;
+    }
+    .feat-card-mode.multiplayer {
+      color: var(--purple);
+      background: rgba(200,85,247,.1);
+      border-color: rgba(200,85,247,.34);
+    }
+    .feat-card-desc {
+      font-size: .9rem;
+      color: rgba(255,255,255,.75);
+      line-height: 1.6;
+    }
+    .feat-card-btn {
+      display: block;
+      width: 100%;
+      margin-top: .7rem;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.2rem;
+      letter-spacing: 3px;
+      color: #fff;
+      background: linear-gradient(135deg, #c855f7, #8b1fcc);
+      border: none;
+      border-radius: 12px;
+      padding: 1rem;
+      cursor: pointer;
+      transition: opacity .2s, transform .15s;
+      text-align: center;
+      text-decoration: none;
+    }
+    .feat-card-btn:hover { opacity: .88; transform: translateY(-1px); }
+
+    @media (max-width: 900px) {
+      .featured-grid { grid-template-columns: repeat(2, minmax(0, 400px)); }
+    }
+    @media (max-width: 600px) {
+      .featured-grid { grid-template-columns: 1fr; }
+    }
+
+    /* "Browse All Games" link */
+    .browse-all-link {
+      display: inline-flex;
+      align-items: center;
+      gap: .55rem;
+      margin-top: 2rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: .78rem;
+      letter-spacing: 2.5px;
+      color: rgba(200,85,247,.7);
+      text-decoration: none;
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(200,85,247,.2);
+      padding-bottom: 3px;
+      transition: color .22s, gap .22s, border-color .22s;
+    }
+    .browse-all-link:hover {
+      color: var(--purple);
+      gap: .9rem;
+      border-color: rgba(200,85,247,.5);
+    }
+
+    @media (max-width: 700px) {
+      .featured-grid { grid-template-columns: 1fr; width: 100%; }
+      .featured-grid .game-card { width: 100%; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Top Navbar -->
+<nav class="topnav">
+  <a href="#" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+  <button class="btn-connect" id="connectBtn" onclick="connectWallet()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg> Connect</button>
+</nav>
+
+<!-- Sidebar pill -->
+<aside class="sidebar" id="sidebar">
+  <a href="#"                    class="nav-pill active-purple"  data-active="purple" title="Home"><svg xmlns="http://www.w3.org/2000/svg" width="26" height="26" viewBox="0 0 24 24" fill="currentColor"><path d="M12 3L2 12h3v8h5v-5h4v5h5v-8h3z"/></svg></a>
+  <a href="all-games.html"       class="nav-pill"               data-active="purple" title="Games">🎰</a>
+  <div class="nav-pill-divider"></div>
+  <a href="https://x.com/TomkiwMich70997"   target="_blank" rel="noopener" class="nav-pill" data-active="gold" title="Twitter / X">𝕏</a>
+  <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" data-active="gold" title="Telegram"><svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.48-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg></a>
+</aside>
+
+<!-- Main -->
+<main class="main">
+
+  <!-- Hero -->
+  <section class="hero">
+    <canvas id="heroCanvas"></canvas>
+
+    <div class="hero-content">
+      <div class="hero-ctas">
+        <a href="all-games.html" class="btn-gold">PLAY GAMES</a>
+        <a href="fairness.html" class="btn-outline">Learn More</a>
+      </div>
+      <p class="hero-tagline">Burn CASHX on Every Bet <span style="color:var(--gold);font-size:1.1em;vertical-align:middle;text-shadow:0 0 12px rgba(245,166,35,.8);">✦</span> Decentralized Gaming on PulseChain</p>
+      <p class="hero-beta-note">Beta release: play responsibly and use amounts you are comfortable testing with.</p>
+    </div>
+
+    <!-- Bouncing scroll indicator -->
+    <div class="hero-scroll-arrow" onclick="document.getElementById('games').scrollIntoView({behavior:'smooth'})">
+      <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"></line>
+        <polyline points="6 13 12 19 18 13"></polyline>
+      </svg>
+    </div>
+  </section>
+
+
+  <!-- Games -->
+  <section class="section" id="games">
+    <div class="section-head fade-in" style="text-align:center;">
+      <div class="section-label">Choose Your Game</div>
+      <h2 class="section-title">Featured Games</h2>
+    </div>
+
+    <div class="featured-games-wrap">
+      <div class="featured-grid">
+
+        <!-- Dice (VS House) -->
+        <div class="feat-card fade-in" onclick="location.href='dice.html'">
+          <div class="feat-card-image" style="background-image: url('game-dice.png')">
+            <span class="feat-card-badge">● Live</span>
+          </div>
+          <div class="feat-card-body">
+            <div class="feat-card-title">Dice</div>
+            <div class="feat-card-mode">VS House</div>
+            <p class="feat-card-desc">Roll over or under 50. Every settled bet burns 3%. Winners receive 1.95x on-chain.</p>
+            <a class="feat-card-btn" href="dice.html">▶ Play Now</a>
+          </div>
+        </div>
+
+        <!-- Card War -->
+        <div class="feat-card fade-in delay-1" onclick="location.href='games.html?game=0'">
+          <div class="feat-card-image" style="background-image: url('card-war-bg.png')">
+            <span class="feat-card-badge">● Live</span>
+          </div>
+          <div class="feat-card-body">
+            <div class="feat-card-title">Card War</div>
+            <div class="feat-card-mode multiplayer">Multiplayer</div>
+            <p class="feat-card-desc">Draw the highest card. Ace wins. Ties re-draw until there's a winner. 5% burns forever.</p>
+            <a class="feat-card-btn" href="games.html?game=0">▶ Play Now</a>
+          </div>
+        </div>
+
+        <!-- Mines -->
+        <div class="feat-card fade-in delay-2" onclick="location.href='mines-game/live.html'">
+          <div class="feat-card-image mines-featured" style="background-image: url('mines-card-featured.png')">
+            <span class="feat-card-badge">● Live</span>
+          </div>
+          <div class="feat-card-body">
+            <div class="feat-card-title">Mines</div>
+            <div class="feat-card-mode">VS House</div>
+            <p class="feat-card-desc">Start on-chain, reveal tiles instantly, then cash out after safe picks. Every settled game burns 3%.</p>
+            <a class="feat-card-btn" href="mines-game/live.html">▶ Play Now</a>
+          </div>
+        </div>
+
+      </div>
+      <a href="all-games.html" class="browse-all-link">Browse All Games &nbsp;→</a>
+    </div>
+  </section>
+
+  <!-- Recent Burns -->
+  <section class="section" id="recent-burns">
+
+    <!-- Hidden span keeps existing JS working -->
+    <div id="allBurnsNum" class="all-burns-num">Loading…</div>
+
+    <div class="section-head fade-in">
+      <div class="section-label">On-Chain Activity</div>
+    </div>
+
+    <div class="stat-cards-row fade-in" style="margin-bottom:2.5rem;">
+      <!-- Total Burned card -->
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-icon">🔥</span>
+          <span class="stat-card-label">ALL CASHX BURNED<span></span></span>
+        </div>
+        <div class="stat-card-value" id="allBurnsDisplay">Loading…</div>
+        <div class="stat-card-sub">Total CASHX burned across all games</div>
+      </div>
+
+      <!-- Total Games card -->
+      <div class="stat-card">
+        <div class="stat-card-header">
+          <span class="stat-card-icon">🎲</span>
+          <span class="stat-card-label">TOTAL WAGERS<span></span></span>
+        </div>
+        <div class="stat-card-value" id="totalGamesDisplay">Loading…</div>
+        <div class="stat-card-sub">Total games played across all tables</div>
+      </div>
+    </div>
+
+    <h2 class="section-title fade-in" style="margin-bottom:1.2rem;">Recent Burns</h2>
+
+    <div class="burns-table-wrap fade-in">
+      <table class="burns-table">
+        <thead>
+          <tr>
+            <th>Time</th>
+            <th>Game</th>
+            <th>From</th>
+            <th>Burned</th>
+            <th>TX Hash</th>
+          </tr>
+        </thead>
+        <tbody id="burnsBody">
+          <tr><td colspan="5"><div class="burns-empty">Fetching recent burns…</div></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="burns-refresh">
+      <div class="refresh-dot"></div>
+      Auto-refreshes every 30 seconds
+    </div>
+  </section>
+
+  <!-- How It Works -->
+  <section class="section" id="how-it-works">
+    <div class="section-head fade-in">
+      <div class="section-label">Getting Started</div>
+      <h2 class="section-title">How It Works</h2>
+    </div>
+
+    <div class="steps-grid">
+
+      <div class="step-card fade-in">
+        <div class="step-num-badge">01</div>
+        <div class="step-emoji-wrap">🦊</div>
+        <div class="step-title">Connect Wallet</div>
+        <p class="step-desc">Open MetaMask and switch to PulseChain (Chain ID 369). The casino auto-detects your network and guides you through the switch.</p>
+      </div>
+
+      <div class="step-card fade-in delay-1">
+        <div class="step-num-badge">02</div>
+        <div class="step-emoji-wrap">🎲</div>
+        <div class="step-title">Place Your Bet</div>
+        <p class="step-desc">Pick a game, choose your CASHX amount, and make your call. Approve the token spend once — then play instantly every time after.</p>
+      </div>
+
+      <div class="step-card fade-in delay-2">
+        <div class="step-num-badge">03</div>
+        <div class="step-emoji-wrap">🔥</div>
+        <div class="step-title">CASHX Burns Forever</div>
+        <p class="step-desc">VS House: 3% of every settled bet burns and winners receive 1.95x. Multiplayer: 5% of every completed pot burns on-chain, winner takes 95%.</p>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer>
+    <div class="footer-left">
+      CASHX CASINO · PULSECHAIN · PLAY RESPONSIBLY
+    </div>
+    <div class="footer-links">
+      <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="footer-link">Telegram</a>
+      <a href="https://x.com/TomkiwMich70997" target="_blank" rel="noopener" class="footer-link">Twitter / X</a>
+      <a href="beta.html" class="footer-link">Beta Info</a>
+      <a href="fairness.html" class="footer-link">Fairness</a>
+      <a href="verifier.html" class="footer-link">Verifier</a>
+      <a href="dice.html" class="footer-link">Dice Game</a>
+      <a href="games.html" class="footer-link">Multiplayer</a>
+      <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="footer-link">Report Bug</a>
+    </div>
+  </footer>
+
+</main>
+
+<script>
+'use strict';
+
+// Contract config
+const DICE_GAME_ADDRESS     = '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
+const DICE_GAME_ADDRESS_V1  = '0xbd8505526cF22A9810d7644Fb4969b6ae643E05D';
+const ASYNC_GAMES_ADDRESS   = '0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39';
+const RPC_URL               = 'https://rpc.pulsechain.com';
+
+const DICE_ABI = [
+  'function totalBurned() external view returns (uint256)',
+  'event Roll(uint256 indexed betId, address indexed player, uint8 result, bool over, uint256 bet, bool won)',
+  'event BetRevealed(uint256 indexed betId, address indexed player, bytes32 secret, bytes32 targetBlockHash)',
+];
+const ASYNC_ABI = [
+  'function gameCount() view returns (uint256)',
+  'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
+  'event GameResolved(uint256 indexed gameId, address indexed winner, uint256 payout, uint256 burned)',
+];
+
+// Read-only provider — no wallet connection needed
+const rpcProvider    = new ethers.providers.JsonRpcProvider(RPC_URL);
+const diceContract   = new ethers.Contract(DICE_GAME_ADDRESS,    DICE_ABI, rpcProvider);
+const diceContractV1 = new ethers.Contract(DICE_GAME_ADDRESS_V1, DICE_ABI, rpcProvider);
+const asyncContract  = new ethers.Contract(ASYNC_GAMES_ADDRESS,  ASYNC_ABI, rpcProvider);
+
+// Helpers
+function fmtCashx(bigNum) {
+  const n = parseFloat(ethers.utils.formatUnits(bigNum, 18));
+  return n.toLocaleString('en-US', { maximumFractionDigits: 0 });
+}
+
+function timeAgo(timestampSec) {
+  const diff = Math.floor(Date.now() / 1000) - timestampSec;
+  if (diff < 60)   return diff + 's ago';
+  if (diff < 3600) return Math.floor(diff / 60) + 'm ago';
+  return Math.floor(diff / 3600) + 'h ago';
+}
+
+function setTextIfPresent(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value;
+}
+
+function shortAddress(address) {
+  return address.slice(0, 6) + '…' + address.slice(-5);
+}
+
+function shortHash(hash) {
+  return hash.slice(0, 6) + '…' + hash.slice(-5);
+}
+
+function addressButton(address) {
+  return '<button class="address-link" type="button" onclick="showAddressPopover(event, \'' +
+    address + '\')">' + shortAddress(address) + '</button>';
+}
+
+function txButton(txHash) {
+  return '<button class="tx-link" type="button" onclick="showTxPopover(event, \'' +
+    txHash + '\')">' + shortHash(txHash) + '</button>';
+}
+
+function showAddressPopover(event, address) {
+  event.preventDefault();
+  event.stopPropagation();
+  closeAddressPopover();
+
+  const card = document.createElement('div');
+  card.className = 'address-popover';
+  card.id = 'addressPopover';
+  card.innerHTML =
+    '<div class="address-popover-short">' + shortAddress(address) + '</div>' +
+    '<a class="address-popover-action" href="https://scan.pulsechain.com/address/' + address + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
+    '<button class="address-popover-action copy" type="button" onclick="copyPopoverAddress(event, \'' + address + '\')">Copy Address</button>';
+
+  document.body.appendChild(card);
+  positionPopover(card, event.currentTarget);
+  setTimeout(() => document.addEventListener('click', closeAddressPopover), 10);
+}
+
+function showTxPopover(event, txHash) {
+  event.preventDefault();
+  event.stopPropagation();
+  closeAddressPopover();
+
+  const card = document.createElement('div');
+  card.className = 'address-popover';
+  card.id = 'addressPopover';
+  card.innerHTML =
+    '<div class="address-popover-short">' + shortHash(txHash) + '</div>' +
+    '<a class="address-popover-action" href="https://scan.pulsechain.com/tx/' + txHash + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
+    '<a class="address-popover-action" href="verifier.html?mode=dice&tx=' + txHash + '">✅ Verify Result</a>' +
+    '<button class="address-popover-action copy" type="button" onclick="copyPopoverAddress(event, \'' + txHash + '\')">Copy TX Hash</button>';
+
+  document.body.appendChild(card);
+  positionPopover(card, event.currentTarget);
+  setTimeout(() => document.addEventListener('click', closeAddressPopover), 10);
+}
+
+function positionPopover(card, target) {
+  const rect = target.getBoundingClientRect();
+  const cardRect = card.getBoundingClientRect();
+  const left = Math.min(rect.right + 12, window.innerWidth - cardRect.width - 12);
+  const top = Math.min(rect.top - 12, window.innerHeight - cardRect.height - 12);
+  card.style.left = Math.max(12, left) + 'px';
+  card.style.top = Math.max(12, top) + 'px';
+}
+
+function closeAddressPopover() {
+  const existing = document.getElementById('addressPopover');
+  if (existing) existing.remove();
+  document.removeEventListener('click', closeAddressPopover);
+}
+
+function copyPopoverAddress(event, address) {
+  event.preventDefault();
+  event.stopPropagation();
+  navigator.clipboard.writeText(address);
+  event.currentTarget.textContent = 'Copied!';
+  setTimeout(closeAddressPopover, 650);
+}
+
+// Stats
+async function loadStats() {
+  try {
+    // Wrap totalBurned() in a 7-second timeout so a hanging RPC never stalls the UI
+    const withTimeout = (promise, ms) => Promise.race([
+      promise,
+      new Promise((_, rej) => setTimeout(() => rej(new Error('rpc-timeout')), ms))
+    ]);
+    const [diceBurned, diceBurnedV1] = await Promise.all([
+      withTimeout(diceContract.totalBurned(),   7000),
+      withTimeout(diceContractV1.totalBurned(), 7000).catch(() => ethers.BigNumber.from(0)),
+    ]);
+    const diceBurnedTotal = diceBurned.add(diceBurnedV1);
+
+    // AsyncGames contract: sum burns from all resolved games via gameCount()+getGame()
+    // (avoids event queries entirely — no block-range limit issues)
+    let asyncBurned = ethers.BigNumber.from(0);
+    try {
+      const count = (await asyncContract.gameCount()).toNumber();
+      if (count > 0) {
+        const ids      = Array.from({ length: count }, (_, i) => i + 1);
+        const allGames = await Promise.all(ids.map(id => asyncContract.getGame(id)));
+        allGames.forEach(g => {
+          if (!g.resolved) return;
+          const pot    = g.entryAmount.mul(g.maxPlayers);
+          const payout = pot.mul(95).div(100);
+          asyncBurned  = asyncBurned.add(pot.sub(payout));
+        });
+      }
+    } catch (_) {}
+
+    const totalBurned = diceBurnedTotal.add(asyncBurned);
+    const burnedFmt   = fmtCashx(totalBurned);
+
+    setTextIfPresent('heroBurnedNum', burnedFmt);
+    setTextIfPresent('statBurned', burnedFmt + ' CASHX');
+    setTextIfPresent('allBurnsNum', burnedFmt + ' CASHX');
+    setTextIfPresent('allBurnsDisplay', burnedFmt + ' CASHX');
+  } catch (e) {
+    console.warn('Stats unavailable:', e.message);
+    setTextIfPresent('heroBurnedNum', '—');
+    setTextIfPresent('statBurned', 'Unavailable');
+    setTextIfPresent('allBurnsNum', 'Unavailable');
+    setTextIfPresent('allBurnsDisplay', 'Unavailable');
+  }
+}
+
+// Recent Burns (DiceGame + AsyncGames combined)
+async function loadRecentBurns() {
+  const tbody = document.getElementById('burnsBody');
+  try {
+    const currentBlock = await rpcProvider.getBlockNumber();
+    const fromBlock    = Math.max(0, currentBlock - 50000); // ~5–6 days of 10s blocks
+
+    // Fetch both event streams in parallel; let either fail gracefully
+    const [diceEvents, asyncEvents] = await Promise.all([
+      diceContract.queryFilter(diceContract.filters.Roll(), fromBlock, currentBlock)
+        .catch(() => []),
+      asyncContract.queryFilter(asyncContract.filters.GameResolved(), fromBlock, currentBlock)
+        .catch(() => []),
+    ]);
+
+    // Tag each event with its source so the renderer knows which badge to show
+    const tagged = [
+      ...diceEvents.map(e  => ({ e, src: 'dice' })),
+      ...asyncEvents.map(e => ({ e, src: 'async' })),
+    ];
+
+    if (tagged.length === 0) {
+      tbody.innerHTML = '<tr><td colspan="5"><div class="burns-empty">No burns found in recent blocks</div></td></tr>';
+      return;
+    }
+
+    // Sort by blockNumber descending, take 10 most recent
+    tagged.sort((a, b) => b.e.blockNumber - a.e.blockNumber);
+    const recent = tagged.slice(0, 10);
+
+    // Fetch block timestamps in parallel
+    const blocks = await Promise.all(recent.map(({ e }) => rpcProvider.getBlock(e.blockNumber)));
+
+    tbody.innerHTML = '';
+    recent.forEach(({ e, src }, i) => {
+      const timestamp = blocks[i]?.timestamp ?? 0;
+      const txHash    = e.transactionHash;
+
+      let badge, burnedAmt, fromAddress;
+      if (src === 'dice') {
+        const { player, bet } = e.args;
+        fromAddress = player;
+        burnedAmt = bet.mul(3).div(100);
+        badge = '<span class="pill-game" style="background:rgba(200,85,247,.12);color:#c855f7;border-color:rgba(200,85,247,.3);">🎲 VS HOUSE</span>';
+      } else {
+        fromAddress = e.args.winner;
+        burnedAmt = e.args.burned;
+        badge = '<span class="pill-game" style="background:rgba(245,166,35,.1);color:#f5a623;border-color:rgba(245,166,35,.3);">🎰 MULTIPLAYER</span>';
+      }
+
+      const tr = document.createElement('tr');
+      tr.innerHTML =
+        '<td>' + (timestamp ? timeAgo(timestamp) : '—') + '</td>' +
+        '<td>' + badge + '</td>' +
+        '<td>' + addressButton(fromAddress) + '</td>' +
+        '<td class="num">' + fmtCashx(burnedAmt) + ' CASHX</td>' +
+        '<td>' + txButton(txHash) + '</td>';
+      tbody.appendChild(tr);
+    });
+
+    // Guaranteed fallback: sum burns from events we already have
+    // (If loadStats() is hanging, this ensures the counter always shows a number)
+    let eventsTotal = ethers.BigNumber.from(0);
+    recent.forEach(({ e, src }) => {
+      if (src === 'dice') {
+        const { won, bet } = e.args;
+        eventsTotal = eventsTotal.add(bet.mul(3).div(100));
+      } else {
+        eventsTotal = eventsTotal.add(e.args.burned);
+      }
+    });
+    const numEl = document.getElementById('allBurnsNum');
+    if (numEl && numEl.textContent === 'Loading…') {
+      numEl.textContent = fmtCashx(eventsTotal) + ' CASHX';
+    }
+    const dispEl = document.getElementById('allBurnsDisplay');
+    if (dispEl && dispEl.textContent === 'Loading…') {
+      dispEl.textContent = fmtCashx(eventsTotal) + ' CASHX';
+    }
+
+    // Total games played count (all Roll + GameResolved events in window)
+    const totalGames = diceEvents.length + asyncEvents.length;
+    const gamesEl = document.getElementById('totalGamesDisplay');
+    if (gamesEl) {
+      const fmt = totalGames >= 1000
+        ? (totalGames / 1000).toFixed(1) + 'K'
+        : totalGames.toString();
+      gamesEl.innerHTML = fmt + ' <em>games</em>';
+    }
+
+  } catch (e) {
+    console.warn('Burns unavailable:', e.message);
+    tbody.innerHTML = '<tr><td colspan="5"><div class="burns-empty">Could not load burns — RPC may be busy</div></td></tr>';
+    const numEl = document.getElementById('allBurnsNum');
+    if (numEl) numEl.textContent = '—';
+    const dispEl = document.getElementById('allBurnsDisplay');
+    if (dispEl) dispEl.textContent = '—';
+    const gamesEl = document.getElementById('totalGamesDisplay');
+    if (gamesEl) gamesEl.textContent = '—';
+  }
+}
+
+// Particle canvas
+(function initParticles() {
+  const canvas = document.getElementById('heroCanvas');
+  const ctx    = canvas.getContext('2d');
+
+  function resize() {
+    canvas.width  = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+  }
+
+  class Particle {
+    constructor(randomY) {
+      this.init(randomY);
+    }
+    init(randomY) {
+      this.x         = Math.random() * canvas.width;
+      this.y         = randomY !== undefined ? Math.random() * canvas.height : canvas.height + 5;
+      this.vx        = (Math.random() - 0.5) * 0.4;
+      this.vy        = -(Math.random() * 0.6 + 0.2);
+      this.r         = Math.random() * 2 + 0.4;
+      this.alpha     = 0;
+      this.peak      = Math.random() * 0.5 + 0.15;
+      this.life      = randomY !== undefined ? Math.random() * 160 : 0;
+      this.maxLife   = Math.random() * 180 + 80;
+    }
+    update() {
+      this.life++;
+      this.x += this.vx;
+      this.y += this.vy;
+      const t = this.life / this.maxLife;
+      // fade in first 15%, hold, fade out last 15%
+      if (t < 0.15)      this.alpha = (t / 0.15) * this.peak;
+      else if (t > 0.85) this.alpha = ((1 - t) / 0.15) * this.peak;
+      else               this.alpha = this.peak;
+      if (this.life >= this.maxLife) this.init();
+    }
+    draw() {
+      ctx.beginPath();
+      ctx.arc(this.x, this.y, this.r, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(245,166,35,' + this.alpha.toFixed(2) + ')';
+      ctx.fill();
+    }
+  }
+
+  resize();
+  window.addEventListener('resize', resize);
+
+  // Spread initial particles across the canvas height
+  const particles = Array.from({ length: 70 }, () => new Particle(true));
+
+  function animate() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    particles.forEach(p => { p.update(); p.draw(); });
+    requestAnimationFrame(animate);
+  }
+  animate();
+})();
+
+// Sidebar pill active state
+const allPills = document.querySelectorAll('.nav-pill[data-active]');
+allPills.forEach(pill => {
+  pill.addEventListener('click', () => {
+    allPills.forEach(p => {
+      p.classList.remove('active', 'active-purple', 'active-teal');
+    });
+    const color = pill.dataset.active;
+    if (color === 'purple') pill.classList.add('active-purple');
+    else if (color === 'teal') pill.classList.add('active-teal');
+    else pill.classList.add('active');
+  });
+});
+
+// Scroll fade-in
+const fadeObserver = new IntersectionObserver((entries) => {
+  entries.forEach(e => {
+    if (e.isIntersecting) {
+      e.target.classList.add('visible');
+      fadeObserver.unobserve(e.target);
+    }
+  });
+}, { threshold: 0.1 });
+
+document.querySelectorAll('.fade-in').forEach(el => fadeObserver.observe(el));
+
+// Wallet connect
+const WALLET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
+
+async function connectWallet() {
+  const btn = document.getElementById('connectBtn');
+  if (!window.showWalletModal) { alert('Wallet modal not loaded — please refresh.'); return; }
+  btn.textContent = 'Connecting…';
+  btn.disabled = true;
+  try {
+    const { address } = await window.showWalletModal();
+    const short = address.slice(0, 6) + '…' + address.slice(-4);
+    btn.innerHTML = WALLET_SVG + ' ' + short;
+    btn.style.background = 'linear-gradient(135deg, #c855f7, #8b1fcc)';
+    btn.onclick = () => showWalletMenu(address);
+    btn.disabled = false;
+  } catch (err) {
+    // 'dismissed' = user closed modal — no error shown
+    btn.innerHTML = WALLET_SVG + ' Connect';
+    btn.style.background = '';
+    btn.onclick = connectWallet;
+    btn.disabled = false;
+  }
+}
+
+function showWalletMenu(address) {
+  // Close any existing dropdown first
+  closeWalletMenu();
+  const btn = document.getElementById('connectBtn');
+  btn.style.position = 'relative';
+
+  const menu = document.createElement('div');
+  menu.className = 'wallet-dropdown';
+  menu.id = 'walletMenu';
+  menu.innerHTML = `
+    <div class="wallet-dropdown-item" onclick="event.stopPropagation(); copyAddress('${address}')">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M16 1H4a2 2 0 0 0-2 2v14h2V3h12V1zm3 4H8a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2zm0 16H8V7h11v14z"/></svg>
+      Copy Address
+    </div>
+    <div class="wallet-dropdown-sep"></div>
+    <div class="wallet-dropdown-item danger" onclick="event.stopPropagation(); disconnectWallet()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>
+      Disconnect
+    </div>`;
+  btn.appendChild(menu);
+
+  // Close on outside click
+  setTimeout(() => document.addEventListener('click', outsideClick), 10);
+}
+
+function outsideClick(e) {
+  if (!e.target.closest('#walletMenu') && !e.target.closest('#connectBtn')) {
+    closeWalletMenu();
+  }
+}
+
+function closeWalletMenu() {
+  const m = document.getElementById('walletMenu');
+  if (m) m.remove();
+  document.removeEventListener('click', outsideClick);
+}
+
+function copyAddress(address) {
+  navigator.clipboard.writeText(address);
+  const item = document.querySelector('.wallet-dropdown-item');
+  if (item) { item.textContent = 'Copied!'; setTimeout(closeWalletMenu, 800); }
+}
+
+function disconnectWallet() {
+  closeWalletMenu();
+  const btn = document.getElementById('connectBtn');
+  btn.innerHTML = WALLET_SVG + ' Connect';
+  btn.style.background = '';
+  btn.disabled = false;
+  btn.onclick = connectWallet;
+}
+
+// Re-connect automatically if already authorised
+(async () => {
+  if (!window.ethereum) return;
+  const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+  if (accounts.length) {
+    const short = accounts[0].slice(0, 6) + '…' + accounts[0].slice(-4);
+    const btn = document.getElementById('connectBtn');
+    btn.innerHTML = WALLET_SVG + ' ' + short;
+    btn.style.background = 'linear-gradient(135deg, #c855f7, #8b1fcc)';
+    btn.onclick = () => showWalletMenu(accounts[0]);
+  }
+})();
+
+// Init
+loadStats();
+loadRecentBurns();
+
+// Refresh every 30 seconds
+setInterval(() => {
+  loadStats();
+  loadRecentBurns();
+}, 30_000);
+</script>
+
+</body>
+</html>
