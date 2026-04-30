@@ -283,6 +283,7 @@ async function startGame() {
     state.safeTiles = [];
     state.mineTiles = [];
     state.forceCashout = false;
+    resetGrid();
     hideRoundResult();
     updateBanner('Game live. Pick a tile.', 'live');
     await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
@@ -386,6 +387,13 @@ function finishGame() {
   state.activeGame = null;
   state.safeTiles = [];
   state.forceCashout = false;
+}
+
+function resetGrid() {
+  document.querySelectorAll('.tile').forEach(tile => {
+    tile.className = 'tile';
+    tile.textContent = '';
+  });
 }
 
 async function loadRecentGames() {
