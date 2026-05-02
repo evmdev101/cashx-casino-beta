@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node mines-server.js"
+    "start": "node mines-server.js",
+    "pvp": "node pvp-server.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

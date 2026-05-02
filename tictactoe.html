@@ -1,0 +1,1391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vanishing Tic Tac Toe | CASHX Casino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="wallet-modal.js"></script>
+
+  <style>
+    :root {
+      --navy: #0d0a16;
+      --panel: rgba(19,15,31,.82);
+      --panel-solid: #130f1f;
+      --gold: #f5a623;
+      --gold-dim: #c47f0e;
+      --purple: #c855f7;
+      --green: #3dffa0;
+      --red: #ff4455;
+      --cyan: #37d6ff;
+      --text: #dce0f0;
+      --muted: #8b91ac;
+      --border: rgba(200,85,247,.22);
+      --shadow: rgba(0,0,0,.42);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      min-height: 100vh;
+      font-family: 'Barlow', sans-serif;
+      color: var(--text);
+      background:
+        linear-gradient(180deg, rgba(13,10,22,.86), rgba(13,10,22,.97)),
+        url('hero-casino.png') center / cover fixed;
+      overflow-x: hidden;
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9000;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      background: rgba(8,5,18,.46);
+      border-bottom: 1px solid rgba(200,85,247,.32);
+      box-shadow: 0 2px 22px rgba(200,85,247,.15);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      z-index: 600;
+      backdrop-filter: blur(9px);
+      -webkit-backdrop-filter: blur(9px);
+    }
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      white-space: nowrap;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200,85,247,.35);
+      padding: .12rem .3rem;
+    }
+    .btn-connect {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: .9rem;
+      letter-spacing: 2px;
+      color: #fff;
+      background: linear-gradient(135deg, #ff4d6d, var(--gold));
+      border: none;
+      padding: .5rem 1.25rem;
+      cursor: pointer;
+      border-radius: 50px;
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      transition: box-shadow .25s, transform .2s;
+    }
+    .btn-connect:hover { box-shadow: 0 0 28px rgba(255,77,109,.48); transform: translateY(-2px); }
+
+    .wallet-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: rgba(13,10,22,.97);
+      border: 1px solid rgba(200,85,247,.25);
+      border-radius: 14px;
+      padding: 6px;
+      min-width: 160px;
+      z-index: 700;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    }
+    .wallet-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .6rem .9rem;
+      border-radius: 10px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .9rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .wallet-dropdown-item:hover { background: rgba(200,85,247,.15); color: #fff; }
+    .wallet-dropdown-item.danger:hover { background: rgba(255,68,85,.15); color: var(--red); }
+    .wallet-dropdown-sep { height: 1px; background: rgba(200,85,247,.12); margin: 4px 0; }
+
+    .sidebar {
+      position: fixed;
+      left: 12px;
+      top: 50%;
+      transform: translateY(-50%);
+      height: min(520px, calc(100vh - 130px));
+      background: rgba(110,30,180,.18);
+      border: 1px solid rgba(200,85,247,.72);
+      border-radius: 32px;
+      padding: 20px 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      z-index: 500;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+    .nav-pill {
+      width: 62px;
+      height: 62px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      text-decoration: none;
+      color: rgba(220,224,240,.56);
+      background: rgba(255,255,255,.06);
+      transition: background .2s, color .2s, transform .15s;
+    }
+    .nav-pill:hover { background: rgba(200,85,247,.2); color: #fff; transform: scale(1.07); }
+    .nav-pill.active-purple { background: linear-gradient(135deg, #c855f7, #8b1fcc); color: #fff; box-shadow: 0 4px 22px rgba(200,85,247,.5); }
+    .nav-pill-divider { height: 1px; width: 100%; background: linear-gradient(90deg, transparent, rgba(200,85,247,.45), transparent); margin-top: auto; margin-bottom: 6px; }
+
+    .main {
+      min-height: 100vh;
+      padding: 112px 2.4rem 48px 104px;
+    }
+    .hero {
+      max-width: 1200px;
+      margin: 0 auto 1.4rem;
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 1rem;
+      align-items: end;
+    }
+    .kicker {
+      font-family: 'Michroma', sans-serif;
+      font-size: .62rem;
+      letter-spacing: 4px;
+      color: var(--purple);
+      text-transform: uppercase;
+      margin-bottom: .45rem;
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.2rem, 7vw, 6rem);
+      letter-spacing: 3px;
+      color: #fff;
+      line-height: .92;
+      text-shadow: 0 8px 36px rgba(0,0,0,.45);
+    }
+    .hero-copy {
+      max-width: 660px;
+      margin-top: .8rem;
+      color: rgba(220,224,240,.82);
+      font-size: 1.04rem;
+      line-height: 1.55;
+    }
+    .status-stack {
+      display: grid;
+      gap: .55rem;
+      min-width: 250px;
+    }
+    .status-pill {
+      border: 1px solid rgba(255,255,255,.13);
+      background: rgba(0,0,0,.28);
+      border-radius: 8px;
+      padding: .72rem .9rem;
+      display: flex;
+      justify-content: space-between;
+      gap: .85rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,.18);
+    }
+    .status-pill span:first-child {
+      color: var(--muted);
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+    }
+    .status-pill span:last-child {
+      font-family: 'Space Mono', monospace;
+      color: #fff;
+      font-size: .82rem;
+    }
+
+    .game-shell {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: grid;
+      grid-template-columns: minmax(280px, 340px) minmax(320px, 1fr) minmax(280px, 340px);
+      gap: 1rem;
+      align-items: stretch;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      box-shadow: 0 24px 70px var(--shadow);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      overflow: hidden;
+    }
+    .panel-head {
+      min-height: 60px;
+      padding: 1rem;
+      border-bottom: 1px solid rgba(200,85,247,.16);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .8rem;
+    }
+    .panel-title {
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+      color: #fff;
+      font-size: 1.45rem;
+    }
+    .panel-tag {
+      font-family: 'Michroma', sans-serif;
+      font-size: .52rem;
+      letter-spacing: 2px;
+      color: var(--green);
+      text-transform: uppercase;
+    }
+    .panel-body { padding: 1rem; }
+
+    .field {
+      margin-bottom: .9rem;
+    }
+    .room-code {
+      margin-top: .75rem;
+      border: 1px solid rgba(55,214,255,.2);
+      background: rgba(55,214,255,.055);
+      border-radius: 8px;
+      padding: .7rem .75rem;
+      display: grid;
+      gap: .45rem;
+    }
+    .room-code b {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .room-code span {
+      color: var(--cyan);
+      font-family: 'Space Mono', monospace;
+      font-size: .78rem;
+      overflow-wrap: anywhere;
+    }
+    .room-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .45rem;
+    }
+    .mini-btn {
+      border: 1px solid rgba(55,214,255,.28);
+      background: rgba(55,214,255,.08);
+      color: #fff;
+      border-radius: 8px;
+      min-height: 36px;
+      padding: .5rem .55rem;
+      cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: transform .15s, border-color .2s, background .2s;
+    }
+    .mini-btn:hover {
+      transform: translateY(-1px);
+      border-color: rgba(245,166,35,.55);
+      background: rgba(245,166,35,.12);
+    }
+    .backend-online { color: var(--green) !important; }
+    .backend-offline { color: var(--red) !important; }
+    .field label {
+      display: block;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--muted);
+      margin-bottom: .35rem;
+    }
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .5rem;
+      align-items: center;
+    }
+    input, select {
+      width: 100%;
+      border: 1px solid rgba(200,85,247,.24);
+      background: rgba(0,0,0,.24);
+      color: #fff;
+      border-radius: 8px;
+      padding: .78rem .82rem;
+      font: 700 .95rem 'Space Mono', monospace;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: rgba(245,166,35,.75); box-shadow: 0 0 0 3px rgba(245,166,35,.12); }
+    .unit {
+      color: var(--gold);
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 2px;
+      font-size: 1.2rem;
+    }
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: .45rem;
+    }
+    .segmented button, .action-btn, .ghost-btn {
+      border: 1px solid rgba(200,85,247,.25);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: 8px;
+      min-height: 42px;
+      padding: .65rem .7rem;
+      cursor: pointer;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      transition: transform .15s, border-color .2s, background .2s, box-shadow .2s;
+    }
+    .segmented button:hover, .ghost-btn:hover { transform: translateY(-1px); border-color: rgba(245,166,35,.55); }
+    .segmented button.active {
+      background: linear-gradient(135deg, rgba(245,166,35,.28), rgba(200,85,247,.22));
+      border-color: rgba(245,166,35,.78);
+      color: #fff;
+    }
+    .action-btn {
+      width: 100%;
+      min-height: 48px;
+      margin-top: .35rem;
+      color: #111;
+      background: linear-gradient(135deg, var(--gold), #ff4d6d);
+      border: none;
+      box-shadow: 0 10px 28px rgba(245,166,35,.24);
+    }
+    .action-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 38px rgba(245,166,35,.34); }
+    .ghost-btn { width: 100%; margin-top: .55rem; }
+
+    .money-grid {
+      display: grid;
+      gap: .55rem;
+      margin-top: 1rem;
+    }
+    .money-row {
+      display: flex;
+      justify-content: space-between;
+      gap: .75rem;
+      padding: .7rem .75rem;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(0,0,0,.18);
+    }
+    .money-row span:first-child { color: var(--muted); }
+    .money-row span:last-child {
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: .9rem;
+      text-align: right;
+    }
+    .money-row.burn span:last-child { color: var(--red); }
+    .money-row.win span:last-child { color: var(--green); }
+
+    .arena {
+      padding: 1rem;
+      display: grid;
+      gap: 1rem;
+    }
+    .scorebar {
+      display: grid;
+      grid-template-columns: 1fr auto 1fr;
+      gap: .75rem;
+      align-items: center;
+    }
+    .player-card {
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(0,0,0,.22);
+      border-radius: 8px;
+      padding: .85rem;
+      min-width: 0;
+    }
+    .player-card.active { border-color: rgba(245,166,35,.72); box-shadow: 0 0 24px rgba(245,166,35,.12); }
+    .player-label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .52rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: .25rem;
+    }
+    .player-name {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.35rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .timer {
+      width: 92px;
+      height: 92px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(circle at center, rgba(13,10,22,.92) 54%, transparent 55%),
+        conic-gradient(var(--gold) var(--timer, 100%), rgba(255,255,255,.08) 0);
+      border: 1px solid rgba(245,166,35,.35);
+      box-shadow: 0 0 32px rgba(245,166,35,.14);
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .board-wrap {
+      width: min(100%, 530px);
+      margin: 0 auto;
+      aspect-ratio: 1;
+      border-radius: 8px;
+      padding: clamp(.65rem, 2vw, 1rem);
+      background:
+        linear-gradient(135deg, rgba(245,166,35,.12), rgba(55,214,255,.08)),
+        rgba(0,0,0,.28);
+      border: 1px solid rgba(200,85,247,.26);
+      box-shadow: inset 0 0 30px rgba(0,0,0,.24), 0 18px 50px rgba(0,0,0,.24);
+    }
+    .board {
+      width: 100%;
+      height: 100%;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(3, 1fr);
+      gap: clamp(.55rem, 1.6vw, .85rem);
+    }
+    .cell {
+      border: 1px solid rgba(255,255,255,.1);
+      background: linear-gradient(180deg, rgba(255,255,255,.1), rgba(255,255,255,.035));
+      border-radius: 8px;
+      color: #fff;
+      cursor: pointer;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(3.5rem, 10vw, 6.6rem);
+      line-height: 1;
+      display: grid;
+      place-items: center;
+      min-width: 0;
+      min-height: 0;
+      transition: transform .12s, border-color .18s, box-shadow .18s, background .18s;
+    }
+    .cell:hover:not(:disabled) {
+      transform: translateY(-2px) scale(1.015);
+      border-color: rgba(245,166,35,.7);
+      box-shadow: 0 10px 28px rgba(245,166,35,.15);
+    }
+    .cell:disabled { cursor: default; opacity: .98; }
+    .cell.x { color: var(--gold); text-shadow: 0 0 22px rgba(245,166,35,.5); }
+    .cell.o { color: var(--cyan); text-shadow: 0 0 22px rgba(55,214,255,.45); }
+    .cell.win { background: rgba(61,255,160,.14); border-color: rgba(61,255,160,.7); box-shadow: 0 0 26px rgba(61,255,160,.18); }
+    .cell.vanish-next {
+      border-color: rgba(255,68,85,.58);
+      box-shadow: inset 0 0 20px rgba(255,68,85,.12), 0 0 22px rgba(255,68,85,.12);
+    }
+    .cell.pop { animation: popIn .22s ease; }
+    @keyframes popIn { from { transform: scale(.78); } to { transform: scale(1); } }
+
+    .round-status {
+      min-height: 54px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      background: rgba(0,0,0,.2);
+      padding: .85rem 1rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .round-status strong {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.25rem;
+      letter-spacing: 1px;
+      color: #fff;
+    }
+    .round-status span {
+      color: var(--muted);
+      text-align: right;
+      font-size: .95rem;
+    }
+
+    .feed {
+      display: grid;
+      gap: .55rem;
+      max-height: 360px;
+      overflow: auto;
+      padding-right: .2rem;
+    }
+    .feed-item {
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(0,0,0,.2);
+      padding: .72rem .78rem;
+      display: grid;
+      gap: .2rem;
+    }
+    .feed-title {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .feed-sub {
+      color: var(--muted);
+      font-size: .88rem;
+      line-height: 1.35;
+    }
+    .tech-strip {
+      display: grid;
+      gap: .55rem;
+    }
+    .tech-row {
+      padding: .75rem;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+    }
+    .tech-row b {
+      display: block;
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      letter-spacing: 1px;
+      margin-bottom: .2rem;
+      text-transform: uppercase;
+    }
+    .tech-row span {
+      color: var(--muted);
+      font-size: .9rem;
+      line-height: 1.35;
+    }
+
+    footer {
+      max-width: 1200px;
+      margin: 1.5rem auto 0;
+      color: var(--muted);
+      font-size: .82rem;
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      border-top: 1px solid rgba(200,85,247,.16);
+      padding-top: 1.1rem;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--gold); }
+
+    @media (max-width: 1100px) {
+      .game-shell { grid-template-columns: 1fr; }
+      .status-stack { min-width: 0; }
+      .hero { grid-template-columns: 1fr; }
+    }
+    @media (max-width: 760px) {
+      .topnav { height: 70px; padding: 0 1rem; }
+      .topnav-brand { font-size: 1.45rem; letter-spacing: 2px; }
+      .topnav-beta { display: none; }
+      .sidebar { display: none; }
+      .main { padding: 92px 1rem 34px; }
+      .scorebar { grid-template-columns: 1fr; }
+      .timer { width: 76px; height: 76px; margin: 0 auto; }
+      .round-status { display: grid; }
+      .round-status span { text-align: left; }
+      footer { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+    <div style="position: relative;">
+      <button id="connectWalletBtn" class="btn-connect">Connect Wallet</button>
+    </div>
+  </nav>
+
+  <aside class="sidebar">
+    <a href="index.html" class="nav-pill" title="Home">⌂</a>
+    <a href="all-games.html" class="nav-pill active-purple" title="Games">▦</a>
+    <div class="nav-pill-divider"></div>
+    <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" title="Telegram">T</a>
+  </aside>
+
+  <main class="main">
+    <section class="hero">
+      <div>
+        <div class="kicker">PvP Prototype</div>
+        <h1>Vanishing Tic Tac Toe</h1>
+        <p class="hero-copy">A fast PvP wager test where each player can only keep 3 marks alive. Place a 4th mark and your oldest one disappears, so stale draws turn into pressure.</p>
+      </div>
+      <div class="status-stack">
+        <div class="status-pill"><span>Move Layer</span><span>Instant</span></div>
+        <div class="status-pill"><span>Variant</span><span>Vanishing</span></div>
+        <div class="status-pill"><span>Pot Model</span><span>PvP</span></div>
+        <div class="status-pill"><span>Burn</span><span>5%</span></div>
+        <div class="status-pill"><span>Backend</span><span id="backendBadge">Checking</span></div>
+      </div>
+    </section>
+
+    <section class="game-shell">
+      <aside class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Match Room</div>
+          <div class="panel-tag">Local Test</div>
+        </div>
+        <div class="panel-body">
+          <div class="field">
+            <label for="wagerInput">Player Wager</label>
+            <div class="input-row">
+              <input id="wagerInput" type="number" min="1000" step="1000" value="100000" />
+              <div class="unit">CASHX</div>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Clock</label>
+            <div class="segmented" id="clockButtons">
+              <button data-clock="15">15s</button>
+              <button class="active" data-clock="30">30s</button>
+              <button data-clock="45">45s</button>
+            </div>
+          </div>
+
+          <div class="field">
+            <label>Opponent</label>
+            <div class="segmented" id="opponentButtons">
+              <button class="active" data-opponent="bot">Bot</button>
+              <button data-opponent="local">Local</button>
+              <button data-opponent="room">Room</button>
+            </div>
+          </div>
+
+          <button class="action-btn" id="newMatchBtn">Create Match</button>
+          <button class="ghost-btn" id="joinMatchBtn">Simulate Join</button>
+          <div class="room-code" id="roomCode" hidden>
+            <b>Room</b>
+            <span id="roomIdText">Not created</span>
+            <div class="room-actions">
+              <button class="mini-btn" id="copyInviteBtn" type="button">Copy Link</button>
+              <button class="mini-btn" id="openInviteBtn" type="button">Open Tab</button>
+            </div>
+          </div>
+
+          <div class="money-grid">
+            <div class="money-row"><span>Total Pot</span><span id="potValue">200,000</span></div>
+            <div class="money-row burn"><span>Burn</span><span id="burnValue">10,000</span></div>
+            <div class="money-row win"><span>Winner Gets</span><span id="payoutValue">190,000</span></div>
+          </div>
+        </div>
+      </aside>
+
+      <section class="panel arena">
+        <div class="scorebar">
+          <div class="player-card active" id="xCard">
+            <div class="player-label">Player X</div>
+            <div class="player-name" id="xName">You</div>
+          </div>
+          <div class="timer" id="timer">30</div>
+          <div class="player-card" id="oCard">
+            <div class="player-label">Player O</div>
+            <div class="player-name" id="oName">Waiting</div>
+          </div>
+        </div>
+
+        <div class="board-wrap">
+          <div class="board" id="board" aria-label="Tic Tac Toe board"></div>
+        </div>
+
+        <div class="round-status">
+          <strong id="roundTitle">Create a match</strong>
+          <span id="roundCopy">Use the prototype to test the feel before we connect live rooms.</span>
+        </div>
+      </section>
+
+      <aside class="panel">
+        <div class="panel-head">
+          <div class="panel-title">Engine Notes</div>
+          <div class="panel-tag">Next Build</div>
+        </div>
+        <div class="panel-body">
+          <div class="tech-strip">
+            <div class="tech-row">
+              <b>One wallet step to enter</b>
+              <span>Players fund the match once. No wallet popups are needed for each move.</span>
+            </div>
+            <div class="tech-row">
+              <b>Vanishing marks</b>
+              <span>Each player keeps 3 marks. On the 4th placement, that player's oldest mark disappears.</span>
+            </div>
+            <div class="tech-row">
+              <b>Contract settles pot</b>
+              <span>The winner receives the player-funded pot minus burn. No house bankroll is involved.</span>
+            </div>
+          </div>
+
+          <div class="panel-title" style="font-size:1.25rem;margin:1rem 0 .6rem;">Match Feed</div>
+          <div class="feed" id="feed"></div>
+        </div>
+      </aside>
+    </section>
+
+    <footer>
+      <div>CASHX CASINO · PVP WAGER PROTOTYPE · PULSECHAIN</div>
+      <div><a href="all-games.html">All Games</a> · <a href="fairness.html">Fairness</a> · <a href="beta.html">Beta Info</a></div>
+    </footer>
+  </main>
+
+  <script>
+    'use strict';
+
+    const WALLET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
+    const boardEl = document.getElementById('board');
+    const timerEl = document.getElementById('timer');
+    const roundTitle = document.getElementById('roundTitle');
+    const roundCopy = document.getElementById('roundCopy');
+    const feedEl = document.getElementById('feed');
+    const wagerInput = document.getElementById('wagerInput');
+    const potValue = document.getElementById('potValue');
+    const burnValue = document.getElementById('burnValue');
+    const payoutValue = document.getElementById('payoutValue');
+    const xCard = document.getElementById('xCard');
+    const oCard = document.getElementById('oCard');
+    const oName = document.getElementById('oName');
+    const joinMatchBtn = document.getElementById('joinMatchBtn');
+    const roomCode = document.getElementById('roomCode');
+    const roomIdText = document.getElementById('roomIdText');
+    const copyInviteBtn = document.getElementById('copyInviteBtn');
+    const openInviteBtn = document.getElementById('openInviteBtn');
+    const backendBadge = document.getElementById('backendBadge');
+    const PVP_API = (window.CASHX_PVP_BACKEND_URL || 'http://localhost:8790').replace(/\/$/, '');
+
+    let connectedAddress = null;
+    let localPlayerId = sessionStorage.getItem('cashxTttPlayerId');
+    if (!localPlayerId) {
+      localPlayerId = 'guest-' + Math.random().toString(16).slice(2, 10);
+      sessionStorage.setItem('cashxTttPlayerId', localPlayerId);
+    }
+    let board = Array(9).fill('');
+    let markHistory = { X: [], O: [] };
+    let turn = 'X';
+    let joined = false;
+    let gameOver = false;
+    let clockSeconds = 30;
+    let timeLeft = 30;
+    let timerHandle = null;
+    let pollHandle = null;
+    let healthHandle = null;
+    let opponentMode = 'bot';
+    let winningCells = [];
+    let currentRoom = null;
+    let currentRoomId = new URLSearchParams(location.search).get('room') || '';
+    let myMark = null;
+    const MAX_MARKS_PER_PLAYER = 3;
+
+    const wins = [
+      [0, 1, 2], [3, 4, 5], [6, 7, 8],
+      [0, 3, 6], [1, 4, 7], [2, 5, 8],
+      [0, 4, 8], [2, 4, 6]
+    ];
+
+    function init() {
+      renderBoard();
+      updateMoney();
+      addFeed('Prototype loaded', 'Create a match to test the first CashX PvP game loop.');
+      document.getElementById('newMatchBtn').addEventListener('click', () => createMatch());
+      joinMatchBtn.addEventListener('click', () => joinMatch());
+      copyInviteBtn.addEventListener('click', copyInviteLink);
+      openInviteBtn.addEventListener('click', openInviteTab);
+      wagerInput.addEventListener('input', updateMoney);
+      setupSegmented('clockButtons', 'clock', value => {
+        clockSeconds = Number(value);
+        if (!timerHandle) {
+          timeLeft = clockSeconds;
+          renderTimer();
+        }
+      });
+      setupSegmented('opponentButtons', 'opponent', value => {
+        opponentMode = value;
+        joinMatchBtn.textContent = opponentMode === 'room' ? 'Join Room' : 'Simulate Join';
+        oName.textContent = joined ? opponentLabel() : 'Waiting';
+        addFeed('Opponent mode changed', opponentLabel());
+        if (opponentMode !== 'room') {
+          stopPolling();
+        } else if (currentRoomId) {
+          loadRoom(currentRoomId);
+        }
+      });
+      setupWallet();
+      checkBackendHealth();
+      healthHandle = setInterval(checkBackendHealth, 10000);
+      if (currentRoomId) {
+        setOpponentMode('room');
+        loadRoom(currentRoomId);
+      }
+    }
+
+    function setupSegmented(id, key, onChange) {
+      document.getElementById(id).addEventListener('click', event => {
+        const button = event.target.closest('button[data-' + key + ']');
+        if (!button) return;
+        document.querySelectorAll('#' + id + ' button').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        onChange(button.dataset[key]);
+      });
+    }
+
+    function setOpponentMode(mode) {
+      const button = document.querySelector('#opponentButtons button[data-opponent="' + mode + '"]');
+      if (!button) return;
+      document.querySelectorAll('#opponentButtons button').forEach(btn => btn.classList.remove('active'));
+      button.classList.add('active');
+      opponentMode = mode;
+      joinMatchBtn.textContent = mode === 'room' ? 'Join Room' : 'Simulate Join';
+    }
+
+    async function createMatch() {
+      if (opponentMode === 'room') {
+        await createBackendRoom();
+        return;
+      }
+      clearInterval(timerHandle);
+      stopPolling();
+      currentRoom = null;
+      currentRoomId = '';
+      myMark = null;
+      updateRoomCode();
+      board = Array(9).fill('');
+      markHistory = { X: [], O: [] };
+      turn = 'X';
+      joined = false;
+      gameOver = false;
+      winningCells = [];
+      timeLeft = clockSeconds;
+      oName.textContent = 'Waiting';
+      roundTitle.textContent = 'Match created';
+      roundCopy.textContent = 'Waiting for a second player to match the wager.';
+      addFeed('Match created', formatAmount(Number(wagerInput.value || 0)) + ' CASHX entry posted.');
+      renderBoard();
+      renderTimer();
+      updateActivePlayer();
+    }
+
+    async function joinMatch() {
+      if (opponentMode === 'room') {
+        await joinBackendRoom();
+        return;
+      }
+      if (gameOver) createMatch();
+      joined = true;
+      oName.textContent = opponentLabel();
+      roundTitle.textContent = 'Player X to move';
+      roundCopy.textContent = 'Keep 3 marks alive. Your 4th placement removes your oldest mark.';
+      addFeed('Opponent joined', opponentLabel() + ' matched the wager. Pot is ready.');
+      startClock();
+      renderBoard();
+      updateActivePlayer();
+    }
+
+    function opponentLabel() {
+      if (opponentMode === 'local') return 'Local Player';
+      if (opponentMode === 'room') return 'Room Player';
+      return 'Blitz Bot';
+    }
+
+    async function createBackendRoom() {
+      try {
+        setBackendBadge('Checking', false);
+        stopPolling();
+        roundTitle.textContent = 'Creating room';
+        roundCopy.textContent = 'Calling the PvP backend...';
+        const room = await api('/api/pvp/rooms', {
+          game: 'tictactoe',
+          creator: playerId(),
+          wager: String(Math.max(1, Math.floor(Number(wagerInput.value || 0)))),
+          clockSeconds,
+        });
+        syncRoom(room);
+        updateRoomUrl(room.id);
+        addFeed('Backend room created', 'Copy the invite link or open it in another tab to test player two.');
+        setBackendBadge('Online', true);
+        startPolling();
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    async function joinBackendRoom() {
+      try {
+        setBackendBadge('Checking', false);
+        if (!currentRoomId) throw new Error('Create or open a room first.');
+        roundTitle.textContent = 'Joining room';
+        roundCopy.textContent = 'Matching the wager in the PvP backend...';
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoomId) + '/join', {
+          player: playerId(),
+        });
+        syncRoom(room);
+        addFeed('Room joined', 'The backend moved the room to active play.');
+        setBackendBadge('Online', true);
+        startPolling();
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    async function loadRoom(roomId) {
+      try {
+        setBackendBadge('Checking', false);
+        const room = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(roomId));
+        syncRoom(room);
+        addFeed('Room loaded', 'Connected to backend room ' + room.id.slice(0, 8) + '.');
+        setBackendBadge('Online', true);
+        startPolling();
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    async function makeBackendMove(index) {
+      try {
+        setBackendBadge('Online', true);
+        if (!currentRoom || currentRoom.status !== 'active') throw new Error('Room is not active yet.');
+        const seat = currentRoom.players.find(player => player.address === playerId().toLowerCase());
+        if (!seat) throw new Error('Join this room before moving.');
+        if (seat.mark !== currentRoom.turn) throw new Error('Waiting for Player ' + currentRoom.turn + '.');
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/move', {
+          player: playerId(),
+          cell: index,
+        });
+        addFeed('Backend move accepted', 'Player ' + seat.mark + ' marked cell ' + (index + 1) + '.');
+        syncRoom(room);
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    function syncRoom(room) {
+      currentRoom = room;
+      currentRoomId = room.id;
+      board = room.board.slice();
+      markHistory = room.markHistory || { X: [], O: [] };
+      turn = room.turn;
+      winningCells = room.winningCells || [];
+      clockSeconds = Number(room.clockSeconds || clockSeconds);
+      timeLeft = clockSeconds;
+      joined = room.status === 'active' || room.status === 'settled';
+      gameOver = room.status === 'settled';
+      const mySeat = room.players.find(player => player.address === playerId().toLowerCase());
+      myMark = mySeat ? mySeat.mark : null;
+      wagerInput.value = room.wager;
+      oName.textContent = room.players[1] ? playerLabel(room.players[1]) : 'Waiting';
+      document.getElementById('xName').textContent = room.players[0] ? playerLabel(room.players[0]) : 'Player X';
+      updateMoneyFromRoom(room);
+      updateRoomCode();
+      renderBoard();
+      renderTimer();
+      updateActivePlayer();
+      updateRoomUrl(room.id);
+
+      if (room.status === 'waiting') {
+        roundTitle.textContent = 'Room waiting';
+        roundCopy.textContent = 'Copy the invite link, then join from another tab or use Join Room.';
+      } else if (room.status === 'active') {
+        roundTitle.textContent = myMark === room.turn ? 'Your move' : 'Player ' + room.turn + ' to move';
+        roundCopy.textContent = myMark
+          ? 'You are Player ' + myMark + '. Both tabs stay synced from the PvP backend.'
+          : 'Spectating this room. Join before moving.';
+      } else if (room.winner) {
+        const winnerSeat = room.players.find(player => player.address === room.winner);
+        roundTitle.textContent = 'Player ' + (winnerSeat ? winnerSeat.mark : '?') + ' wins';
+        roundCopy.textContent = formatAmount(Number(room.payout)) + ' CASHX payout after burn.';
+      } else {
+        roundTitle.textContent = 'Draw';
+        roundCopy.textContent = 'No winner. Live contract rules can refund or offer rematch.';
+      }
+    }
+
+    function playerId() {
+      return connectedAddress || localPlayerId;
+    }
+
+    function playerLabel(player) {
+      const label = shortPlayer(player.address);
+      return player.address === playerId().toLowerCase() ? label + ' (You)' : label;
+    }
+
+    function canMoveInRoom() {
+      return opponentMode === 'room'
+        && currentRoom
+        && currentRoom.status === 'active'
+        && myMark
+        && myMark === currentRoom.turn;
+    }
+
+    function shortPlayer(value) {
+      const text = String(value || '');
+      if (text.startsWith('guest-')) return text.replace('guest-', 'Guest ');
+      if (text.length > 12) return text.slice(0, 6) + '...' + text.slice(-4);
+      return text || 'Player';
+    }
+
+    function updateMoneyFromRoom(room) {
+      potValue.textContent = formatAmount(Number(room.pot));
+      burnValue.textContent = formatAmount(Number(room.burn));
+      payoutValue.textContent = formatAmount(Number(room.payout));
+    }
+
+    function updateRoomCode() {
+      if (!currentRoomId) {
+        roomCode.hidden = true;
+        return;
+      }
+      roomCode.hidden = false;
+      roomIdText.textContent = inviteLink();
+    }
+
+    function updateRoomUrl(roomId) {
+      const url = new URL(location.href);
+      url.searchParams.set('room', roomId);
+      history.replaceState(null, '', url.toString());
+    }
+
+    function inviteLink() {
+      if (!currentRoomId) return location.href;
+      const url = new URL(location.href);
+      url.searchParams.set('room', currentRoomId);
+      return url.toString();
+    }
+
+    async function copyInviteLink() {
+      if (!currentRoomId) return;
+      const link = inviteLink();
+      try {
+        await navigator.clipboard.writeText(link);
+        copyInviteBtn.textContent = 'Copied';
+        addFeed('Invite copied', 'Open the link in another tab to test the second player.');
+      } catch (_) {
+        copyInviteBtn.textContent = 'Copy Failed';
+        addFeed('Copy failed', link);
+      }
+      window.setTimeout(() => { copyInviteBtn.textContent = 'Copy Link'; }, 1400);
+    }
+
+    function openInviteTab() {
+      if (!currentRoomId) return;
+      window.open(inviteLink(), '_blank', 'noopener');
+      addFeed('Invite opened', 'Second tab opened for room testing.');
+    }
+
+    async function checkBackendHealth() {
+      try {
+        const health = await fetchJson('/api/pvp/health');
+        setBackendBadge(health.ok ? 'Online' : 'Offline', Boolean(health.ok));
+      } catch (_) {
+        setBackendBadge('Offline', false);
+      }
+    }
+
+    function setBackendBadge(text, online) {
+      backendBadge.textContent = text;
+      backendBadge.classList.toggle('backend-online', online);
+      backendBadge.classList.toggle('backend-offline', !online && text !== 'Checking');
+    }
+
+    function startPolling() {
+      stopPolling();
+      if (opponentMode !== 'room' || !currentRoomId) return;
+      pollHandle = setInterval(async () => {
+        try {
+          const room = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(currentRoomId));
+          syncRoom(room);
+          if (room.status === 'settled') stopPolling();
+        } catch (_) {}
+      }, 1000);
+    }
+
+    function stopPolling() {
+      if (pollHandle) clearInterval(pollHandle);
+      pollHandle = null;
+    }
+
+    async function api(path, body) {
+      const response = await fetch(PVP_API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      return parseResponse(response);
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(PVP_API + path);
+      return parseResponse(response);
+    }
+
+    async function parseResponse(response) {
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || 'PvP backend request failed');
+      return data;
+    }
+
+    function showBackendError(err) {
+      const message = err && err.message ? err.message : String(err);
+      roundTitle.textContent = 'Backend offline';
+      roundCopy.textContent = message;
+      setBackendBadge('Offline', false);
+      addFeed('Backend error', message + ' Start the PvP server locally with npm run pvp.');
+    }
+
+    function renderBoard() {
+      boardEl.innerHTML = '';
+      board.forEach((mark, index) => {
+        const cell = document.createElement('button');
+        cell.className = 'cell';
+        if (mark) cell.classList.add(mark.toLowerCase(), 'pop');
+        if (winningCells.includes(index)) cell.classList.add('win');
+        if (isNextToVanish(index, mark)) cell.classList.add('vanish-next');
+        cell.textContent = mark;
+        cell.disabled = !joined
+          || gameOver
+          || Boolean(mark)
+          || (opponentMode === 'bot' && turn === 'O')
+          || (opponentMode === 'room' && !canMoveInRoom());
+        cell.setAttribute('aria-label', 'Cell ' + (index + 1));
+        cell.addEventListener('click', () => makeMove(index));
+        boardEl.appendChild(cell);
+      });
+    }
+
+    function makeMove(index) {
+      if (opponentMode === 'room') {
+        makeBackendMove(index);
+        return;
+      }
+      if (!joined || gameOver || board[index]) return;
+      const vanishedCell = applyLocalVanishingMove(turn, index);
+      addFeed('Move played', 'Player ' + turn + ' marked cell ' + (index + 1) + vanishText(vanishedCell) + '.');
+      const result = getResult();
+      if (result) return finishRound(result);
+      turn = turn === 'X' ? 'O' : 'X';
+      timeLeft = clockSeconds;
+      renderBoard();
+      updateActivePlayer();
+      renderStatus();
+      if (opponentMode === 'bot' && turn === 'O') {
+        window.setTimeout(botMove, 520);
+      }
+    }
+
+    function botMove() {
+      if (gameOver || turn !== 'O') return;
+      const index = chooseBotMove();
+      makeMove(index);
+    }
+
+    function chooseBotMove() {
+      const open = board.map((mark, index) => mark ? null : index).filter(index => index !== null);
+      const winMove = findLineMove('O');
+      if (winMove !== null) return winMove;
+      const blockMove = findLineMove('X');
+      if (blockMove !== null) return blockMove;
+      if (open.includes(4)) return 4;
+      const corners = [0, 2, 6, 8].filter(index => open.includes(index));
+      if (corners.length) return corners[Math.floor(Math.random() * corners.length)];
+      return open[Math.floor(Math.random() * open.length)];
+    }
+
+    function findLineMove(mark) {
+      for (const line of wins) {
+        const marks = line.map(index => board[index]);
+        if (marks.filter(value => value === mark).length === 2 && marks.includes('')) {
+          return line[marks.indexOf('')];
+        }
+      }
+      return null;
+    }
+
+    function applyLocalVanishingMove(mark, index) {
+      board[index] = mark;
+      markHistory[mark].push(index);
+      if (markHistory[mark].length <= MAX_MARKS_PER_PLAYER) return null;
+      const vanishedCell = markHistory[mark].shift();
+      if (board[vanishedCell] === mark) board[vanishedCell] = '';
+      return vanishedCell;
+    }
+
+    function isNextToVanish(index, mark) {
+      if (!mark || gameOver) return false;
+      const history = markHistory[mark] || [];
+      return history.length >= MAX_MARKS_PER_PLAYER && history[0] === index;
+    }
+
+    function vanishText(cell) {
+      return cell === null || cell === undefined ? '' : ', oldest mark vanished from cell ' + (cell + 1);
+    }
+
+    function getResult() {
+      for (const line of wins) {
+        const [a, b, c] = line;
+        if (board[a] && board[a] === board[b] && board[a] === board[c]) {
+          winningCells = line;
+          return { type: 'win', winner: board[a] };
+        }
+      }
+      return null;
+    }
+
+    function finishRound(result) {
+      gameOver = true;
+      clearInterval(timerHandle);
+      timerHandle = null;
+      renderBoard();
+      updateActivePlayer();
+
+      if (result.type === 'draw') {
+        roundTitle.textContent = 'Draw';
+        roundCopy.textContent = 'PvP contract would unlock rematch or refund based on room rules.';
+        addFeed('Round draw', 'No winner. The live version can offer rematch or refund.');
+        return;
+      }
+
+      const payout = getPayout();
+      roundTitle.textContent = 'Player ' + result.winner + ' wins';
+      roundCopy.textContent = formatAmount(payout) + ' CASHX payout after burn.';
+      addFeed('Result ready', 'Backend signer would approve Player ' + result.winner + ' for payout.');
+    }
+
+    function startClock() {
+      clearInterval(timerHandle);
+      timeLeft = clockSeconds;
+      renderTimer();
+      timerHandle = setInterval(() => {
+        if (gameOver || !joined) return;
+        timeLeft -= 1;
+        renderTimer();
+        if (timeLeft <= 0) {
+          const winner = turn === 'X' ? 'O' : 'X';
+          finishRound({ type: 'win', winner });
+          roundTitle.textContent = 'Clock expired';
+          roundCopy.textContent = 'Player ' + winner + ' wins by timeout.';
+          addFeed('Timeout', 'Player ' + turn + ' ran out of time.');
+        }
+      }, 1000);
+    }
+
+    function renderTimer() {
+      timerEl.textContent = String(timeLeft);
+      const percent = Math.max(0, Math.min(100, (timeLeft / clockSeconds) * 100));
+      timerEl.style.setProperty('--timer', percent + '%');
+    }
+
+    function renderStatus() {
+      roundTitle.textContent = 'Player ' + turn + ' to move';
+      roundCopy.textContent = 'Clock resets after every legal move.';
+    }
+
+    function updateActivePlayer() {
+      xCard.classList.toggle('active', joined && !gameOver && turn === 'X');
+      oCard.classList.toggle('active', joined && !gameOver && turn === 'O');
+    }
+
+    function updateMoney() {
+      const wager = Math.max(0, Number(wagerInput.value || 0));
+      const pot = wager * 2;
+      const burn = Math.floor(pot * 0.05);
+      const payout = pot - burn;
+      potValue.textContent = formatAmount(pot);
+      burnValue.textContent = formatAmount(burn);
+      payoutValue.textContent = formatAmount(payout);
+    }
+
+    function getPayout() {
+      const wager = Math.max(0, Number(wagerInput.value || 0));
+      return wager * 2 - Math.floor(wager * 2 * 0.05);
+    }
+
+    function formatAmount(value) {
+      return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function addFeed(title, sub) {
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      item.innerHTML = '<div class="feed-title">' + escapeHtml(title) + '</div><div class="feed-sub">' + escapeHtml(sub) + '</div>';
+      feedEl.prepend(item);
+    }
+
+    function escapeHtml(value) {
+      return String(value).replace(/[&<>"']/g, char => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      })[char]);
+    }
+
+    function setupWallet() {
+      const connectBtn = document.getElementById('connectWalletBtn');
+      async function connectWallet() {
+        if (!window.showWalletModal) {
+          connectBtn.textContent = 'Wallet unavailable';
+          return;
+        }
+        try {
+          const result = await window.showWalletModal();
+          connectedAddress = result && result.address ? result.address : null;
+          updateWalletButton();
+        } catch (err) {
+          if (!err || err.message !== 'dismissed') connectBtn.textContent = 'Connect Wallet';
+        }
+      }
+      function updateWalletButton() {
+        if (!connectedAddress) {
+          connectBtn.innerHTML = WALLET_SVG + ' Connect Wallet';
+          return;
+        }
+        connectBtn.textContent = connectedAddress.slice(0, 6) + '...' + connectedAddress.slice(-4);
+      }
+      connectBtn.addEventListener('click', connectWallet);
+      updateWalletButton();
+    }
+
+    init();
+  </script>
+</body>
+</html>
