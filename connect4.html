@@ -20,7 +20,9 @@
     :root {
       --navy: #0d0a16;
       --panel: rgba(19,15,31,.84);
+      --panel-solid: #130f1f;
       --gold: #f5a623;
+      --gold-dim: #c47f0e;
       --purple: #c855f7;
       --green: #3dffa0;
       --red: #ff4455;
@@ -32,6 +34,8 @@
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    @keyframes bodyFadeIn { from { opacity: 0; } to { opacity: 1; } }
     body {
       min-height: 100vh;
       font-family: 'Barlow', sans-serif;
@@ -40,6 +44,7 @@
         linear-gradient(180deg, rgba(13,10,22,.84), rgba(13,10,22,.97)),
         url('hero-casino.png') center / cover fixed;
       overflow-x: hidden;
+      animation: bodyFadeIn .4s ease forwards;
     }
     body::after {
       content: '';
@@ -56,9 +61,9 @@
       position: fixed;
       top: 0; left: 0; right: 0;
       height: 80px;
-      background: rgba(8,5,18,.48);
-      border-bottom: 1px solid rgba(200,85,247,.32);
-      box-shadow: 0 2px 22px rgba(200,85,247,.15);
+      background: rgba(8,5,18,.35);
+      border-bottom: 1px solid rgba(200,85,247,.6);
+      box-shadow: 0 2px 18px rgba(200,85,247,.2);
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -103,6 +108,46 @@
       transition: box-shadow .25s, transform .2s;
     }
     .btn-connect:hover { box-shadow: 0 0 28px rgba(255,77,109,.48); transform: translateY(-2px); }
+    .btn-connect.connected { background: linear-gradient(135deg, var(--purple), #8b1fcc); }
+
+    .wallet-dropdown {
+      position: absolute;
+      top: calc(100% + 10px);
+      right: 0;
+      background: rgba(13,10,22,.97);
+      border: 1px solid rgba(200,85,247,.25);
+      border-radius: 14px;
+      padding: 6px;
+      min-width: 190px;
+      z-index: 700;
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      box-shadow: 0 12px 40px rgba(0,0,0,.6);
+    }
+    .wallet-dropdown-addr {
+      padding: .55rem .9rem .4rem;
+      font-family: 'Space Mono', monospace;
+      font-size: .72rem;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .wallet-dropdown-item {
+      display: flex;
+      align-items: center;
+      gap: .55rem;
+      padding: .6rem .9rem;
+      border-radius: 10px;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .95rem;
+      font-weight: 600;
+      letter-spacing: 1px;
+      color: var(--text);
+      cursor: pointer;
+      white-space: nowrap;
+    }
+    .wallet-dropdown-item:hover { background: rgba(200,85,247,.15); color: #fff; }
+    .wallet-dropdown-item.danger:hover { background: rgba(255,68,85,.14); color: var(--red); }
+    .wallet-dropdown-sep { height: 1px; background: rgba(200,85,247,.12); margin: 4px 0; }
 
     .sidebar {
       position: fixed;
@@ -357,6 +402,80 @@
     }
     .chain-box.live { border-color: rgba(61,255,160,.35); background: rgba(61,255,160,.07); }
     .chain-box.test { border-color: rgba(245,166,35,.25); background: rgba(245,166,35,.06); }
+    .lobby-panel {
+      margin-top: 1rem;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(0,0,0,.18);
+      border-radius: 8px;
+      padding: .75rem;
+      display: grid;
+      gap: .65rem;
+    }
+    .lobby-head {
+      display: flex;
+      justify-content: space-between;
+      gap: .65rem;
+      align-items: center;
+    }
+    .lobby-head b {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .lobby-list { display: grid; gap: .5rem; max-height: 220px; overflow: auto; padding-right: .15rem; }
+    .lobby-empty { color: var(--muted); font-size: .88rem; line-height: 1.35; }
+    .lobby-card {
+      border: 1px solid rgba(55,214,255,.18);
+      background: rgba(55,214,255,.055);
+      border-radius: 8px;
+      padding: .6rem;
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .55rem;
+      align-items: center;
+    }
+    .lobby-card strong {
+      color: #fff;
+      display: block;
+      font-family: 'Barlow Condensed', sans-serif;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .lobby-card span {
+      color: var(--muted);
+      display: block;
+      font-size: .82rem;
+      margin-top: .12rem;
+    }
+    .lobby-card-mine {
+      border-color: rgba(245,166,35,.35);
+      background: rgba(245,166,35,.07);
+    }
+    .mini-btn-yours {
+      min-height: 36px;
+      padding: .5rem .55rem;
+      border: 1px solid rgba(245,166,35,.28);
+      border-radius: 6px;
+      background: rgba(245,166,35,.08);
+      color: var(--gold);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .72rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      display: flex;
+      align-items: center;
+      white-space: nowrap;
+    }
+    .mini-btn-join {
+      background: linear-gradient(135deg, rgba(200,85,247,.25), rgba(245,166,35,.18)) !important;
+      border-color: rgba(200,85,247,.55) !important;
+      color: #fff !important;
+      font-weight: 600;
+    }
+    .mini-btn-join:hover { background: linear-gradient(135deg, rgba(200,85,247,.42), rgba(245,166,35,.3)) !important; }
+    .mini-btn-join:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
 
     .arena { padding: 1rem; display: grid; gap: 1rem; }
     .scorebar { display: grid; grid-template-columns: 1fr auto 1fr; gap: .75rem; align-items: center; }
@@ -456,6 +575,14 @@
     }
     .slot.last { border-color: rgba(245,166,35,.82); box-shadow: 0 0 24px rgba(245,166,35,.18); }
     .slot.win { border-color: rgba(61,255,160,.78); box-shadow: 0 0 28px rgba(61,255,160,.24); }
+    .slot.drop-target:not(:disabled) { border-color: rgba(245,166,35,.65) !important; box-shadow: 0 0 22px rgba(245,166,35,.22) !important; }
+    @keyframes c4-drop {
+      0%   { transform: translateY(var(--drop-y,-160px)) scale(.88); opacity:.7; }
+      55%  { transform: translateY(5px) scale(1.04); opacity:1; }
+      75%  { transform: translateY(-3px) scale(.98); }
+      100% { transform: translateY(0) scale(1); opacity:1; }
+    }
+    .slot.dropping::after { transition: none !important; animation: c4-drop .42s cubic-bezier(.33,1,.68,1) both; }
     .round-status {
       min-height: 54px;
       border: 1px solid rgba(255,255,255,.1);
@@ -476,6 +603,59 @@
       margin-top: -.35rem;
     }
     .status-actions.visible { display: grid; }
+    .rematch-box {
+      display: none;
+      border: 1px solid rgba(245,166,35,.25);
+      background: rgba(245,166,35,.07);
+      border-radius: 8px;
+      padding: .8rem;
+      gap: .6rem;
+    }
+    .rematch-box.visible { display: grid; }
+    .rematch-box strong {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.1rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .rematch-box span { color: var(--muted); font-size: .9rem; line-height: 1.35; }
+    .rematch-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .ready-phase {
+      border: 1px solid rgba(245,166,35,.28);
+      background: rgba(245,166,35,.06);
+      border-radius: 8px;
+      padding: .9rem;
+      display: none;
+      gap: .75rem;
+    }
+    .ready-phase:not([hidden]) { display: grid; }
+    .ready-header { color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
+    .ready-indicators { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+    .ready-indicator {
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .55rem .7rem;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 8px;
+      background: rgba(0,0,0,.18);
+      font-size: .88rem;
+    }
+    .ready-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.18); flex-shrink: 0; transition: background .3s, box-shadow .3s; }
+    .ready-dot.is-ready { background: var(--green); box-shadow: 0 0 8px rgba(61,255,160,.55); }
+    .ready-badge {
+      font-family: 'Michroma', sans-serif;
+      font-size: .42rem;
+      letter-spacing: 1.5px;
+      color: var(--green);
+      border: 1px solid rgba(61,255,160,.38);
+      padding: .08rem .28rem;
+      margin-left: .35rem;
+      vertical-align: middle;
+      display: none;
+    }
+    .ready-badge.visible { display: inline; }
     .feed { display: grid; gap: .55rem; max-height: 360px; overflow: auto; padding-right: .2rem; }
     .feed-item {
       border: 1px solid rgba(255,255,255,.08);
@@ -535,6 +715,13 @@
     <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
     <div style="position: relative;">
       <button id="connectWalletBtn" class="btn-connect">Connect Wallet</button>
+      <div class="wallet-dropdown" id="walletDropdown" hidden>
+        <div class="wallet-dropdown-addr" id="walletDropdownAddr">—</div>
+        <div class="wallet-dropdown-sep"></div>
+        <div class="wallet-dropdown-item" id="copyAddressBtn">📋 Copy Address</div>
+        <div class="wallet-dropdown-sep"></div>
+        <div class="wallet-dropdown-item danger" id="disconnectWalletBtn">⏏ Disconnect</div>
+      </div>
     </div>
   </nav>
 
@@ -542,7 +729,10 @@
     <a href="index.html" class="nav-pill" title="Home">⌂</a>
     <a href="all-games.html" class="nav-pill active-purple" title="Games">▦</a>
     <div class="nav-pill-divider"></div>
-    <a href="tictactoe.html" class="nav-pill" title="Tic Tac Toe">3</a>
+    <a href="tictactoe.html" class="nav-pill" title="Tic Tac Toe">✕</a>
+    <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" title="Telegram">
+      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.488-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+    </a>
   </aside>
 
   <main class="main">
@@ -570,7 +760,7 @@
           <div class="field">
             <label for="wagerInput">Player Wager</label>
             <div class="input-row">
-              <input id="wagerInput" type="number" min="1000" step="1000" value="100000" />
+              <input id="wagerInput" type="number" min="500" step="500" value="1000" />
               <div class="unit">CASHX</div>
             </div>
           </div>
@@ -605,18 +795,28 @@
             <b>Chain Escrow</b>
             <span id="chainStatus">Test mode until PvPWager address is added.</span>
           </div>
+
+          <div class="lobby-panel">
+            <div class="lobby-head">
+              <b>Open Lobbies</b>
+              <button class="mini-btn" id="refreshLobbiesBtn" type="button">Refresh</button>
+            </div>
+            <div class="lobby-list" id="openLobbies">
+              <div class="lobby-empty">Checking for waiting rooms...</div>
+            </div>
+          </div>
         </div>
       </aside>
 
       <section class="panel arena">
         <div class="scorebar">
           <div class="player-card active" id="xCard">
-            <div class="player-label">Player X</div>
+            <div class="player-label">Player X <span class="ready-badge" id="readyBadgeX">READY</span></div>
             <div class="player-name" id="xName">Waiting</div>
           </div>
           <div class="timer" id="timer">30</div>
           <div class="player-card" id="oCard">
-            <div class="player-label">Player O</div>
+            <div class="player-label">Player O <span class="ready-badge" id="readyBadgeO">READY</span></div>
             <div class="player-name" id="oName">Waiting</div>
           </div>
         </div>
@@ -629,10 +829,33 @@
           <strong id="roundTitle">Create a room</strong>
           <span id="roundCopy">Open the invite in another tab to test a real two-player flow.</span>
         </div>
+        <div class="ready-phase" id="readyPhase" hidden>
+          <div class="ready-header">Both players must ready up to start</div>
+          <div class="ready-indicators">
+            <div class="ready-indicator">
+              <div class="ready-dot" id="readyDotX"></div>
+              <span>Player X: <b id="readyStatusX">Not Ready</b></span>
+            </div>
+            <div class="ready-indicator">
+              <div class="ready-dot" id="readyDotO"></div>
+              <span>Player O: <b id="readyStatusO">Not Ready</b></span>
+            </div>
+          </div>
+          <button class="action-btn" id="readyUpBtn" type="button">Ready Up</button>
+        </div>
+
         <div class="status-actions" id="postGameActions">
           <button class="action-btn" id="settleChainBtn" type="button">Settle On Chain</button>
-          <button class="action-btn" id="rematchBtn" type="button">Rematch Room</button>
+          <button class="action-btn" id="rematchBtn" type="button">Request Rematch</button>
           <button class="ghost-btn" id="freshRoomBtn" type="button">New Room</button>
+        </div>
+        <div class="rematch-box" id="rematchBox">
+          <strong id="rematchTitle">Rematch requested</strong>
+          <span id="rematchCopy">The other player wants another round.</span>
+          <div class="rematch-actions" id="rematchActions">
+            <button class="action-btn" id="acceptRematchBtn" type="button">Accept</button>
+            <button class="ghost-btn" id="declineRematchBtn" type="button">Decline</button>
+          </div>
         </div>
       </section>
 
@@ -679,13 +902,13 @@
     const PVP_WAGER_ADDRESS = String(window.CASHX_PVP_WAGER_ADDRESS || '').trim();
     const CASHX_ADDRESS = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
     const PULSECHAIN_ID = 369;
-    const GAS = {
-      gasLimit: 500000,
-      gasPrice: ethers.utils.parseUnits('100', 'gwei'),
-    };
+    const LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
+    const PAID_CACHE_KEY = 'cashxConnect4PaidRooms';
+    const GAS_BUFFER_BPS = 13000;
     const CASHX_ABI = [
       'function approve(address spender, uint256 amount) returns (bool)',
       'function allowance(address owner, address spender) view returns (uint256)',
+          'function balanceOf(address account) view returns (uint256)',
     ];
     const PVP_WAGER_ABI = [
       'function createMatch(uint8 gameType, uint256 wager) returns (uint256)',
@@ -714,12 +937,28 @@
     const backendBadge = document.getElementById('backendBadge');
     const copyInviteBtn = document.getElementById('copyInviteBtn');
     const openInviteBtn = document.getElementById('openInviteBtn');
+    const readyPhase = document.getElementById('readyPhase');
+    const readyUpBtn = document.getElementById('readyUpBtn');
+    const readyDotX = document.getElementById('readyDotX');
+    const readyDotO = document.getElementById('readyDotO');
+    const readyStatusX = document.getElementById('readyStatusX');
+    const readyStatusO = document.getElementById('readyStatusO');
+    const readyBadgeX = document.getElementById('readyBadgeX');
+    const readyBadgeO = document.getElementById('readyBadgeO');
     const postGameActions = document.getElementById('postGameActions');
     const settleChainBtn = document.getElementById('settleChainBtn');
     const rematchBtn = document.getElementById('rematchBtn');
     const freshRoomBtn = document.getElementById('freshRoomBtn');
+    const rematchBox = document.getElementById('rematchBox');
+    const rematchTitle = document.getElementById('rematchTitle');
+    const rematchCopy = document.getElementById('rematchCopy');
+    const rematchActions = document.getElementById('rematchActions');
+    const acceptRematchBtn = document.getElementById('acceptRematchBtn');
+    const declineRematchBtn = document.getElementById('declineRematchBtn');
     const chainBox = document.getElementById('chainBox');
     const chainStatus = document.getElementById('chainStatus');
+    const openLobbies = document.getElementById('openLobbies');
+    const refreshLobbiesBtn = document.getElementById('refreshLobbiesBtn');
 
     let connectedAddress = null;
     let walletProvider = null;
@@ -739,9 +978,13 @@
     let clockSeconds = 30;
     let timeLeft = 30;
     let pollHandle = null;
+    let lobbyHandle = null;
     let healthHandle = null;
     let countdownHandle = null;
     let lastMoveCell = null;
+    let autoSettleRoomId = '';
+    let settlingOnChain = false;
+    let _dropTargetIdx = -1;
 
     init();
 
@@ -752,11 +995,17 @@
       document.getElementById('newMatchBtn').addEventListener('click', createRoom);
       document.getElementById('joinMatchBtn').addEventListener('click', joinRoom);
       settleChainBtn.addEventListener('click', settleOnChain);
-      rematchBtn.addEventListener('click', createRoom);
+      rematchBtn.addEventListener('click', requestRematch);
+      acceptRematchBtn.addEventListener('click', acceptRematch);
+      declineRematchBtn.addEventListener('click', declineRematch);
       freshRoomBtn.addEventListener('click', resetToFreshRoom);
+      readyUpBtn.addEventListener('click', readyUp);
       copyInviteBtn.addEventListener('click', copyInviteLink);
       openInviteBtn.addEventListener('click', openInviteTab);
+      refreshLobbiesBtn.addEventListener('click', refreshOpenLobbies);
       wagerInput.addEventListener('input', updateMoney);
+      boardEl.addEventListener('mousemove', handleBoardHover);
+      boardEl.addEventListener('mouseleave', clearDropTarget);
       document.getElementById('clockButtons').addEventListener('click', event => {
         const button = event.target.closest('button[data-clock]');
         if (!button) return;
@@ -767,8 +1016,11 @@
         renderTimer();
       });
       setupWallet();
+      restoreWalletSession();
       updateChainStatus();
       checkBackendHealth();
+      refreshOpenLobbies();
+      lobbyHandle = setInterval(refreshOpenLobbies, 5000);
       healthHandle = setInterval(checkBackendHealth, 10000);
       if (currentRoomId) loadRoom(currentRoomId);
     }
@@ -797,6 +1049,7 @@
           chain ? 'Player X escrow is funded. Send the invite to player two.' : 'Open the invite link in another tab to join as player two.'
         );
         setBackendBadge('Online', true);
+        refreshOpenLobbies();
         startPolling();
       } catch (err) {
         showBackendError(err);
@@ -820,6 +1073,10 @@
       renderTimer();
       updateActivePlayer();
       postGameActions.classList.remove('visible');
+      rematchBox.classList.remove('visible');
+      readyPhase.hidden = true;
+      readyBadgeX.classList.remove('visible');
+      readyBadgeO.classList.remove('visible');
       roundTitle.textContent = 'Create a room';
       roundCopy.textContent = 'Open the invite in another tab to test a real two-player flow.';
       addFeed('Ready', 'Create a fresh Connect Four room.');
@@ -838,11 +1095,33 @@
           chainPlayer2: connectedAddress,
         });
         syncRoom(room);
-        addFeed(currentRoom && currentRoom.chain ? 'Funded room joined' : 'Room joined', 'Match is active. Drop pieces by choosing a column.');
+        const joinTitle = room.chain ? 'Funded room joined' : 'Room joined';
+        const joinMsg = room.status === 'ready-check'
+          ? 'Both players must click Ready Up before the match begins.'
+          : 'Match is live. Drop pieces by choosing a column.';
+        addFeed(joinTitle, joinMsg);
         setBackendBadge('Online', true);
+        refreshOpenLobbies();
         startPolling();
       } catch (err) {
         showBackendError(err);
+      }
+    }
+
+    async function readyUp() {
+      try {
+        if (!currentRoom || currentRoom.status !== 'ready-check') throw new Error('Not in ready phase.');
+        readyUpBtn.disabled = true;
+        readyUpBtn.textContent = 'Confirming...';
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/ready', {
+          player: playerId(),
+        });
+        syncRoom(room);
+        addFeed('Ready!', room.status === 'active' ? 'Both players ready — match is live!' : 'Waiting for the other player to ready up.');
+      } catch (err) {
+        showBackendError(err);
+        readyUpBtn.disabled = false;
+        readyUpBtn.textContent = 'Ready Up';
       }
     }
 
@@ -862,7 +1141,7 @@
     async function dropColumn(column) {
       try {
         if (!currentRoom || currentRoom.status !== 'active') throw new Error('Room is not active yet.');
-        const seat = currentRoom.players.find(player => player.address === playerId().toLowerCase());
+        const seat = currentRoom.players.find(player => samePlayer(player.address, playerId()));
         if (!seat) throw new Error('Join this room before moving.');
         if (seat.mark !== currentRoom.turn) throw new Error('Waiting for Player ' + currentRoom.turn + '.');
         const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/move', {
@@ -877,13 +1156,14 @@
     }
 
     function syncRoom(room) {
+      cacheOpenLobby(room);
       currentRoom = room;
       currentRoomId = room.id;
       board = room.board.slice();
       winningCells = room.winningCells || [];
       clockSeconds = Number(room.clockSeconds || clockSeconds);
       lastMoveCell = room.lastMove && Number.isInteger(room.lastMove.cell) ? room.lastMove.cell : null;
-      const mySeat = room.players.find(player => player.address === playerId().toLowerCase());
+      const mySeat = room.players.find(player => samePlayer(player.address, playerId()));
       myMark = mySeat ? mySeat.mark : null;
       wagerInput.value = room.wager;
       xName.textContent = room.players[0] ? playerLabel(room.players[0]) : 'Waiting';
@@ -895,47 +1175,155 @@
       updateActivePlayer();
       updateRoomUrl(room.id);
       postGameActions.classList.toggle('visible', room.status === 'settled');
+      settleChainBtn.hidden = !(room.status === 'settled' && room.chain && connectedAddress && room.winner && samePlayer(connectedAddress, room.winner) && !isRoomPaid(room.id));
+      updateRematchNotice(room);
       updateChainStatus();
 
       if (room.status === 'waiting') {
         stopCountdown();
+        readyPhase.hidden = true;
+        readyBadgeX.classList.remove('visible');
+        readyBadgeO.classList.remove('visible');
         roundTitle.textContent = 'Room waiting';
         roundCopy.textContent = 'Open the invite in another tab, then click Join Room.';
+      } else if (room.status === 'ready-check') {
+        stopCountdown();
+        const readyList = room.readyPlayers || [];
+        const xAddr = room.players[0] && room.players[0].address;
+        const oAddr = room.players[1] && room.players[1].address;
+        const xReady = readyList.some(p => samePlayer(p, xAddr));
+        const oReady = readyList.some(p => samePlayer(p, oAddr));
+        const iAmReady = myMark === 'X' ? xReady : oReady;
+        readyDotX.classList.toggle('is-ready', xReady);
+        readyDotO.classList.toggle('is-ready', oReady);
+        readyStatusX.textContent = xReady ? 'READY ✓' : 'Not Ready';
+        readyStatusO.textContent = oReady ? 'READY ✓' : 'Not Ready';
+        readyBadgeX.classList.toggle('visible', xReady);
+        readyBadgeO.classList.toggle('visible', oReady);
+        readyPhase.hidden = false;
+        readyUpBtn.disabled = iAmReady || !myMark;
+        readyUpBtn.textContent = iAmReady ? 'Waiting for opponent…' : 'Ready Up';
+        roundTitle.textContent = iAmReady ? 'Waiting for opponent' : 'Ready up to start';
+        roundCopy.textContent = myMark
+          ? (iAmReady ? 'The other player still needs to ready up.' : 'Click Ready Up when you\'re set to play.')
+          : 'Both players must ready up before the game begins.';
       } else if (room.status === 'active') {
+        readyPhase.hidden = true;
+        readyBadgeX.classList.remove('visible');
+        readyBadgeO.classList.remove('visible');
         startCountdown();
         roundTitle.textContent = myMark === room.turn ? 'Your move' : 'Player ' + room.turn + ' to move';
         roundCopy.textContent = myMark
           ? 'You are Player ' + myMark + '. Choose any open column before the clock hits zero.'
           : 'Spectating this room. Join before moving.';
       } else if (room.winner) {
+        readyPhase.hidden = true;
         stopCountdown();
         const winnerSeat = room.players.find(player => player.address === room.winner);
-        roundTitle.textContent = 'Player ' + (winnerSeat ? winnerSeat.mark : '?') + ' wins';
-        roundCopy.textContent = room.winReason === 'timeout'
-          ? 'Won by timeout. ' + formatAmount(Number(room.payout)) + ' CASHX payout after burn.'
-          : formatAmount(Number(room.payout)) + ' CASHX payout after burn.';
+        const isWinnerWallet = connectedAddress && samePlayer(connectedAddress, room.winner);
+        const payoutText = formatAmount(Number(room.payout)) + ' CASHX payout after burn.';
+        if (isWinnerWallet) {
+          roundTitle.textContent = 'You won';
+          roundCopy.textContent = room.chain
+            ? 'Confirm the wallet popup to claim ' + payoutText
+            : payoutText;
+          maybeAutoSettleWinner(room);
+        } else if (myMark) {
+          roundTitle.textContent = 'You lost';
+          roundCopy.textContent = room.chain
+            ? 'Winner will claim the payout on chain.'
+            : 'Winner gets ' + payoutText;
+        } else {
+          roundTitle.textContent = 'Player ' + (winnerSeat ? winnerSeat.mark : '?') + ' wins';
+          roundCopy.textContent = payoutText;
+        }
         updateChainStatus();
       } else {
         stopCountdown();
+        readyPhase.hidden = true;
+        readyBadgeX.classList.remove('visible');
+        readyBadgeO.classList.remove('visible');
         roundTitle.textContent = 'Draw';
         roundCopy.textContent = 'Board filled. Live contract rules can refund or rematch.';
       }
     }
+    function paidRoomIds() {
+      try {
+        return JSON.parse(localStorage.getItem(PAID_CACHE_KEY) || '[]');
+      } catch (_) {
+        return [];
+      }
+    }
 
+    function isRoomPaid(roomId) {
+      return paidRoomIds().includes(roomId);
+    }
+
+    function markRoomPaid(roomId) {
+      try {
+        const ids = paidRoomIds().filter(id => id !== roomId);
+        ids.unshift(roomId);
+        localStorage.setItem(PAID_CACHE_KEY, JSON.stringify(ids.slice(0, 50)));
+      } catch (_) {}
+    }
+    function maybeAutoSettleWinner(room) {
+      if (!room || !room.chain || !room.winner || !connectedAddress) return;
+      if (!samePlayer(connectedAddress, room.winner)) return;
+      if (isRoomPaid(room.id) || autoSettleRoomId === room.id || settlingOnChain) return;
+      autoSettleRoomId = room.id;
+      addFeed('Payout ready', 'Opening wallet to claim the winner payout.');
+      setTimeout(() => {
+        if (currentRoom && currentRoom.id === room.id && currentRoom.status === 'settled') {
+          settleOnChain({ auto: true });
+        }
+      }, 500);
+    }
     function renderBoard() {
-      boardEl.innerHTML = '';
-      board.forEach((mark, index) => {
-        const slot = document.createElement('button');
-        const column = index % COLUMNS;
-        slot.className = 'slot';
-        if (mark) slot.classList.add(mark.toLowerCase(), 'drop');
-        if (winningCells.includes(index)) slot.classList.add('win');
-        if (index === lastMoveCell && !winningCells.includes(index)) slot.classList.add('last');
-        slot.disabled = Boolean(mark) || !canMove() || isColumnFull(column);
-        slot.setAttribute('aria-label', 'Column ' + (column + 1));
-        slot.addEventListener('click', () => dropColumn(column));
-        boardEl.appendChild(slot);
-      });
+      // Build slots once; never wipe the DOM on updates
+      if (!boardEl.children.length) {
+        for (let i = 0; i < COLUMNS * ROWS; i++) {
+          const col = i % COLUMNS;
+          const slot = document.createElement('button');
+          slot.className = 'slot';
+          slot.setAttribute('aria-label', 'Column ' + (col + 1));
+          slot.dataset.col = String(col);
+          slot.dataset.mark = '';
+          slot.addEventListener('click', () => dropColumn(col));
+          boardEl.appendChild(slot);
+        }
+      }
+
+      clearDropTarget();
+
+      for (let i = 0; i < board.length; i++) {
+        const mark = board[i];
+        const col = i % COLUMNS;
+        const slot = boardEl.children[i];
+        const prevMark = slot.dataset.mark;
+        const isNew = mark && !prevMark;
+        const isWin = winningCells.includes(i);
+        const isLast = i === lastMoveCell && !isWin;
+
+        // Only touch mark classes when the value actually changed
+        if (mark !== prevMark) {
+          if (prevMark) slot.classList.remove(prevMark.toLowerCase());
+          if (mark) slot.classList.add(mark.toLowerCase());
+          slot.dataset.mark = mark;
+
+          if (isNew) {
+            const bRect = boardEl.getBoundingClientRect();
+            const sRect = slot.getBoundingClientRect();
+            const dropDist = sRect.top - bRect.top + sRect.height * 0.5;
+            slot.style.setProperty('--drop-y', '-' + dropDist + 'px');
+            slot.classList.add('dropping');
+            slot.addEventListener('animationend', () => slot.classList.remove('dropping'), { once: true });
+          }
+        }
+
+        slot.classList.toggle('win', isWin);
+        slot.classList.toggle('last', isLast);
+        slot.disabled = Boolean(mark) || !canMove() || isColumnFull(col);
+      }
     }
 
     function canMove() {
@@ -947,6 +1335,35 @@
 
     function isColumnFull(column) {
       return Boolean(board[column]);
+    }
+
+    function getDropRow(column) {
+      for (let row = ROWS - 1; row >= 0; row--) {
+        if (!board[row * COLUMNS + column]) return row;
+      }
+      return -1;
+    }
+
+    function clearDropTarget() {
+      if (_dropTargetIdx >= 0) {
+        boardEl.children[_dropTargetIdx]?.classList.remove('drop-target');
+        _dropTargetIdx = -1;
+      }
+    }
+
+    function handleBoardHover(e) {
+      if (!canMove()) { clearDropTarget(); return; }
+      const slot = e.target.closest('button.slot');
+      if (!slot) return;
+      const col = parseInt(slot.dataset.col);
+      if (isNaN(col) || isColumnFull(col)) { clearDropTarget(); return; }
+      const row = getDropRow(col);
+      if (row < 0) { clearDropTarget(); return; }
+      const targetIdx = row * COLUMNS + col;
+      if (targetIdx === _dropTargetIdx) return;
+      clearDropTarget();
+      _dropTargetIdx = targetIdx;
+      boardEl.children[_dropTargetIdx]?.classList.add('drop-target');
     }
 
     function updateActivePlayer() {
@@ -1005,9 +1422,13 @@
       return connectedAddress || localPlayerId;
     }
 
+    function samePlayer(left, right) {
+      return String(left || '').toLowerCase() === String(right || '').toLowerCase();
+    }
+
     function playerLabel(player) {
       const label = shortPlayer(player.address);
-      return player.address === playerId().toLowerCase() ? label + ' (You)' : label;
+      return samePlayer(player.address, playerId()) ? label + ' (You)' : label;
     }
 
     function shortPlayer(value) {
@@ -1065,7 +1486,6 @@
         try {
           const room = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(currentRoomId));
           syncRoom(room);
-          if (room.status === 'settled') stopPolling();
         } catch (_) {}
       }, 1000);
     }
@@ -1073,6 +1493,210 @@
     function stopPolling() {
       if (pollHandle) clearInterval(pollHandle);
       pollHandle = null;
+    }
+    function readCachedLobbies() {
+      try {
+        const saved = JSON.parse(localStorage.getItem(LOBBY_CACHE_KEY) || '[]');
+        const fresh = saved.filter(room => Date.now() - Number(room.cachedAt || 0) < 2 * 60 * 60 * 1000);
+        if (fresh.length !== saved.length) localStorage.setItem(LOBBY_CACHE_KEY, JSON.stringify(fresh));
+        return fresh;
+      } catch (_) {
+        return [];
+      }
+    }
+
+    function writeCachedLobbies(rooms) {
+      try {
+        localStorage.setItem(LOBBY_CACHE_KEY, JSON.stringify(rooms.slice(0, 20)));
+      } catch (_) {}
+    }
+
+    function cacheOpenLobby(room) {
+      if (!room || !room.id) return;
+      const rooms = readCachedLobbies().filter(saved => saved.id !== room.id);
+      if (room.status === 'waiting') {
+        rooms.unshift({ ...room, cachedAt: Date.now() });
+      }
+      writeCachedLobbies(rooms);
+    }
+
+    function mergeLobbies(primaryRooms) {
+      const map = new Map();
+      [...(primaryRooms || []), ...readCachedLobbies()]
+        .filter(room => room && room.status === 'waiting')
+        .forEach(room => map.set(room.id, room));
+      return [...map.values()].sort((a, b) => Number(b.createdAt || b.cachedAt || 0) - Number(a.createdAt || a.cachedAt || 0));
+    }
+    let _lobbiesServerOk = false;
+    let _lobbiesRetryHandle = null;
+
+    async function refreshOpenLobbies() {
+      clearTimeout(_lobbiesRetryHandle);
+      try {
+        const data = await fetchJson('/api/pvp/rooms?game=connect4&status=waiting&limit=12');
+        _lobbiesServerOk = true;
+        renderOpenLobbies(mergeLobbies(data.rooms || []));
+      } catch (err) {
+        // Server may be waking up — show hint and retry in 4 s
+        const cached = mergeLobbies([]);
+        if (cached.length) {
+          renderOpenLobbies(cached); // show whatever we have cached
+        } else if (!_lobbiesServerOk && !currentRoom) {
+          // Only show the startup hint when NOT already in a game — if a game
+          // is running, the server is clearly up and this would be misleading.
+          openLobbies.innerHTML = '<div class="lobby-empty">⏳ Server starting up — retrying…</div>';
+        }
+        _lobbiesRetryHandle = setTimeout(refreshOpenLobbies, 4000);
+      }
+    }
+
+    function renderOpenLobbies(rooms) {
+      if (!rooms.length) {
+        openLobbies.innerHTML = '<div class="lobby-empty">No open rooms yet. Create one and it will show here.</div>';
+        return;
+      }
+
+      openLobbies.innerHTML = '';
+      const myAddr = playerId();
+      rooms.forEach(room => {
+        const isMyRoom = myAddr && room.players && room.players.some(p => samePlayer(p && p.address, myAddr));
+        const card = document.createElement('div');
+        card.className = 'lobby-card' + (isMyRoom ? ' lobby-card-mine' : '');
+        const matchText = room.chain && room.chain.matchId ? 'Match #' + room.chain.matchId : 'Test room';
+        if (isMyRoom) {
+          card.innerHTML =
+            '<div><strong>' + escapeHtml(formatAmount(Number(room.wager)) + ' CASHX') + '</strong>' +
+            '<span>' + escapeHtml(matchText) + ' · <em>Your Room</em></span></div>' +
+            '<span class="mini-btn mini-btn-yours">Waiting…</span>';
+        } else {
+          card.innerHTML =
+            '<div><strong>' + escapeHtml(formatAmount(Number(room.wager)) + ' CASHX') + '</strong>' +
+            '<span>' + escapeHtml(matchText + ' · ' + shortPlayer(room.players[0] && room.players[0].address)) + '</span></div>' +
+            '<button class="mini-btn mini-btn-join" type="button">▶ Join</button>';
+          const btn = card.querySelector('button');
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Joining…';
+            await openLobby(room.id);
+            btn.disabled = false;
+            btn.textContent = '▶ Join';
+          });
+        }
+        openLobbies.appendChild(card);
+      });
+    }
+
+    async function openLobby(roomId) {
+      currentRoomId = roomId;
+      updateRoomUrl(roomId);
+      await loadRoom(roomId);
+      // Scroll to the top so the user sees the arena update
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      // One-click: immediately join instead of requiring a second button press
+      await joinRoom();
+    }
+
+    async function requestRematch() {
+      try {
+        if (!currentRoom || currentRoom.status !== 'settled') throw new Error('Finish this game first.');
+        const room = await rematchApi('request');
+        syncRoom(room);
+        addFeed('Rematch requested', 'Waiting for the other player to accept.');
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    async function acceptRematch() {
+      try {
+        const sourceRoom = currentRoom;
+        if (!sourceRoom || sourceRoom.status !== 'settled') throw new Error('Finish this game first.');
+        roundTitle.textContent = 'Accepting rematch';
+        roundCopy.textContent = isChainEnabled()
+          ? 'Creating fresh escrow for the next round.'
+          : 'Creating the next room.';
+        wagerInput.value = sourceRoom.wager;
+        clockSeconds = Number(sourceRoom.clockSeconds || clockSeconds);
+        const chain = isChainEnabled() ? await createChainMatch() : null;
+        const newRoom = await api('/api/pvp/rooms', {
+          game: 'connect4',
+          creator: playerId(),
+          wager: String(sourceRoom.wager),
+          clockSeconds,
+          chain,
+        });
+        const result = await api('/api/pvp/rooms/' + encodeURIComponent(sourceRoom.id) + '/rematch', {
+          player: playerId(),
+          action: 'accept',
+          newRoomId: newRoom.id,
+        });
+        addFeed('Rematch accepted', 'Opening the new rematch room.');
+        if (result.newRoom || newRoom) {
+          syncRoom(result.newRoom || newRoom);
+          updateRoomUrl((result.newRoom || newRoom).id);
+          roundTitle.textContent = 'Rematch room';
+          roundCopy.textContent = chain
+            ? 'Fresh escrow is funded. Other player can join this rematch.'
+            : 'Other player can join this rematch.';
+        } else if (result.room) {
+          syncRoom(result.room);
+        }
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    async function declineRematch() {
+      try {
+        const room = await rematchApi('decline');
+        syncRoom(room);
+        addFeed('Rematch declined', 'Start a new room when ready.');
+      } catch (err) {
+        showBackendError(err);
+      }
+    }
+
+    async function rematchApi(action) {
+      const result = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/rematch', {
+        player: playerId(),
+        action,
+      });
+      return result.newRoom ? result : result;
+    }
+
+    function updateRematchNotice(room) {
+      const rematch = room && room.rematch;
+      const seat = room && room.players ? room.players.find(player => samePlayer(player.address, playerId())) : null;
+      rematchBox.classList.remove('visible');
+      rematchActions.hidden = false;
+      rematchBtn.disabled = false;
+      rematchBtn.textContent = 'Request Rematch';
+
+      if (!room || room.status !== 'settled' || !rematch) return;
+
+      if (rematch.status === 'requested') {
+        const requestedByMe = samePlayer(rematch.requestedBy, playerId());
+        rematchBox.classList.add('visible');
+        rematchTitle.textContent = requestedByMe ? 'Rematch sent' : 'Rematch requested';
+        rematchCopy.textContent = requestedByMe
+          ? 'Waiting for the other player to accept.'
+          : 'The other player wants another round.';
+        rematchActions.hidden = requestedByMe || !seat;
+        rematchBtn.disabled = true;
+        rematchBtn.textContent = requestedByMe ? 'Waiting' : 'Rematch Pending';
+      } else if (rematch.status === 'declined') {
+        rematchBox.classList.add('visible');
+        rematchTitle.textContent = 'Rematch declined';
+        rematchCopy.textContent = 'Create a new room when you are ready.';
+        rematchActions.hidden = true;
+      } else if (rematch.status === 'accepted') {
+        rematchBox.classList.add('visible');
+        rematchTitle.textContent = 'Rematch accepted';
+        rematchCopy.textContent = rematch.newRoomId
+          ? 'New room ready: ' + rematch.newRoomId.slice(0, 8) + '.'
+          : 'New rematch room is ready.';
+        rematchActions.hidden = true;
+      }
     }
 
     async function checkBackendHealth() {
@@ -1112,9 +1736,9 @@
 
     function showBackendError(err) {
       const message = err && err.message ? err.message : String(err);
-      roundTitle.textContent = 'Backend message';
+      roundTitle.textContent = 'Game message';
       roundCopy.textContent = message;
-      addFeed('Backend message', message);
+      addFeed('Game message', message);
       checkBackendHealth();
     }
 
@@ -1156,31 +1780,61 @@
       updateChainStatus();
     }
 
+    async function restoreWalletSession() {
+      if (!window.ethereum || !window.ethers) return;
+      try {
+        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        if (!accounts || !accounts.length) return;
+        walletProvider = new ethers.providers.Web3Provider(window.ethereum);
+        walletSigner = walletProvider.getSigner();
+        connectedAddress = await walletSigner.getAddress();
+        if (isChainEnabled()) {
+          pvpContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, walletSigner);
+          cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
+        }
+        updateWalletButtonText();
+        updateChainStatus();
+        if (currentRoomId) loadRoom(currentRoomId);
+      } catch (_) {}
+    }
+
     async function approveIfNeeded(wagerWei) {
       const allowance = await cashxContract.allowance(connectedAddress, PVP_WAGER_ADDRESS);
       if (allowance.gte(wagerWei)) return;
       roundTitle.textContent = 'Approve CASHX';
       roundCopy.textContent = 'Approve once so the contract can escrow this wager.';
       addFeed('Wallet step', 'Approving CASHX for the wager contract.');
-      const tx = await cashxContract.approve(PVP_WAGER_ADDRESS, wagerWei, GAS);
-      await tx.wait();
+      const tx = await cashxContract.approve(PVP_WAGER_ADDRESS, wagerWei, await txOptions(cashxContract, 'approve', [PVP_WAGER_ADDRESS, wagerWei]));
+      await waitForTx(tx);
     }
+    async function ensureWagerBalance(wagerWei) {
+      const balance = await cashxContract.balanceOf(connectedAddress);
+      if (balance.gte(wagerWei)) return;
+
+      const have = formatTokenAmount(balance, 2);
+      const need = formatTokenAmount(wagerWei, 0);
+      throw new Error('Not enough CASHX for this wager. Wallet has ' + have + ' CASHX, needs ' + need + ' CASHX.');
+    }
+
 
     async function createChainMatch() {
       if (!isChainEnabled()) return null;
       await ensureWallet();
-      const wagerWei = ethers.utils.parseUnits(String(Math.max(1, Math.floor(Number(wagerInput.value || 0)))), 18);
+      const wagerWei = ethers.utils.parseUnits(String(Math.max(500, Math.floor(Number(wagerInput.value || 0)))), 18);
+      await ensureWagerBalance(wagerWei);
       await approveIfNeeded(wagerWei);
 
       roundTitle.textContent = 'Create on chain';
       roundCopy.textContent = 'Funding Player X escrow.';
       addFeed('Wallet step', 'Creating the funded Connect Four match.');
-      const tx = await pvpContract.createMatch(0, wagerWei, GAS);
-      const receipt = await tx.wait();
-      const event = receipt.logs
+      await preflightContractCall(pvpContract, 'createMatch', [0, wagerWei]);
+      const tx = await pvpContract.createMatch(0, wagerWei, await txOptions(pvpContract, 'createMatch', [0, wagerWei]));
+      const receipt = await waitForTx(tx);
+      const logs = receipt.logs || receipt.events || [];
+      const event = logs
         .map(log => parsePvpLog(log))
         .find(parsed => parsed && parsed.name === 'MatchCreated');
-      if (!event) throw new Error('MatchCreated event not found');
+      if (!event) throw new Error('Match was not created. The wallet transaction finished, but the contract event was missing.');
 
       return {
         matchId: event.args.matchId.toString(),
@@ -1195,59 +1849,129 @@
       if (!isChainEnabled()) return;
       await ensureWallet();
       const wagerWei = ethers.BigNumber.from(String(wagerWeiValue || '0'));
+      await ensureWagerBalance(wagerWei);
       await approveIfNeeded(wagerWei);
 
       roundTitle.textContent = 'Join on chain';
       roundCopy.textContent = 'Funding Player O escrow.';
       addFeed('Wallet step', 'Joining the funded Connect Four match.');
-      const tx = await pvpContract.joinMatch(matchId, GAS);
-      await tx.wait();
+      await preflightContractCall(pvpContract, 'joinMatch', [matchId]);
+      const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
+      await waitForTx(tx);
     }
 
-    async function settleOnChain() {
+    async function settleOnChain(options = {}) {
+      if (settlingOnChain) return;
+      settlingOnChain = true;
+      settleChainBtn.disabled = true;
       try {
         if (!currentRoom || currentRoom.status !== 'settled') throw new Error('Finish the game first.');
         if (!currentRoom.chain) throw new Error('This was a test room. Create a funded room after deploy.');
         if (!isChainEnabled()) throw new Error('PvPWager address is not set yet.');
         await ensureWallet();
-        if (!currentRoom.winner || connectedAddress.toLowerCase() !== currentRoom.winner.toLowerCase()) {
+        if (!currentRoom.winner || !samePlayer(connectedAddress, currentRoom.winner)) {
           throw new Error('Only the winner wallet can claim from this page.');
         }
 
-        roundTitle.textContent = 'Signing result';
-        roundCopy.textContent = 'Getting the backend winner signature.';
+        roundTitle.textContent = options.auto ? 'Claiming payout' : 'Signing result';
+        roundCopy.textContent = options.auto ? 'Getting winner proof, then wallet will ask to claim.' : 'Getting the backend winner signature.';
         const signed = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/sign-result', {
           contractAddress: PVP_WAGER_ADDRESS,
           chainId: PULSECHAIN_ID,
           wagerWei: currentRoom.chain.wagerWei,
         });
 
-        roundTitle.textContent = 'Settle on chain';
-        roundCopy.textContent = 'Wallet will claim the payout and burn the fee.';
+        roundTitle.textContent = 'Claim payout';
+        roundCopy.textContent = 'Confirm wallet to send the winner payout and burn the fee.';
         addFeed('Wallet step', 'Settling the winner payout on chain.');
+        await preflightContractCall(pvpContract, 'settleMatch', [signed.matchId, signed.winner, signed.resultDataHash, signed.signature]);
         const tx = await pvpContract.settleMatch(
           signed.matchId,
           signed.winner,
           signed.resultDataHash,
           signed.signature,
-          GAS
+          await txOptions(pvpContract, 'settleMatch', [signed.matchId, signed.winner, signed.resultDataHash, signed.signature])
         );
-        await tx.wait();
+        await waitForTx(tx);
+        markRoomPaid(currentRoom.id);
         addFeed('Settled on chain', 'Winner payout sent and burn completed.');
         roundTitle.textContent = 'Paid on chain';
         roundCopy.textContent = 'Winner payout has been claimed.';
         updateChainStatus('Paid on chain.');
       } catch (err) {
-        showBackendError(err);
+        if (options.auto) {
+          roundTitle.textContent = 'Payout ready';
+          roundCopy.textContent = 'Wallet claim did not finish. Use Settle On Chain to try again.';
+          addFeed('Payout not claimed', err && err.message ? err.message : String(err));
+        } else {
+          showBackendError(err);
+        }
+        autoSettleRoomId = '';
+      } finally {
+        settlingOnChain = false;
+        settleChainBtn.disabled = false;
       }
     }
-
     function parsePvpLog(log) {
       try {
         return new ethers.utils.Interface(PVP_WAGER_ABI).parseLog(log);
       } catch (_) {
         return null;
       }
+    }
+    async function txOptions(contract, method, args) {
+      try {
+        const estimate = await contract.estimateGas[method](...args);
+        return { gasLimit: estimate.mul(GAS_BUFFER_BPS).div(10000) };
+      } catch (err) {
+        throw friendlyChainError(err);
+      }
+    }
+
+    async function preflightContractCall(contract, method, args) {
+      try {
+        await contract.callStatic[method](...args);
+      } catch (err) {
+        throw friendlyChainError(err);
+      }
+    }
+
+    function friendlyChainError(err) {
+      const raw = err && (err.reason || err.errorName || err.data?.message || err.error?.message || err.message) ? String(err.reason || err.errorName || err.data?.message || err.error?.message || err.message) : '';
+      if (/insufficient funds|not enough funds/i.test(raw)) return new Error('This wallet needs a little PLS for gas before it can fund a match.');
+      if (/Transfer failed|ERC20: transfer amount exceeds balance|balance/i.test(raw)) return new Error('The CASHX transfer failed. Lower the wager or add more CASHX to this wallet.');
+      if (/allowance|insufficient allowance/i.test(raw)) return new Error('CASHX approval did not go through yet. Approve again, then create the room.');
+      if (/Wager below minimum/i.test(raw)) return new Error('Minimum wager is 500 CASHX.');
+      if (/Wager above maximum/i.test(raw)) return new Error('Maximum wager is 1,000,000 CASHX.');
+      if (/paused/i.test(raw)) return new Error('The wager contract is paused right now.');
+      return new Error(raw || 'Wallet could not prepare this transaction. Try a smaller wager, then try again.');
+    }
+
+
+    async function waitForTx(tx) {
+      try {
+        return assertSuccessfulReceipt(await tx.wait());
+      } catch (err) {
+        if (err && err.code === 'TRANSACTION_REPLACED' && err.receipt) {
+          if (err.cancelled) throw new Error('Transaction was cancelled in wallet.');
+          return assertSuccessfulReceipt(err.receipt);
+        }
+        throw err;
+      }
+    }
+
+    function assertSuccessfulReceipt(receipt) {
+      if (receipt && receipt.status === 0) {
+        throw new Error('Wallet transaction failed on-chain. The match was not created.');
+      }
+      return receipt;
+    }
+
+    function formatTokenAmount(value, maxDecimals) {
+      const amount = Number(ethers.utils.formatUnits(value, 18));
+      return amount.toLocaleString('en-US', {
+        maximumFractionDigits: maxDecimals,
+      });
     }
 
     function updateChainStatus(customText) {
@@ -1263,16 +1987,22 @@
       } else {
         chainStatus.textContent = 'Live escrow ready. Creating a room will ask for approve + fund.';
       }
-      settleChainBtn.hidden = !(currentRoom && currentRoom.status === 'settled' && currentRoom.chain);
+      settleChainBtn.hidden = !(currentRoom && currentRoom.status === 'settled' && currentRoom.chain && connectedAddress && currentRoom.winner && samePlayer(connectedAddress, currentRoom.winner) && !isRoomPaid(currentRoom.id));
     }
 
     function setupWallet() {
       const connectBtn = document.getElementById('connectWalletBtn');
-      async function connectWallet() {
-        if (!window.showWalletModal) {
-          connectBtn.textContent = 'Wallet unavailable';
+      const dropdown = document.getElementById('walletDropdown');
+      const dropdownAddr = document.getElementById('walletDropdownAddr');
+      const copyAddressBtn = document.getElementById('copyAddressBtn');
+      const disconnectWalletBtn = document.getElementById('disconnectWalletBtn');
+
+      connectBtn.addEventListener('click', async () => {
+        if (connectedAddress) {
+          dropdown.hidden = !dropdown.hidden;
           return;
         }
+        if (!window.showWalletModal) { connectBtn.textContent = 'Wallet unavailable'; return; }
         try {
           const result = await window.showWalletModal();
           connectedAddress = result && result.address ? result.address : null;
@@ -1282,26 +2012,74 @@
             pvpContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, walletSigner);
             cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
           }
-          updateWalletButton();
+          updateWalletButtonText();
           updateChainStatus();
         } catch (err) {
           if (!err || err.message !== 'dismissed') connectBtn.textContent = 'Connect Wallet';
         }
-      }
-      function updateWalletButton() {
+      });
+
+      // Close dropdown on outside click
+      document.addEventListener('click', e => {
+        if (!connectBtn.contains(e.target) && !dropdown.contains(e.target)) {
+          dropdown.hidden = true;
+        }
+      });
+
+      copyAddressBtn.addEventListener('click', async () => {
+        dropdown.hidden = true;
+        if (!connectedAddress) return;
+        try {
+          await navigator.clipboard.writeText(connectedAddress);
+          copyAddressBtn.textContent = '✓ Copied!';
+          setTimeout(() => { copyAddressBtn.textContent = '📋 Copy Address'; }, 1500);
+        } catch (_) {}
+      });
+
+      disconnectWalletBtn.addEventListener('click', () => {
+        dropdown.hidden = true;
+        connectedAddress = null;
+        walletProvider = null;
+        walletSigner = null;
+        pvpContract = null;
+        cashxContract = null;
         updateWalletButtonText();
+        updateChainStatus();
+        addFeed('Wallet disconnected', 'Connect a wallet to enable on-chain escrow.');
+      });
+
+      if (window.ethereum && window.ethereum.on) {
+        window.ethereum.on('accountsChanged', () => {
+          connectedAddress = null;
+          walletProvider = null;
+          walletSigner = null;
+          pvpContract = null;
+          cashxContract = null;
+          dropdown.hidden = true;
+          restoreWalletSession().then(() => {
+            updateWalletButtonText();
+            if (currentRoom) syncRoom(currentRoom);
+          });
+        });
       }
-      connectBtn.addEventListener('click', connectWallet);
-      updateWalletButton();
+
+      updateWalletButtonText();
     }
 
     function updateWalletButtonText() {
       const connectBtn = document.getElementById('connectWalletBtn');
+      const dropdown = document.getElementById('walletDropdown');
+      const dropdownAddr = document.getElementById('walletDropdownAddr');
       if (!connectedAddress) {
         connectBtn.innerHTML = WALLET_SVG + ' Connect Wallet';
+        connectBtn.classList.remove('connected');
+        if (dropdown) dropdown.hidden = true;
         return;
       }
-      connectBtn.textContent = connectedAddress.slice(0, 6) + '...' + connectedAddress.slice(-4);
+      const short = connectedAddress.slice(0, 6) + '...' + connectedAddress.slice(-4);
+      connectBtn.textContent = short;
+      connectBtn.classList.add('connected');
+      if (dropdownAddr) dropdownAddr.textContent = connectedAddress.slice(0, 10) + '...' + connectedAddress.slice(-6);
     }
   </script>
 </body>

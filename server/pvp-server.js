@@ -1,4 +1,6 @@
 import crypto from 'node:crypto';
+import fs from 'node:fs';
+import path from 'node:path';
 import cors from 'cors';
 import express from 'express';
 import { AbiCoder, Wallet, getAddress, getBytes, keccak256, toUtf8Bytes } from 'ethers';
@@ -14,6 +16,51 @@ const PVP_WAGER_ADDRESS = process.env.PVP_WAGER_ADDRESS || '';
 const PVP_SIGNER_PRIVATE_KEY = process.env.PVP_SIGNER_PRIVATE_KEY || '';
 const abiCoder = AbiCoder.defaultAbiCoder();
 const rooms = new Map();
+
+// ── Persistence ────────────────────────────────────────────────────────────────
+const ROOMS_FILE = process.env.ROOMS_FILE
+  || path.join(process.cwd(), 'pvp-rooms.json');
+
+// Remove rooms that have been settled / abandoned for more than 24 h.
+const STALE_MS = 24 * 60 * 60 * 1000;
+
+function loadRooms() {
+  try {
+    if (!fs.existsSync(ROOMS_FILE)) return;
+    const data = JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8'));
+    if (!Array.isArray(data)) return;
+    let loaded = 0;
+    const cutoff = Date.now() - STALE_MS;
+    for (const r of data) {
+      if (!r || !r.id || !r.wager) continue;
+      if ((r.updatedAt || r.createdAt || 0) < cutoff) continue; // drop stale
+      r.wager = BigInt(r.wager); // restore BigInt
+      rooms.set(r.id, r);
+      loaded++;
+    }
+    console.log(`[persist] Loaded ${loaded} room(s) from ${ROOMS_FILE}`);
+  } catch (err) {
+    console.warn('[persist] Could not load rooms:', err.message);
+  }
+}
+
+let _saveTimer = null;
+function saveRooms() {
+  if (_saveTimer) return; // debounce – one write per 250 ms max
+  _saveTimer = setTimeout(() => {
+    _saveTimer = null;
+    try {
+      const cutoff = Date.now() - STALE_MS;
+      const data = [...rooms.values()]
+        .filter(r => (r.updatedAt || r.createdAt || 0) >= cutoff)
+        .map(r => ({ ...r, wager: r.wager.toString() })); // BigInt → string
+      fs.writeFileSync(ROOMS_FILE, JSON.stringify(data), 'utf8');
+    } catch (err) {
+      console.warn('[persist] Could not save rooms:', err.message);
+    }
+  }, 250);
+}
+// ──────────────────────────────────────────────────────────────────────────────
 
 const app = express();
 app.use(cors());
@@ -59,9 +106,30 @@ app.post('/api/pvp/rooms', (req, res) => {
       clockSeconds,
       moves: [],
       chain: normalizeChain(req.body.chain),
+      rematch: null,
+      readyPlayers: [],
     };
     rooms.set(room.id, room);
+    saveRooms();
     res.json(publicRoom(room));
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+app.get('/api/pvp/rooms', (req, res) => {
+  try {
+    const game = req.query.game ? normalizeGame(req.query.game) : null;
+    const status = req.query.status ? String(req.query.status).toLowerCase() : null;
+    const limit = Math.max(1, Math.min(50, Number(req.query.limit || 20)));
+    const list = [...rooms.values()]
+      .filter(room => !game || room.game === game)
+      .filter(room => !status || room.status === status)
+      .sort((a, b) => b.createdAt - a.createdAt)
+      .slice(0, limit)
+      .map(publicRoom);
+
+    res.json({ ok: true, rooms: list });
   } catch (err) {
     sendError(res, err);
   }
@@ -88,9 +156,32 @@ app.post('/api/pvp/rooms/:id/join', (req, res) => {
     if (room.chain) {
       room.chain.player2 = normalizeOptionalAddress(req.body.chainPlayer2) || player;
     }
-    room.status = 'active';
+    room.status = 'ready-check';
+    room.readyPlayers = [];
     room.updatedAt = Date.now();
-    room.lastMoveAt = Date.now();
+    saveRooms();
+    res.json(publicRoom(room));
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+app.post('/api/pvp/rooms/:id/ready', (req, res) => {
+  try {
+    const room = getRoom(req.params.id);
+    const player = normalizePlayer(req.body.player);
+    if (room.status !== 'ready-check') throw new Error('Room is not in the ready phase');
+    const seat = room.players.find(entry => entry.address === player);
+    if (!seat) throw new Error('Player is not in this room');
+    if (!room.readyPlayers.includes(player)) {
+      room.readyPlayers.push(player);
+    }
+    if (room.readyPlayers.length >= 2) {
+      room.status = 'active';
+      room.lastMoveAt = Date.now();
+    }
+    room.updatedAt = Date.now();
+    saveRooms();
     res.json(publicRoom(room));
   } catch (err) {
     sendError(res, err);
@@ -119,10 +210,12 @@ app.post('/api/pvp/rooms/:id/move', (req, res) => {
       room.winner = result.winner ? room.players.find(entry => entry.mark === result.winner).address : null;
       room.winReason = result.winner ? 'connect' : 'draw';
       room.winningCells = result.winningCells || [];
+      saveRooms();
       return res.json(publicRoom(room));
     }
 
     room.turn = room.turn === 'X' ? 'O' : 'X';
+    saveRooms();
     res.json(publicRoom(room));
   } catch (err) {
     sendError(res, err);
@@ -134,7 +227,61 @@ app.post('/api/pvp/rooms/:id/timeout', (req, res) => {
     const room = getRoom(req.params.id);
     if (room.status !== 'active') throw new Error('Room is not active');
     if (!settleExpiredRoom(room)) throw new Error('Move clock has not expired yet');
+    saveRooms();
     res.json(publicRoom(room));
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+app.post('/api/pvp/rooms/:id/rematch', (req, res) => {
+  try {
+    const room = getRoom(req.params.id);
+    const player = normalizePlayer(req.body.player);
+    const action = String(req.body.action || 'request').toLowerCase();
+    const seat = room.players.find(entry => entry.address === player);
+    if (!seat) throw new Error('Player is not in this room');
+    if (room.status !== 'settled') throw new Error('Finish this game first');
+
+    if (action === 'request') {
+      room.rematch = {
+        status: 'requested',
+        requestedBy: player,
+        requestedAt: Date.now(),
+      };
+      room.updatedAt = Date.now();
+      saveRooms();
+      return res.json(publicRoom(room));
+    }
+
+    if (action === 'decline') {
+      if (!room.rematch || room.rematch.status !== 'requested') throw new Error('No rematch request');
+      if (room.rematch.requestedBy === player) throw new Error('Waiting for the other player');
+      room.rematch.status = 'declined';
+      room.rematch.respondedBy = player;
+      room.rematch.respondedAt = Date.now();
+      room.updatedAt = Date.now();
+      saveRooms();
+      return res.json(publicRoom(room));
+    }
+
+    if (action === 'accept') {
+      if (!room.rematch || room.rematch.status !== 'requested') throw new Error('No rematch request');
+      if (room.rematch.requestedBy === player) throw new Error('Waiting for the other player');
+      const newRoom = req.body.newRoomId
+        ? getRoom(req.body.newRoomId)
+        : createRematchRoom(room, player);
+      room.rematch.status = 'accepted';
+      room.rematch.respondedBy = player;
+      room.rematch.respondedAt = Date.now();
+      room.rematch.newRoomId = newRoom.id;
+      room.updatedAt = Date.now();
+      if (!req.body.newRoomId) rooms.set(newRoom.id, newRoom);
+      saveRooms();
+      return res.json({ ok: true, room: publicRoom(room), newRoom: publicRoom(newRoom) });
+    }
+
+    throw new Error('Unsupported rematch action');
   } catch (err) {
     sendError(res, err);
   }
@@ -199,6 +346,7 @@ app.post('/api/pvp/rooms/:id/sign-result', async (req, res) => {
   }
 });
 
+loadRooms();
 app.listen(PORT, () => {
   console.log(`CashX PvP prototype server listening on http://localhost:${PORT}`);
 });
@@ -235,6 +383,36 @@ function publicRoom(room) {
     lastMove: room.moves.length ? room.moves[room.moves.length - 1] : null,
     moveCount: room.moves.length,
     chain: room.chain,
+    rematch: room.rematch,
+    readyPlayers: room.readyPlayers || [],
+  };
+}
+
+function createRematchRoom(sourceRoom, creator) {
+  return {
+    id: crypto.randomUUID(),
+    game: sourceRoom.game,
+    variant: sourceRoom.variant,
+    status: 'waiting',
+    players: [
+      { address: creator, mark: 'X' },
+    ],
+    wager: sourceRoom.wager,
+    board: createBoard(sourceRoom.game),
+    markHistory: { X: [], O: [] },
+    turn: 'X',
+    winner: null,
+    winReason: null,
+    winningCells: [],
+    createdAt: Date.now(),
+    updatedAt: Date.now(),
+    lastMoveAt: null,
+    clockSeconds: sourceRoom.clockSeconds,
+    moves: [],
+    chain: null,
+    rematch: null,
+    rematchOf: sourceRoom.id,
+    readyPlayers: [],
   };
 }
 

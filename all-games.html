@@ -11,6 +11,9 @@
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <script src="wallet-modal.js"></script>
+  <script>
+    window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
+  </script>
 
   <style>
     :root {
@@ -319,6 +322,7 @@
     }
     .type-cw { background: rgba(200,85,247,.12); color: var(--purple); border: 1px solid rgba(200,85,247,.3); }
     .type-db { background: rgba(245,166,35,.10); color: var(--gold);   border: 1px solid rgba(245,166,35,.3); }
+    .type-c4 { background: rgba(61,255,160,.10); color: var(--green); border: 1px solid rgba(61,255,160,.28); }
     .btn-join-link {
       font-family: 'Barlow Condensed', sans-serif;
       font-size: .8rem;
@@ -659,6 +663,11 @@
       background: rgba(200,85,247,.1);
       border-color: rgba(200,85,247,.34);
     }
+    .gce-mode.live-pvp {
+      color: var(--green);
+      background: rgba(61,255,160,.1);
+      border-color: rgba(61,255,160,.34);
+    }
     .gce-mode.prototype {
       color: var(--blue);
       background: rgba(68,170,255,.1);
@@ -819,15 +828,15 @@
     <div class="all-games-grid" id="gamesGrid">
 
       <!-- Connect Four -->
-      <div class="game-card-expanded fade-in" data-status="prototype" data-type="multiplayer" onclick="location.href='connect4.html'">
+      <div class="game-card-expanded fade-in" data-status="live" data-type="multiplayer" onclick="location.href='connect4.html'">
         <div class="gce-image" style="background-image: url('games-card-bg.png')">
-          <span class="gce-badge">PvP Prototype</span>
+          <span class="gce-badge">● Live PvP</span>
         </div>
         <div class="gce-body">
           <div class="gce-title">Connect Four Wagers</div>
-          <div class="gce-mode multiplayer">Multiplayer</div>
-          <p class="gce-desc">Drop pieces, connect four, and win the player-funded pot minus burn. Built for fast two-player wager rooms.</p>
-          <button class="gce-btn" onclick="event.stopPropagation(); location.href='connect4.html'">▶ Try Prototype</button>
+          <div class="gce-mode live-pvp" id="connect4LobbyBadge">Live PvP</div>
+          <p class="gce-desc">Drop pieces, connect four, and win the player-funded pot minus burn. Open lobbies appear in the live table above.</p>
+          <button class="gce-btn" onclick="event.stopPropagation(); location.href='connect4.html'">▶ Play Now</button>
         </div>
       </div>
 
@@ -1049,6 +1058,8 @@ function disconnectWallet() {
 }
 
 // Live games feed
+const PVP_API = (window.CASHX_PVP_BACKEND_URL || 'http://localhost:8790').replace(/\/$/, '');
+const CONNECT4_LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
 const LIVE_ABI = [
   'function getActiveGames() view returns (uint256[])',
   'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
@@ -1061,31 +1072,59 @@ function fmtEntry(amount) {
   return (n >= 1_000_000 ? (n / 1_000_000).toFixed(0) + 'M' : (n / 1_000).toFixed(0) + 'K') + ' CASHX';
 }
 
-async function refreshLiveGames() {
-  const tbody = document.getElementById('liveGamesBody');
-  if (!tbody) return;
+function fmtPlainEntry(value) {
+  const n = Number(value || 0);
+  if (n >= 1_000_000) return (n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1) + 'M CASHX';
+  if (n >= 1_000) return (n / 1_000).toFixed(n % 1_000 === 0 ? 0 : 1) + 'K CASHX';
+  return n.toLocaleString('en-US') + ' CASHX';
+}
+
+function shortAddress(value) {
+  const text = String(value || '');
+  if (text.startsWith('guest-')) return text.replace('guest-', 'Guest ');
+  return text.length > 12 ? text.slice(0, 6) + '...' + text.slice(-4) : text;
+}
+function readCachedConnect4Lobbies() {
   try {
-    const ids = await liveContract.getActiveGames();
-    if (ids.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No live games right now — check back soon!</td></tr>';
-      return;
-    }
-    const limited = ids.slice(-30);
-    const games   = await Promise.all(limited.map(id => liveContract.getGame(id)));
-    const cardWarGames = games
-      .map((g, i) => ({ g, id: limited[i].toString() }))
-      .filter(({ g }) => Number(g.gameType) === 0);
-    if (cardWarGames.length === 0) {
-      tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No Card War tables open right now — create one!</td></tr>';
-      return;
-    }
-    tbody.innerHTML = cardWarGames.map(({ g, id }) => {
-      const pot  = g.entryAmount.mul(g.maxPlayers);
+    const saved = JSON.parse(localStorage.getItem(CONNECT4_LOBBY_CACHE_KEY) || '[]');
+    const fresh = saved.filter(room => room && room.status === 'waiting' && Date.now() - Number(room.cachedAt || 0) < 2 * 60 * 60 * 1000);
+    if (fresh.length !== saved.length) localStorage.setItem(CONNECT4_LOBBY_CACHE_KEY, JSON.stringify(fresh));
+    return fresh;
+  } catch (_) {
+    return [];
+  }
+}
+
+function mergeConnect4Lobbies(primaryRooms) {
+  const map = new Map();
+  [...(primaryRooms || []), ...readCachedConnect4Lobbies()]
+    .filter(room => room && room.status === 'waiting')
+    .forEach(room => map.set(room.id, room));
+  return [...map.values()].sort((a, b) => Number(b.createdAt || b.cachedAt || 0) - Number(a.createdAt || a.cachedAt || 0));
+}
+async function fetchPvpLobbies() {
+  const response = await fetch(PVP_API + '/api/pvp/rooms?game=connect4&status=waiting&limit=20');
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok || data.ok === false) throw new Error(data.error || 'PvP backend unavailable');
+  return data.rooms || [];
+}
+
+async function fetchCardWarRows() {
+  const ids = await liveContract.getActiveGames();
+  const limited = ids.slice(-30);
+  if (!limited.length) return [];
+
+  const games = await Promise.all(limited.map(id => liveContract.getGame(id)));
+  return games
+    .map((g, i) => ({ g, id: limited[i].toString() }))
+    .filter(({ g }) => Number(g.gameType) === 0)
+    .map(({ g, id }) => {
+      const pot = g.entryAmount.mul(g.maxPlayers);
       const inGame = connectedAddress &&
         Array.from(g.players).some(p => p.toLowerCase() === connectedAddress.toLowerCase());
       const actionCell = inGame
         ? '<span class="badge-in-game">IN GAME</span>'
-        : '<a class="btn-join-link" href="games.html?game=0">JOIN →</a>';
+        : '<a class="btn-join-link" href="games.html?game=0">JOIN</a>';
       return '<tr>' +
         '<td class="num">#' + id + '</td>' +
         '<td><span class="type-badge type-cw">CARD WAR</span></td>' +
@@ -1094,15 +1133,73 @@ async function refreshLiveGames() {
         '<td class="num">' + fmtEntry(pot) + '</td>' +
         '<td>' + actionCell + '</td>' +
       '</tr>';
-    }).join('');
-  } catch (e) {
-    console.warn('Live games feed:', e);
-    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">Could not load — RPC may be busy</td></tr>';
+    });
+}
+
+async function fetchConnect4Rows() {
+  let backendRooms = [];
+  try {
+    backendRooms = await fetchPvpLobbies();
+  } catch (err) {
+    console.warn('Connect Four backend lobbies:', err);
+  }
+  const rooms = mergeConnect4Lobbies(backendRooms);
+  const badge = document.getElementById('connect4LobbyBadge');
+  if (badge) badge.textContent = rooms.length ? rooms.length + ' Open Lobby' + (rooms.length === 1 ? '' : 'ies') : 'Live PvP';
+
+  return rooms.map(room => {
+    const inGame = connectedAddress &&
+      room.players.some(player => String(player.address).toLowerCase() === connectedAddress.toLowerCase());
+    const actionCell = inGame
+      ? '<span class="badge-in-game">YOUR ROOM</span>'
+      : '<a class="btn-join-link" href="connect4.html?room=' + encodeURIComponent(room.id) + '">JOIN</a>';
+    const matchId = room.chain && room.chain.matchId ? '#' + room.chain.matchId : room.id.slice(0, 8);
+    return '<tr>' +
+      '<td class="num">' + matchId + '</td>' +
+      '<td><span class="type-badge type-c4">CONNECT 4</span></td>' +
+      '<td>' + fmtPlainEntry(room.wager) + '</td>' +
+      '<td>' + room.players.length + '/2</td>' +
+      '<td class="num">' + fmtPlainEntry(room.pot) + '</td>' +
+      '<td>' + actionCell + '</td>' +
+    '</tr>';
+  });
+}
+
+let _liveGamesServerOk = false;
+
+async function refreshLiveGames() {
+  const tbody = document.getElementById('liveGamesBody');
+  if (!tbody) return;
+  const [cardWarResult, connect4Result] = await Promise.allSettled([
+    fetchCardWarRows(),
+    fetchConnect4Rows(),
+  ]);
+  const rows = [
+    ...(cardWarResult.status === 'fulfilled' ? cardWarResult.value : []),
+    ...(connect4Result.status === 'fulfilled' ? connect4Result.value : []),
+  ];
+  const connect4Failed = connect4Result.status === 'rejected';
+  if (connect4Failed) {
+    console.warn('Connect Four lobbies:', connect4Result.reason);
+    const badge = document.getElementById('connect4LobbyBadge');
+    if (badge) badge.textContent = 'Live PvP';
+  } else {
+    _liveGamesServerOk = true;
+  }
+  if (cardWarResult.status === 'rejected') console.warn('Card War lobbies:', cardWarResult.reason);
+
+  if (rows.length) {
+    tbody.innerHTML = rows.join('');
+  } else if (connect4Failed && !_liveGamesServerOk) {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">⏳ Game server is starting up — checking for open lobbies…</td></tr>';
+  } else {
+    tbody.innerHTML = '<tr><td colspan="6" class="empty-cell">No live games right now — create one!</td></tr>';
   }
 }
 
 refreshLiveGames();
-setInterval(refreshLiveGames, 15_000);
+// poll every 5 s so a waking server is caught quickly
+setInterval(refreshLiveGames, 5_000);
 
 // Auto-reconnect if already authorised
 (async () => {
