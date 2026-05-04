@@ -183,23 +183,69 @@
     #connectBtn:hover { box-shadow: 0 0 28px rgba(255,77,109,.55), 0 0 16px rgba(245,166,35,.3); transform: translateY(-3px) scale(1.06); }
     #connectBtn.connected { background: linear-gradient(135deg, #c855f7, #8b1fcc); color: #fff; border: none; cursor: pointer; }
 
-    /* Main glass panel */
-    main {
-      width: 100%;
-      max-width: 480px;
-      padding: 2rem 1.8rem 2.2rem;
-      background: rgba(8,4,18,.84);
-      border: 1px solid rgba(255,255,255,.16);
+    /* Two-column game shell */
+    .game-shell {
+      width: min(1100px, 100%);
+      margin: 0 auto 2rem;
+      display: grid;
+      grid-template-columns: 310px minmax(0, 1fr);
+      gap: 0;
+      align-items: stretch;
+      overflow: hidden;
       border-radius: 24px;
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      box-shadow: 0 30px 90px rgba(0,0,0,.5), 0 0 60px rgba(0,0,0,.2);
-      margin: 2rem auto;
-      position: relative;
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 30px 90px rgba(0,0,0,.5);
+      background: rgba(8,4,18,.68);
+    }
+    .game-controls {
+      padding: 1.5rem;
+      border-right: 1px solid rgba(255,255,255,.1);
+      background: rgba(5,2,12,.72);
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+    }
+    .brand-row {
+      display: flex;
+      align-items: center;
+      gap: .85rem;
+      padding-bottom: 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .brand-icon { font-size: 2rem; line-height: 1; }
+    .brand-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.55rem;
+      letter-spacing: 3px;
+      color: #fff;
+      line-height: 1.1;
+    }
+    .brand-sub {
+      font-family: 'Michroma', sans-serif;
+      font-size: .5rem;
+      letter-spacing: 2px;
+      color: var(--text-dim);
+      text-transform: uppercase;
+    }
+    .game-arena {
+      padding: 1.55rem;
+      display: flex;
+      flex-direction: column;
+      gap: .9rem;
+      background:
+        radial-gradient(circle at 50% 18%, rgba(245,166,35,.11), transparent 28%),
+        radial-gradient(circle at 50% 90%, rgba(200,85,247,.13), transparent 30%),
+        rgba(8,4,18,.92);
+    }
+    .game-burn {
+      margin-top: auto;
+      border-top: 1px solid rgba(255,255,255,.08);
+      padding-top: 1rem;
+      text-align: center;
     }
 
     /* Stat cards */
-    .stats-bar { display: flex; gap: .8rem; margin-bottom: 1.6rem; }
+    .stats-bar { display: flex; gap: .8rem; }
     .stat-card {
       flex: 1;
       background: rgba(5,2,12,.92);
@@ -213,12 +259,13 @@
 
     /* 3D Dice stage */
     .dice-stage {
+      flex: 1;
       perspective: 600px;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       padding: 1.2rem 1rem 1rem;
-      margin-bottom: 1.2rem;
       position: relative;
       overflow: hidden;
       border: 1px solid rgba(200,85,247,.24);
@@ -528,7 +575,6 @@
     .tx-note { color: var(--text-dim); font-size: .82rem; line-height: 1.35; }
 
     /* Burn counter */
-    .burn-section { text-align: center; padding: 1.2rem 0 .4rem; border-top: 1px solid rgba(255,255,255,.12); background: rgba(5,2,12,.86); border-radius: 0 0 14px 14px; margin: 0 -1.8rem -2.2rem; padding-left: 1.8rem; padding-right: 1.8rem; }
     .burn-label { font-size: .65rem; letter-spacing: 3px; text-transform: uppercase; color: var(--text-dim); margin-bottom: .4rem; }
     .burn-value { font-family: 'Orbitron', monospace; font-size: 1.4rem; font-weight: 700; color: var(--red); text-shadow: 0 0 24px rgba(255,68,85,.3); }
     .burn-sub { font-size: .7rem; color: var(--text-dim); margin-top: .25rem; letter-spacing: 1px; }
@@ -691,50 +737,6 @@
     .wallet-dropdown-item.danger:hover { background: rgba(255,68,85,.15); color: var(--red); }
     .wallet-dropdown-sep { height: 1px; background: rgba(200,85,247,.12); margin: 4px 0; }
 
-    .chrome-notice {
-      position: fixed;
-      top: 82px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 999;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: .45rem;
-      max-width: calc(100vw - 2rem);
-      padding: .42rem .78rem;
-      color: rgba(255,255,255,.9);
-      background: rgba(5,2,12,.82);
-      border: 1px solid rgba(200,85,247,.42);
-      border-radius: 999px;
-      box-shadow: 0 8px 26px rgba(0,0,0,.45), 0 0 22px rgba(200,85,247,.16);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: .76rem;
-      font-weight: 700;
-      letter-spacing: 1.6px;
-      line-height: 1;
-      text-align: center;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-    .chrome-notice strong {
-      color: #f0b8ff;
-      text-shadow: 0 0 12px rgba(200,85,247,.5);
-    }
-    .chrome-notice-close {
-      appearance: none;
-      border: 0;
-      background: transparent;
-      color: rgba(255,255,255,.7);
-      cursor: pointer;
-      font-size: .9rem;
-      line-height: 1;
-      padding: 0 0 0 .25rem;
-    }
-    .chrome-notice-close:hover { color: #fff; }
-
     /* Footer */
     footer { width: 100%; text-align: center; padding: 1rem; font-size: .72rem; color: var(--text-dim); border-top: 1px solid var(--border); letter-spacing: 1px; }
     footer a { color: var(--amber); text-decoration: none; }
@@ -783,101 +785,115 @@
   </div>
 </nav>
 
-<!-- Chrome notice -->
-<div id="chromeNotice" class="chrome-notice">
-  Best experienced with <strong>Chrome + MetaMask</strong>
-  <button class="chrome-notice-close" onclick="document.getElementById('chromeNotice').remove()" aria-label="Dismiss Chrome notice">✕</button>
-</div>
 
 <!-- Page wrapper (pushes content past sidebar) -->
 <div class="page-wrap">
 
-  <main>
-    <div class="stats-bar">
-      <div class="stat-card">
-        <div class="stat-label">Your Balance</div>
-        <div class="stat-value" id="playerBalance">—</div>
-      </div>
-      <div class="stat-card">
-        <div class="stat-label">Total Burned</div>
-        <div class="stat-value" id="totalBurnedStat">—</div>
-      </div>
-    </div>
+  <div id="screenFlash" class="screen-flash"></div>
 
-    <div id="screenFlash" class="screen-flash"></div>
+  <div class="game-shell">
 
-    <div class="dice-stage" id="diceStage">
-      <div class="dice-label">ROLL RESULT &nbsp;·&nbsp; 1 to 99</div>
-      <div class="dice-cube">
-        <div class="dice-face face-front" id="diceResult">?</div>
-        <div class="dice-face face-back">⚅</div>
-        <div class="dice-face face-right">⚄</div>
-        <div class="dice-face face-left">⚂</div>
-        <div class="dice-face face-top">⚃</div>
-        <div class="dice-face face-bottom">⚁</div>
-      </div>
-      <div class="roll-meter" aria-hidden="true">
-        <div class="roll-track">
-          <div class="roll-pointer" id="rollPointer"></div>
-        </div>
-        <div class="roll-meter-labels">
-          <span>Under 50</span>
-          <span>50 loses</span>
-          <span>Over 50</span>
+    <!-- Left: controls -->
+    <aside class="game-controls">
+
+      <div class="brand-row">
+        <span class="brand-icon">⚄</span>
+        <div>
+          <div class="brand-title">CASHX Dice</div>
+          <div class="brand-sub">vs · House</div>
         </div>
       </div>
-      <div class="roll-outcome" id="rollOutcome">Pick a side</div>
-      <div class="dice-legend">
-        <span class="pill pill-under">UNDER &lt;50</span>
-        <span>· 50 = LOSS ·</span>
-        <span class="pill pill-over">OVER &gt;50</span>
+
+      <div class="stats-bar">
+        <div class="stat-card">
+          <div class="stat-label">Your Balance</div>
+          <div class="stat-value" id="playerBalance">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Total Burned</div>
+          <div class="stat-value" id="totalBurnedStat">—</div>
+        </div>
       </div>
-    </div>
 
-    <div style="margin-bottom:.5rem;">
-      <div class="section-label">
-        <span>Bet Amount</span>
-        <span id="betLimitsDisplay">Min 500 · Max 5,000 CASHX</span>
+      <div>
+        <div class="section-label">
+          <span>Bet Amount</span>
+          <span id="betLimitsDisplay">Min 500 · Max 5,000 CASHX</span>
+        </div>
+        <input type="number" id="betAmount" placeholder="Enter CASHX amount…" min="500" max="5000" step="100" />
+        <div class="quick-bets">
+          <button class="qb" onclick="setQuickBet(500)">MIN</button>
+          <button class="qb" onclick="setQuickBet(1000)">1K</button>
+          <button class="qb" onclick="setQuickBet(2500)">2.5K</button>
+          <button class="qb" onclick="setQuickBet(5000)">MAX</button>
+        </div>
       </div>
-      <input type="number" id="betAmount" placeholder="Enter CASHX amount…" min="500" max="5000" step="100" />
-      <div class="quick-bets">
-        <button class="qb" onclick="setQuickBet(500)">MIN</button>
-        <button class="qb" onclick="setQuickBet(1000)">1K</button>
-        <button class="qb" onclick="setQuickBet(2500)">2.5K</button>
-        <button class="qb" onclick="setQuickBet(5000)">MAX</button>
+
+      <div class="bet-buttons">
+        <button class="bet-btn btn-under" id="btnUnder" onclick="placeBet(false)" disabled>
+          UNDER 50
+          <span class="sub">WIN if roll &lt; 50</span>
+        </button>
+        <button class="bet-btn btn-over" id="btnOver" onclick="placeBet(true)" disabled>
+          OVER 50
+          <span class="sub">WIN if roll &gt; 50</span>
+        </button>
       </div>
-    </div>
 
-    <div class="bet-buttons">
-      <button class="bet-btn btn-under" id="btnUnder" onclick="placeBet(false)" disabled>
-        UNDER 50
-        <span class="sub">WIN if roll &lt; 50</span>
-      </button>
-      <button class="bet-btn btn-over" id="btnOver" onclick="placeBet(true)" disabled>
-        OVER 50
-        <span class="sub">WIN if roll &gt; 50</span>
-      </button>
-    </div>
+      <div id="statusBox">Connect your wallet to start playing.</div>
 
-    <div id="statusBox">Connect your wallet to start playing.</div>
-
-    <div class="tx-progress" id="txProgress">
-      <b>Wallet Flow</b>
-      <div class="tx-steps">
-        <div class="tx-step" data-tx-step="approve">Approve</div>
-        <div class="tx-step" data-tx-step="fund">Fund</div>
-        <div class="tx-step" data-tx-step="join">Join</div>
-        <div class="tx-step" data-tx-step="claim">Claim</div>
+      <div class="tx-progress" id="txProgress">
+        <b>Wallet Flow</b>
+        <div class="tx-steps">
+          <div class="tx-step" data-tx-step="approve">Approve</div>
+          <div class="tx-step" data-tx-step="fund">Fund</div>
+          <div class="tx-step" data-tx-step="join">Join</div>
+          <div class="tx-step" data-tx-step="claim">Claim</div>
+        </div>
+        <div class="tx-note" id="txProgressNote">Place a funded roll and the wallet steps will light up here.</div>
       </div>
-      <div class="tx-note" id="txProgressNote">Place a funded roll and the wallet steps will light up here.</div>
-    </div>
 
-    <div class="burn-section">
-      <div class="burn-label">🔥 Total CASHX Burned From Games</div>
-      <div class="burn-value" id="totalBurned">—</div>
-      <div class="burn-sub">via this contract · updated live</div>
-    </div>
-  </main>
+    </aside>
+
+    <!-- Right: dice stage + burn -->
+    <section class="game-arena">
+
+      <div class="dice-stage" id="diceStage">
+        <div class="dice-label">ROLL RESULT &nbsp;·&nbsp; 1 to 99</div>
+        <div class="dice-cube">
+          <div class="dice-face face-front" id="diceResult">?</div>
+          <div class="dice-face face-back">⚅</div>
+          <div class="dice-face face-right">⚄</div>
+          <div class="dice-face face-left">⚂</div>
+          <div class="dice-face face-top">⚃</div>
+          <div class="dice-face face-bottom">⚁</div>
+        </div>
+        <div class="roll-meter" aria-hidden="true">
+          <div class="roll-track">
+            <div class="roll-pointer" id="rollPointer"></div>
+          </div>
+          <div class="roll-meter-labels">
+            <span>Under 50</span>
+            <span>50 loses</span>
+            <span>Over 50</span>
+          </div>
+        </div>
+        <div class="roll-outcome" id="rollOutcome">Pick a side</div>
+        <div class="dice-legend">
+          <span class="pill pill-under">UNDER &lt;50</span>
+          <span>· 50 = LOSS ·</span>
+          <span class="pill pill-over">OVER &gt;50</span>
+        </div>
+      </div>
+
+      <div class="game-burn">
+        <div class="burn-label">🔥 Total CASHX Burned From Games</div>
+        <div class="burn-value" id="totalBurned">—</div>
+        <div class="burn-sub">via this contract · updated live</div>
+      </div>
+
+    </section>
+  </div><!-- /game-shell -->
 
   <!-- Recent Dice Games (all players) -->
   <div class="your-games-section" id="recentGamesSection">

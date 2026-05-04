@@ -532,10 +532,9 @@ function renderGameRow(g, gameId, isNewlyResolved) {
 // Face-down while waiting; flip animation reveals all cards when resolved.
 
 function renderCardWarVisual(g, gameId, isNewlyResolved) {
-  const ranks = ['','','2','3','4','5','6','7','8','9','10','J','Q','K','A'];
-  const suits  = ['♠','♥','♦','♣'];
-  const suit   = suits[gameId % 4];
-  const isRed  = suit === '♥' || suit === '♦';
+  const ranks      = ['','','2','3','4','5','6','7','8','9','10','J','Q','K','A'];
+  const suits      = ['♠','♥','♦','♣'];
+  const suitChars  = ['S','H','D','C'];
   const n      = Number(g.playerCount);
   const max    = Number(g.maxPlayers);
 
@@ -546,6 +545,10 @@ function renderCardWarVisual(g, gameId, isNewlyResolved) {
     const player   = g.players[i];
     const result   = Number(g.results[i]);
     const rank     = ranks[result] || String(result);
+    const suitIdx  = i % 4;
+    const suit     = suits[suitIdx];
+    const suitChar = suitChars[suitIdx];
+    const isRed    = suit === '♥' || suit === '♦';
     const isMe     = player.toLowerCase() === (playerAddress || '').toLowerCase();
     const isWinner = g.resolved && g.winner.toLowerCase() === player.toLowerCase();
     const isLoser  = g.resolved && !isWinner;
@@ -561,15 +564,20 @@ function renderCardWarVisual(g, gameId, isNewlyResolved) {
       (isCrownCard ? ' crown-card' : '');
 
     const title = isMe ? 'YOU' : player.slice(0, 6) + '…' + player.slice(-4);
+    const imgFile = rank ? (suitChar + rank + '.png') : null;
+    const frontContent = imgFile
+      ? '<img src="cards/png/' + imgFile + '" alt="' + rank + ' of ' + suit + '" class="card-img">' +
+        (isCrownCard ? '<div class="special-hook">CROWN</div>' : '')
+      : '<div class="c-rank">' + rank + '</div>' +
+        '<div class="c-suit">' + suit + '</div>' +
+        (isCrownCard ? '<div class="special-hook">CROWN</div>' : '');
 
     html +=
       '<div class="card-flip-container" title="' + title + '" style="--deal-rot:' + ((i - 2) * 3) + 'deg">' +
         '<div class="card-inner' + (startFlipped ? ' flipped' : '') + '">' +
           '<div class="card-face card-back-face"><span class="card-back-logo">CK</span></div>' +
           '<div class="' + frontClass + '">' +
-            '<div class="c-rank">' + rank + '</div>' +
-            '<div class="c-suit">'  + suit + '</div>' +
-            (isCrownCard ? '<div class="special-hook">CROWN</div>' : '') +
+            frontContent +
           '</div>' +
         '</div>' +
       '</div>';
