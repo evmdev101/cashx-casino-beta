@@ -6,7 +6,7 @@ import cors from 'cors';
 import express from 'express';
 import { AbiCoder, Wallet, getAddress, getBytes, keccak256, toUtf8Bytes } from 'ethers';
 
-const PORT = Number(process.env.PORT || process.env.PVP_PORT || 8790);
+const PORT = Number(process.env.PVP_PORT || 8790);
 const BURN_BPS = 500n;
 const BPS = 10000n;
 const MAX_MARKS_PER_PLAYER = 3;

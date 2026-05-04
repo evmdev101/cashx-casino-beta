@@ -258,11 +258,13 @@ async function lockBet() {
 
     const allowance = await state.cashxContract.allowance(state.player, MINES_GAME_ADDRESS);
     if (allowance.lt(betAmount)) {
+      setWalletFlow('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
       updateBanner('Approve CASHX in your wallet');
       const approveTx = await state.cashxContract.approve(MINES_GAME_ADDRESS, betAmount);
       await approveTx.wait();
     }
 
+    setWalletFlow('fund', 'Step 2 of 2: Confirm Mines bet in MetaMask...');
     updateBanner('Confirm Mines bet in your wallet');
     const tx = await state.minesContract.placeGame(betAmount, mineCount, picks.length, commitHash);
     updateBanner('Locking bet on-chain...');
@@ -281,6 +283,7 @@ async function lockBet() {
     };
     savePending();
     updateBanner('Bet locked. Reveal after block ' + placed.targetBlock);
+    setWalletFlow('fund', 'Bet locked on-chain. Reveal when the block is ready.');
     await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
   } catch (err) {
     updateBanner(readableError(err), 'loss');
@@ -308,6 +311,7 @@ async function revealPendingGame() {
       return;
     }
 
+    setWalletFlow('claim', 'Step 1 of 1: Confirm reveal transaction in MetaMask...');
     updateBanner('Confirm reveal in your wallet');
     const tx = await state.minesContract.revealGame(
       state.pending.gameId,
@@ -321,6 +325,7 @@ async function revealPendingGame() {
     if (!settled) throw new Error('GameSettled event not found');
 
     applySettledResult(settled, revealed, receipt.transactionHash);
+    setWalletFlow('claim', 'Reveal complete. Payout and burn settled.');
     clearPending();
     state.selected = [];
     await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
@@ -603,6 +608,18 @@ function updateUi() {
 function updateBanner(text, type = '') {
   els.banner.textContent = text;
   els.banner.className = 'round-banner ' + type;
+}
+
+function setWalletFlow(stage, note) {
+  const steps = ['approve', 'fund', 'join', 'claim'];
+  const activeIndex = steps.indexOf(stage);
+  document.querySelectorAll('[data-tx-step]').forEach(step => {
+    const index = steps.indexOf(step.dataset.txStep);
+    step.classList.toggle('done', index > -1 && index < activeIndex);
+    step.classList.toggle('active', step.dataset.txStep === stage);
+  });
+  const noteEl = document.getElementById('txProgressNote');
+  if (noteEl && note) noteEl.textContent = note;
 }
 
 function hydratePending() {

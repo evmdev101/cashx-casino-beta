@@ -277,6 +277,46 @@
       text-transform: uppercase;
     }
     .panel-body { padding: 1rem; }
+    .tx-progress {
+      margin-top: .75rem;
+      border: 1px solid rgba(245,166,35,.16);
+      background: rgba(0,0,0,.2);
+      border-radius: 8px;
+      padding: .68rem .72rem;
+      display: grid;
+      gap: .65rem;
+    }
+    .tx-progress b {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .tx-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; }
+    .tx-step {
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      border-radius: 7px;
+      padding: .48rem .35rem;
+      display: grid;
+      place-items: center;
+      gap: .25rem;
+      color: var(--muted);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .76rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .tx-step::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.18); box-shadow: 0 0 0 3px rgba(255,255,255,.04); }
+    .tx-step.active { color: #fff; border-color: rgba(245,166,35,.58); background: rgba(245,166,35,.09); }
+    .tx-step.active::before { background: var(--gold); box-shadow: 0 0 14px rgba(245,166,35,.55); }
+    .tx-step.done { color: var(--green); border-color: rgba(61,255,160,.28); background: rgba(61,255,160,.06); }
+    .tx-step.done::before { background: var(--green); box-shadow: 0 0 12px rgba(61,255,160,.45); }
+    .tx-note { color: var(--muted); font-size: .82rem; line-height: 1.35; }
 
     .field {
       margin-bottom: .9rem;
@@ -714,6 +754,17 @@
             <div class="money-row burn"><span>Burn</span><span id="burnValue">10,000</span></div>
             <div class="money-row win"><span>Winner Gets</span><span id="payoutValue">190,000</span></div>
           </div>
+
+          <div class="tx-progress" id="txProgress">
+            <b>Wallet Flow</b>
+            <div class="tx-steps">
+              <div class="tx-step" data-tx-step="approve">Approve</div>
+              <div class="tx-step" data-tx-step="fund">Fund</div>
+              <div class="tx-step" data-tx-step="join">Join</div>
+              <div class="tx-step" data-tx-step="claim">Claim</div>
+            </div>
+            <div class="tx-note" id="txProgressNote">Create or join a funded match and the wallet steps will light up here.</div>
+          </div>
         </div>
       </aside>
 
@@ -903,6 +954,7 @@
       roundTitle.textContent = 'Match created';
       roundCopy.textContent = 'Waiting for a second player to match the wager.';
       addFeed('Match created', formatAmount(Number(wagerInput.value || 0)) + ' CASHX entry posted.');
+      setWalletFlow('fund', 'Funded match created. Waiting for Player O.');
       renderBoard();
       renderTimer();
       updateActivePlayer();
@@ -919,6 +971,7 @@
       roundTitle.textContent = 'Player X to move';
       roundCopy.textContent = 'Keep 3 marks alive. Your 4th placement removes your oldest mark.';
       addFeed('Opponent joined', opponentLabel() + ' matched the wager. Pot is ready.');
+      setWalletFlow('join', 'Both entries are funded. Play the match.');
       startClock();
       renderBoard();
       updateActivePlayer();
@@ -936,6 +989,7 @@
         stopPolling();
         roundTitle.textContent = 'Creating room';
         roundCopy.textContent = 'Calling the PvP backend...';
+        setWalletFlow('fund', 'Creating the funded room.');
         const room = await api('/api/pvp/rooms', {
           game: 'tictactoe',
           creator: playerId(),
@@ -958,6 +1012,7 @@
         if (!currentRoomId) throw new Error('Create or open a room first.');
         roundTitle.textContent = 'Joining room';
         roundCopy.textContent = 'Matching the wager in the PvP backend...';
+        setWalletFlow('join', 'Joining and matching the wager.');
         const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoomId) + '/join', {
           player: playerId(),
         });
@@ -1027,18 +1082,22 @@
       if (room.status === 'waiting') {
         roundTitle.textContent = 'Room waiting';
         roundCopy.textContent = 'Copy the invite link, then join from another tab or use Join Room.';
+        setWalletFlow('fund', 'Funded room is waiting for Player O.');
       } else if (room.status === 'active') {
         roundTitle.textContent = myMark === room.turn ? 'Your move' : 'Player ' + room.turn + ' to move';
         roundCopy.textContent = myMark
           ? 'You are Player ' + myMark + '. Both tabs stay synced from the PvP backend.'
           : 'Spectating this room. Join before moving.';
+        setWalletFlow('join', 'Both entries are funded. Play the match.');
       } else if (room.winner) {
         const winnerSeat = room.players.find(player => player.address === room.winner);
         roundTitle.textContent = 'Player ' + (winnerSeat ? winnerSeat.mark : '?') + ' wins';
         roundCopy.textContent = formatAmount(Number(room.payout)) + ' CASHX payout after burn.';
+        setWalletFlow('claim', 'Match complete. Winner payout is ready.');
       } else {
         roundTitle.textContent = 'Draw';
         roundCopy.textContent = 'No winner. Live contract rules can refund or offer rematch.';
+        setWalletFlow('claim', 'Draw complete. Refund or rematch comes next.');
       }
     }
 
@@ -1343,6 +1402,18 @@
 
     function formatAmount(value) {
       return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function setWalletFlow(stage, note) {
+      const steps = ['approve', 'fund', 'join', 'claim'];
+      const activeIndex = steps.indexOf(stage);
+      document.querySelectorAll('[data-tx-step]').forEach(step => {
+        const index = steps.indexOf(step.dataset.txStep);
+        step.classList.toggle('done', index > -1 && index < activeIndex);
+        step.classList.toggle('active', step.dataset.txStep === stage);
+      });
+      const noteEl = document.getElementById('txProgressNote');
+      if (noteEl && note) noteEl.textContent = note;
     }
 
     function addFeed(title, sub) {

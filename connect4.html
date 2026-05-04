@@ -13,7 +13,7 @@
   <script src="wallet-modal.js"></script>
   <script>
     window.CASHX_PVP_BACKEND_URL = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
-      ? 'http://127.0.0.1:8787'
+      ? 'http://127.0.0.1:8790'
       : 'https://cashx-pvp-backend.onrender.com';
     window.CASHX_PVP_WAGER_ADDRESS = '0x344e72a3F4972154B1dbd014ae936816ef34DF9f';
   </script>
@@ -221,53 +221,66 @@
     .backend-offline { color: var(--red) !important; }
 
     .game-shell {
-      max-width: 1340px;
-      margin: 0 auto;
+      width: min(1100px, 100%);
+      margin: 0 auto 2rem;
       display: grid;
-      grid-template-columns: minmax(280px, 330px) minmax(560px, 1fr);
-      gap: .9rem;
-      align-items: start;
+      grid-template-columns: 310px minmax(0, 1fr);
+      gap: 0;
+      align-items: stretch;
+      overflow: hidden;
+      border-radius: 24px;
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 30px 90px rgba(0,0,0,.5), 0 0 60px rgba(0,0,0,.2);
+      background: rgba(8, 4, 18, .68);
     }
     .panel {
-      background:
-        linear-gradient(180deg, rgba(255,255,255,.045), transparent 24%),
-        var(--panel);
-      border: 1px solid rgba(200,85,247,.26);
-      border-radius: 8px;
-      box-shadow: 0 24px 70px var(--shadow);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      overflow: hidden;
+      background: rgba(5, 2, 12, .72);
+      border: none;
+      border-right: 1px solid rgba(255,255,255,.1);
+      border-radius: 0;
+      box-shadow: none;
+      backdrop-filter: none;
+      -webkit-backdrop-filter: none;
+      overflow: visible;
     }
-    .panel::before {
-      content: '';
-      display: block;
-      height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(245,166,35,.42), rgba(200,85,247,.36), transparent);
-    }
-    .panel-head {
-      min-height: 56px;
-      padding: .9rem 1rem;
-      border-bottom: 1px solid rgba(200,85,247,.16);
+    .panel::before { display: none; }
+    .panel-head { display: none; }
+    .panel-body { padding: 1.5rem; }
+    .brand-row {
       display: flex;
       align-items: center;
-      justify-content: space-between;
-      gap: .8rem;
+      gap: 12px;
+      margin-bottom: 1.1rem;
     }
-    .panel-title {
+    .brand-mark {
+      position: relative;
+      display: grid;
+      place-items: center;
+      flex-shrink: 0;
+      width: 46px;
+      height: 46px;
+      border: 1px solid rgba(200,85,247,.5);
+      border-radius: 50%;
+      color: var(--purple);
+      background:
+        radial-gradient(circle at 45% 45%, rgba(200,85,247,.4), rgba(8,4,18,.98) 58%),
+        linear-gradient(135deg, rgba(200,85,247,.9), rgba(245,166,35,.9));
+      box-shadow: 0 0 24px rgba(200,85,247,.32);
+      font-size: 1.35rem;
+    }
+    .brand-row-title {
       font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.9rem;
       letter-spacing: 2px;
+      line-height: .95;
       color: #fff;
-      font-size: 1.45rem;
     }
-    .panel-tag {
-      font-family: 'Michroma', sans-serif;
-      font-size: .52rem;
-      letter-spacing: 2px;
-      color: var(--green);
-      text-transform: uppercase;
+    .brand-row-sub {
+      font-size: .82rem;
+      color: rgba(221,224,240,.68);
+      line-height: 1.4;
+      margin-top: .2rem;
     }
-    .panel-body { padding: .9rem 1rem 1rem; }
     .field { margin-bottom: .75rem; }
     .field label {
       display: block;
@@ -579,6 +592,30 @@
     }
     .tx-step.done::before { background: var(--green); box-shadow: 0 0 12px rgba(61,255,160,.45); }
     .tx-note { color: var(--muted); font-size: .82rem; line-height: 1.35; }
+    .tx-status {
+      margin: 0;
+      padding: .82rem .95rem;
+      border-top: 1px solid rgba(245,166,35,.48);
+      border-bottom: 1px solid rgba(245,166,35,.16);
+      background: linear-gradient(135deg, rgba(245,166,35,.08), rgba(5,2,12,.74));
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.04);
+      color: var(--text);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+    }
+    .tx-status[hidden] { display: none; }
+    .tx-status-main {
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .98rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+    }
+    .tx-status-tip {
+      margin-top: .45rem;
+      color: var(--muted);
+      font-size: .82rem;
+    }
+    .tx-status-tip strong { color: var(--gold); }
     .lobby-panel {
       margin-top: .75rem;
       border: 1px solid rgba(255,255,255,.08);
@@ -662,14 +699,21 @@
     .mini-btn-manage:hover { background: linear-gradient(135deg, rgba(245,166,35,.38), rgba(245,166,35,.18)) !important; }
     .mini-btn-manage:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
 
+    .panel.arena {
+      border-right: none;
+    }
     .arena {
-      padding: .9rem 1rem 1rem;
-      display: grid;
+      padding: 1.55rem;
+      display: flex;
+      flex-direction: column;
       gap: .8rem;
-      align-content: start;
       background:
-        radial-gradient(circle at 50% 8%, rgba(245,166,35,.08), transparent 36%),
-        linear-gradient(180deg, rgba(12,8,21,.88), rgba(10,7,18,.76));
+        radial-gradient(circle at 50% 18%, rgba(245,166,35,.11), transparent 28%),
+        radial-gradient(circle at 50% 92%, rgba(200,85,247,.13), transparent 30%),
+        rgba(8, 4, 18, .92);
+    }
+    .game-burn {
+      margin-top: auto;
     }
     .arena-meta {
       display: flex;
@@ -899,35 +943,27 @@
     }
     .tech-row b { display: block; color: #fff; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; margin-bottom: .2rem; text-transform: uppercase; }
     .tech-row span { color: var(--muted); font-size: .9rem; line-height: 1.35; }
+    .game-burn {
+      grid-column: 1 / -1;
+      border-top: 1px solid rgba(255,255,255,.1);
+      background: rgba(5, 2, 12, .72);
+      padding: 1.1rem 1rem;
+      text-align: center;
+    }
     .ledger-area {
-      max-width: 1340px;
-      margin: 1rem auto 0;
+      width: min(1100px, 100%);
+      margin: 2rem auto 0;
       display: grid;
       grid-template-columns: 1fr;
-      gap: .9rem;
+      gap: 0;
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: 0 30px 90px rgba(0,0,0,.5);
+      border-radius: 24px;
+      overflow: hidden;
+      background: rgba(8, 4, 18, .68);
     }
-    .burn-strip {
-      border: 1px solid rgba(200,85,247,.22);
-      border-radius: 8px;
-      background: linear-gradient(180deg, rgba(8,5,16,.78), rgba(7,4,14,.64));
-      box-shadow: 0 18px 55px rgba(0,0,0,.28);
-      padding: 1rem;
-      text-align: center;
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-    }
-    .arena .burn-strip {
-      margin-top: 0;
-      box-shadow: none;
-    }
-    .match-bottom-card .burn-strip {
-      border: 0;
-      border-radius: 0;
-      background: transparent;
-      box-shadow: none;
-      padding: .95rem 1rem 1rem;
-    }
-    .history-panel { grid-column: 1; }
+    .history-panel { grid-column: 1; border-radius: 0; border: none; border-bottom: 1px solid rgba(255,255,255,.1); box-shadow: none; backdrop-filter: none; -webkit-backdrop-filter: none; background: transparent; }
+    .history-panel:last-child { border-bottom: none; }
     .burn-label {
       font-family: 'Michroma', sans-serif;
       font-size: .6rem;
@@ -1046,7 +1082,7 @@
     }
     .verify-link:hover { color: #fff; border-color: rgba(245,166,35,.55); }
     footer {
-      max-width: 1340px;
+      width: min(1100px, 100%);
       margin: 1.5rem auto 0;
       color: var(--muted);
       font-size: .82rem;
@@ -1062,9 +1098,10 @@
     footer a:hover { color: var(--gold); }
 
     @media (max-width: 1120px) {
-      .game-shell { grid-template-columns: 1fr; }
-      .ledger-area { grid-template-columns: 1fr; }
-      .burn-strip,
+      .game-shell { grid-template-columns: 1fr; border-radius: 16px; }
+      .panel { border-right: none; border-bottom: 1px solid rgba(255,255,255,.1); }
+      .panel.arena { border-bottom: none; }
+      .ledger-area { grid-template-columns: 1fr; border-radius: 16px; }
       .history-panel { grid-column: 1; }
       .hero { grid-template-columns: 1fr; }
       .hero-copy { display: block; }
@@ -1123,11 +1160,14 @@
 
     <section class="game-shell">
       <aside class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Match Room</div>
-          <div class="panel-tag">Room Test</div>
-        </div>
         <div class="panel-body">
+          <div class="brand-row">
+            <div class="brand-mark">◈</div>
+            <div>
+              <div class="brand-row-title">Connect Four</div>
+              <p class="brand-row-sub">PvP wagered match · place your piece, win the pot</p>
+            </div>
+          </div>
           <div class="field">
             <label for="wagerInput">Player Wager</label>
             <div class="input-row">
@@ -1216,11 +1256,7 @@
             <strong id="roundTitle">Create a room</strong>
             <span id="roundCopy">Open the invite in another tab to test a real two-player flow.</span>
           </div>
-          <div class="burn-strip">
-            <div class="burn-label">Total CASHX Burned From Connect Four</div>
-            <div class="burn-value" id="totalBurned">—</div>
-            <div class="burn-sub">player-funded pots · backend verified</div>
-          </div>
+          <div class="tx-status" id="txStatusBox" hidden></div>
         </div>
         <div class="ready-phase" id="readyPhase" hidden>
           <div class="ready-header">Both players must ready up to start</div>
@@ -1271,6 +1307,12 @@
         </div>
         <div id="forfeitZone" hidden>
           <button class="ghost-btn forfeit-btn" id="forfeitBtn" type="button">Leave Room</button>
+        </div>
+
+        <div class="game-burn">
+          <div class="burn-label">🔥 Total CASHX Burned From Connect Four</div>
+          <div class="burn-value" id="totalBurned">—</div>
+          <div class="burn-sub">player-funded pots · backend verified</div>
         </div>
       </section>
     </section>
@@ -1408,6 +1450,7 @@
     const chainStatus = document.getElementById('chainStatus');
     const txProgressNote = document.getElementById('txProgressNote');
     const txStepEls = [...document.querySelectorAll('[data-tx-step]')];
+    const txStatusBox = document.getElementById('txStatusBox');
     const openLobbies = document.getElementById('openLobbies');
     const refreshLobbiesBtn = document.getElementById('refreshLobbiesBtn');
     const totalBurned = document.getElementById('totalBurned');
@@ -1436,6 +1479,8 @@
     let historyHandle = null;
     let healthHandle = null;
     let countdownHandle = null;
+    let _lobbiesServerOk = false;
+    let _lobbiesRetryHandle = null;
     let lastMoveCell = null;
     let autoSettleRoomId = '';
     let settlingOnChain = false;
@@ -2072,9 +2117,6 @@
         .forEach(room => map.set(room.id, room));
       return [...map.values()].sort((a, b) => Number(b.createdAt || b.cachedAt || 0) - Number(a.createdAt || a.cachedAt || 0));
     }
-    let _lobbiesServerOk = false;
-    let _lobbiesRetryHandle = null;
-
     async function refreshOpenLobbies() {
       clearTimeout(_lobbiesRetryHandle);
       try {
@@ -2426,6 +2468,7 @@
         step.classList.toggle('active', step.dataset.txStep === stage);
       });
       if (note) txProgressNote.textContent = note;
+      showTxStatus(note);
     }
 
     function completeTxStage(stage, note) {
@@ -2436,6 +2479,7 @@
         step.classList.remove('active');
       });
       if (note) txProgressNote.textContent = note;
+      showTxStatus(note);
     }
 
     function resetTxProgress() {
@@ -2444,10 +2488,26 @@
         step.classList.remove('done');
       });
       txProgressNote.textContent = 'Create or join a funded room and the wallet steps will light up here.';
+      hideTxStatus();
     }
 
     function hasActiveTxStage() {
       return txStepEls.some(step => step.classList.contains('active'));
+    }
+
+    function showTxStatus(note) {
+      if (!txStatusBox || !note) return;
+      const isStep = /step\s+\d+/i.test(note);
+      txStatusBox.hidden = false;
+      txStatusBox.innerHTML =
+        '<div class="tx-status-main">' + escapeHtml(note) + '</div>' +
+        (isStep ? '<div class="tx-status-tip">If the transaction is slow, use <strong>Speed Up</strong> in MetaMask.</div>' : '');
+    }
+
+    function hideTxStatus() {
+      if (!txStatusBox) return;
+      txStatusBox.hidden = true;
+      txStatusBox.textContent = '';
     }
 
     function syncTxProgressFromRoom(room) {
@@ -2543,7 +2603,7 @@
         completeTxStage('approve', 'Approve already done. Next wallet step will fund or join.');
         return;
       }
-      setTxStage('approve', 'Step 1: approve CASHX spending in your wallet.');
+      setTxStage('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
       roundTitle.textContent = 'Approve CASHX';
       roundCopy.textContent = 'Approve once so the contract can escrow this wager.';
       addFeed('Wallet step', 'Approving CASHX for the wager contract.');
@@ -2570,7 +2630,7 @@
 
       roundTitle.textContent = 'Create on chain';
       roundCopy.textContent = 'Funding Player X escrow.';
-      setTxStage('fund', 'Step 2: create and fund the Connect Four room.');
+      setTxStage('fund', 'Step 2 of 2: Confirm funding transaction in MetaMask...');
       addFeed('Wallet step', 'Creating the funded Connect Four match.');
       await preflightContractCall(pvpContract, 'createMatch', [0, wagerWei]);
       const tx = await pvpContract.createMatch(0, wagerWei, await txOptions(pvpContract, 'createMatch', [0, wagerWei]));
@@ -2600,7 +2660,7 @@
 
       roundTitle.textContent = 'Join on chain';
       roundCopy.textContent = 'Funding Player O escrow.';
-      setTxStage('join', 'Step 3: join and match the wager.');
+      setTxStage('join', 'Step 2 of 2: Confirm join transaction in MetaMask...');
       addFeed('Wallet step', 'Joining the funded Connect Four match.');
       await preflightContractCall(pvpContract, 'joinMatch', [matchId]);
       const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
@@ -2652,7 +2712,7 @@
         }
 
         treasureBtn.textContent = '⏳ Getting proof…';
-        setTxStage('claim', 'Step 4: getting the signed result before payout.');
+        setTxStage('claim', 'Step 1 of 1: Confirm claim transaction in MetaMask...');
         roundTitle.textContent = 'Verifying result';
         roundCopy.textContent = 'Getting winner proof from backend…';
         const signed = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/sign-result', {

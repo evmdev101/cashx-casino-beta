@@ -480,6 +480,36 @@ function setStatus(msg, type) {
     el.textContent = msg;
   }
   el.className = type || '';
+  updateWalletFlowFromStatus(msg, type);
+}
+
+function updateWalletFlowFromStatus(msg, type) {
+  const steps = ['approve', 'fund', 'join', 'claim'];
+  const stepEls = [...document.querySelectorAll('[data-tx-step]')];
+  const note = document.getElementById('txProgressNote');
+  if (!stepEls.length || !note) return;
+
+  const text = String(msg || '').toLowerCase();
+  let active = '';
+  let doneThrough = -1;
+
+  if (/approve/.test(text)) active = 'approve';
+  else if (/confirm|bet placed|locking|place/.test(text)) active = 'fund';
+  else if (/reveal|roll/.test(text)) active = 'claim';
+
+  if (/approval confirmed/.test(text)) doneThrough = 0;
+  if (/transaction confirmed|check pulsescan|revealing roll|result|won|lost/.test(text) || type === 'win' || type === 'loss') {
+    doneThrough = active ? steps.indexOf(active) : 3;
+  }
+
+  stepEls.forEach(step => {
+    const idx = steps.indexOf(step.dataset.txStep);
+    step.classList.toggle('active', step.dataset.txStep === active && doneThrough < idx);
+    step.classList.toggle('done', idx > -1 && idx <= doneThrough);
+  });
+
+  if (msg) note.textContent = msg;
+  if (type === 'error') note.textContent = 'Wallet step stopped. Check MetaMask, then try again.';
 }
 
 function enableButtons() {

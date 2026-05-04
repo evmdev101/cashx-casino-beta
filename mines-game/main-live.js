@@ -251,6 +251,7 @@ async function startGame() {
 
     const allowance = await state.cashxContract.allowance(state.player, MINES_LIVE_ADDRESS);
     if (allowance.lt(betAmount)) {
+      setWalletFlow('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
       updateBanner('Step 1 of 2: Approve CASHX spend in MetaMask...', 'pending');
       const approveTx = await state.cashxContract.approve(MINES_LIVE_ADDRESS, betAmount);
       updateBanner('Step 1 of 2: Waiting for approval confirmation...', 'pending');
@@ -258,6 +259,9 @@ async function startGame() {
       updateBanner('Approval confirmed.', 'win');
     }
 
+    setWalletFlow('fund', allowance.lt(betAmount)
+      ? 'Step 2 of 2: Confirm game start in MetaMask...'
+      : 'Step 1 of 1: Confirm game start in MetaMask...');
     updateBanner(allowance.lt(betAmount)
       ? 'Step 2 of 2: Confirm game start in MetaMask...'
       : 'Step 1 of 1: Confirm game start in MetaMask...', 'pending');
@@ -286,6 +290,7 @@ async function startGame() {
     resetGrid();
     hideRoundResult();
     updateBanner('Game live. Pick a tile.', 'live');
+    setWalletFlow('fund', 'Game funded and live. Cash out or hit a mine to settle.');
     await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
   } catch (err) {
     updateBanner(readableError(err), 'loss');
@@ -371,6 +376,7 @@ async function settleResult(result) {
     return;
   }
 
+  setWalletFlow('claim', result.won ? 'Step 1 of 1: Confirm cash out payout in MetaMask...' : 'Step 1 of 1: Confirm final settlement in MetaMask...');
   updateBanner(result.won ? 'Confirm cash out payout' : 'Confirm final settlement');
   const tx = await state.minesContract.settleGame(
     state.activeGame.gameId,
@@ -380,6 +386,7 @@ async function settleResult(result) {
     result.signature
   );
   await waitForTx(tx);
+  setWalletFlow('claim', 'Settlement complete. Payout and burn applied.');
   await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
 }
 
@@ -591,6 +598,18 @@ function updateBanner(text, type = '') {
     els.banner.textContent = text;
   }
   els.banner.className = 'round-banner ' + type;
+}
+
+function setWalletFlow(stage, note) {
+  const steps = ['approve', 'fund', 'join', 'claim'];
+  const activeIndex = steps.indexOf(stage);
+  document.querySelectorAll('[data-tx-step]').forEach(step => {
+    const index = steps.indexOf(step.dataset.txStep);
+    step.classList.toggle('done', index > -1 && index < activeIndex);
+    step.classList.toggle('active', step.dataset.txStep === stage);
+  });
+  const noteEl = document.getElementById('txProgressNote');
+  if (noteEl && note) noteEl.textContent = note;
 }
 
 async function waitForTx(tx) {

@@ -212,6 +212,66 @@
     .status-tip  { font-size: .72rem; color: rgba(220,224,240,.72); font-weight: 400; letter-spacing: .3px; }
     .status-tip strong { color: rgba(245,166,35,.85); font-weight: 600; }
 
+    .tx-progress {
+      margin: .9rem 0 1rem;
+      border: 1px solid rgba(245,166,35,.16);
+      background: rgba(0,0,0,.2);
+      border-radius: 8px;
+      padding: .68rem .72rem;
+      display: grid;
+      gap: .65rem;
+    }
+    .tx-progress b {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .tx-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .35rem;
+    }
+    .tx-step {
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      border-radius: 7px;
+      padding: .48rem .35rem;
+      display: grid;
+      place-items: center;
+      gap: .25rem;
+      color: var(--text-dim);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .76rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .tx-step::before {
+      content: '';
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.18);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.04);
+    }
+    .tx-step.active {
+      color: #fff;
+      border-color: rgba(245,166,35,.58);
+      background: rgba(245,166,35,.09);
+    }
+    .tx-step.active::before { background: var(--gold); box-shadow: 0 0 14px rgba(245,166,35,.55); }
+    .tx-step.done {
+      color: var(--green);
+      border-color: rgba(61,255,160,.28);
+      background: rgba(61,255,160,.06);
+    }
+    .tx-step.done::before { background: var(--green); box-shadow: 0 0 12px rgba(61,255,160,.45); }
+    .tx-note { color: var(--text-dim); font-size: .82rem; line-height: 1.35; }
+
     /* View system */
     .view { display: none; }
     .view.active {
@@ -1310,6 +1370,17 @@
           <button class="btn-primary" id="createBtn" onclick="createGame()" disabled>CREATE WAR TABLE</button>
 
           <div class="status-box" id="statusBox"></div>
+
+          <div class="tx-progress" id="txProgress">
+            <b>Wallet Flow</b>
+            <div class="tx-steps">
+              <div class="tx-step" data-tx-step="approve">Approve</div>
+              <div class="tx-step" data-tx-step="fund">Fund</div>
+              <div class="tx-step" data-tx-step="join">Join</div>
+              <div class="tx-step" data-tx-step="claim">Claim</div>
+            </div>
+            <div class="tx-note" id="txProgressNote">Create or join a funded game and the wallet steps will light up here.</div>
+          </div>
 
           <div class="async-burn-section">
             <div class="async-burn-label">🔥 Total <span id="burnGameLabel">Card War</span> Burned</div>

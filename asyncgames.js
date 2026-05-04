@@ -1310,6 +1310,37 @@ function setStatus(msg, type) {
     el.textContent = msg;
   }
   el.className = 'status-box ' + (type || '');
+  updateWalletFlowFromStatus(msg, type);
+}
+
+function updateWalletFlowFromStatus(msg, type) {
+  const steps = ['approve', 'fund', 'join', 'claim'];
+  const stepEls = [...document.querySelectorAll('[data-tx-step]')];
+  const note = document.getElementById('txProgressNote');
+  if (!stepEls.length || !note) return;
+
+  const text = String(msg || '').toLowerCase();
+  let active = '';
+  let doneThrough = -1;
+
+  if (/approve/.test(text)) active = 'approve';
+  else if (/confirm|place|creating|created|war table|dice battle/.test(text)) active = 'fund';
+  else if (/join|draw in|roll in/.test(text)) active = 'join';
+  else if (/claim|refund|settle/.test(text)) active = 'claim';
+
+  if (/approval confirmed/.test(text)) doneThrough = 0;
+  if (/created|joined|confirmed|complete|claimed|settled|refunded/.test(text) || type === 'success' || type === 'win') {
+    doneThrough = Math.max(doneThrough, active ? steps.indexOf(active) : -1);
+  }
+
+  stepEls.forEach(step => {
+    const idx = steps.indexOf(step.dataset.txStep);
+    step.classList.toggle('active', step.dataset.txStep === active && doneThrough < idx);
+    step.classList.toggle('done', idx > -1 && idx <= doneThrough);
+  });
+
+  if (msg) note.textContent = msg;
+  if (type === 'error') note.textContent = 'Wallet step stopped. Check MetaMask, then try again.';
 }
 
 function _updatePotEstimate() {

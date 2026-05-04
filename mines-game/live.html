@@ -72,6 +72,17 @@
 
         <button class="primary-btn" id="startBtn" type="button">Start Game</button>
         <button class="cashout-btn" id="cashoutBtn" type="button" disabled>Cash Out</button>
+
+        <div class="tx-progress" id="txProgress">
+          <b>Wallet Flow</b>
+          <div class="tx-steps">
+            <div class="tx-step" data-tx-step="approve">Approve</div>
+            <div class="tx-step" data-tx-step="fund">Fund</div>
+            <div class="tx-step" data-tx-step="join">Join</div>
+            <div class="tx-step" data-tx-step="claim">Claim</div>
+          </div>
+          <div class="tx-note" id="txProgressNote">Start a funded Mines game and the wallet steps will light up here.</div>
+        </div>
       </section>
 
       <section class="mines-board-panel">
