@@ -1356,6 +1356,7 @@
 const DICE_GAME_ADDRESS     = '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
 const DICE_GAME_ADDRESS_V1  = '0xbd8505526cF22A9810d7644Fb4969b6ae643E05D';
 const ASYNC_GAMES_ADDRESS   = '0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39';
+const PVP_WAGER_ADDRESS     = '0x344e72a3F4972154B1dbd014ae936816ef34DF9f';
 const RPC_URL               = 'https://rpc.pulsechain.com';
 
 const DICE_ABI = [
@@ -1368,12 +1369,17 @@ const ASYNC_ABI = [
   'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
   'event GameResolved(uint256 indexed gameId, address indexed winner, uint256 payout, uint256 burned)',
 ];
+const PVP_WAGER_ABI = [
+  'function totalBurned() external view returns (uint256)',
+  'event MatchSettled(uint256 indexed matchId, address indexed winner, uint256 payout, uint256 burned, bytes32 resultHash)',
+];
 
 // Read-only provider — no wallet connection needed
 const rpcProvider    = new ethers.providers.JsonRpcProvider(RPC_URL);
 const diceContract   = new ethers.Contract(DICE_GAME_ADDRESS,    DICE_ABI, rpcProvider);
 const diceContractV1 = new ethers.Contract(DICE_GAME_ADDRESS_V1, DICE_ABI, rpcProvider);
 const asyncContract  = new ethers.Contract(ASYNC_GAMES_ADDRESS,  ASYNC_ABI, rpcProvider);
+const pvpWagerContract = new ethers.Contract(PVP_WAGER_ADDRESS,  PVP_WAGER_ABI, rpcProvider);
 
 // Helpers
 function fmtCashx(bigNum) {
@@ -1479,9 +1485,10 @@ async function loadStats() {
       promise,
       new Promise((_, rej) => setTimeout(() => rej(new Error('rpc-timeout')), ms))
     ]);
-    const [diceBurned, diceBurnedV1] = await Promise.all([
+    const [diceBurned, diceBurnedV1, connect4Burned] = await Promise.all([
       withTimeout(diceContract.totalBurned(),   7000),
       withTimeout(diceContractV1.totalBurned(), 7000).catch(() => ethers.BigNumber.from(0)),
+      withTimeout(pvpWagerContract.totalBurned(), 7000).catch(() => ethers.BigNumber.from(0)),
     ]);
     const diceBurnedTotal = diceBurned.add(diceBurnedV1);
 
@@ -1502,7 +1509,7 @@ async function loadStats() {
       }
     } catch (_) {}
 
-    const totalBurned = diceBurnedTotal.add(asyncBurned);
+    const totalBurned = diceBurnedTotal.add(asyncBurned).add(connect4Burned);
     const burnedFmt   = fmtCashx(totalBurned);
 
     setTextIfPresent('heroBurnedNum', burnedFmt);
@@ -1518,18 +1525,20 @@ async function loadStats() {
   }
 }
 
-// Recent Burns (DiceGame + AsyncGames combined)
+// Recent Burns (DiceGame + AsyncGames + Connect Four PvP combined)
 async function loadRecentBurns() {
   const tbody = document.getElementById('burnsBody');
   try {
     const currentBlock = await rpcProvider.getBlockNumber();
     const fromBlock    = Math.max(0, currentBlock - 50000); // ~5–6 days of 10s blocks
 
-    // Fetch both event streams in parallel; let either fail gracefully
-    const [diceEvents, asyncEvents] = await Promise.all([
+    // Fetch event streams in parallel; let any one fail gracefully
+    const [diceEvents, asyncEvents, connect4Events] = await Promise.all([
       diceContract.queryFilter(diceContract.filters.Roll(), fromBlock, currentBlock)
         .catch(() => []),
       asyncContract.queryFilter(asyncContract.filters.GameResolved(), fromBlock, currentBlock)
+        .catch(() => []),
+      pvpWagerContract.queryFilter(pvpWagerContract.filters.MatchSettled(), fromBlock, currentBlock)
         .catch(() => []),
     ]);
 
@@ -1537,6 +1546,7 @@ async function loadRecentBurns() {
     const tagged = [
       ...diceEvents.map(e  => ({ e, src: 'dice' })),
       ...asyncEvents.map(e => ({ e, src: 'async' })),
+      ...connect4Events.map(e => ({ e, src: 'connect4' })),
     ];
 
     if (tagged.length === 0) {
@@ -1562,10 +1572,14 @@ async function loadRecentBurns() {
         fromAddress = player;
         burnedAmt = bet.mul(3).div(100);
         badge = '<span class="pill-game" style="background:rgba(200,85,247,.12);color:#c855f7;border-color:rgba(200,85,247,.3);">🎲 VS HOUSE</span>';
+      } else if (src === 'connect4') {
+        fromAddress = e.args.winner;
+        burnedAmt = e.args.burned;
+        badge = '<span class="pill-game" style="background:rgba(61,255,160,.1);color:#3dffa0;border-color:rgba(61,255,160,.3);">▦ CONNECT FOUR</span>';
       } else {
         fromAddress = e.args.winner;
         burnedAmt = e.args.burned;
-        badge = '<span class="pill-game" style="background:rgba(245,166,35,.1);color:#f5a623;border-color:rgba(245,166,35,.3);">🎰 MULTIPLAYER</span>';
+        badge = '<span class="pill-game" style="background:rgba(245,166,35,.1);color:#f5a623;border-color:rgba(245,166,35,.3);">🂡 CARD WAR</span>';
       }
 
       const tr = document.createElement('tr');
@@ -1585,7 +1599,7 @@ async function loadRecentBurns() {
       if (src === 'dice') {
         const { won, bet } = e.args;
         eventsTotal = eventsTotal.add(bet.mul(3).div(100));
-      } else {
+      } else if (src === 'connect4' || src === 'async') {
         eventsTotal = eventsTotal.add(e.args.burned);
       }
     });
@@ -1598,8 +1612,8 @@ async function loadRecentBurns() {
       dispEl.textContent = fmtCashx(eventsTotal) + ' CASHX';
     }
 
-    // Total games played count (all Roll + GameResolved events in window)
-    const totalGames = diceEvents.length + asyncEvents.length;
+    // Total games played count (Roll + GameResolved + MatchSettled events in window)
+    const totalGames = diceEvents.length + asyncEvents.length + connect4Events.length;
     const gamesEl = document.getElementById('totalGamesDisplay');
     if (gamesEl) {
       const fmt = totalGames >= 1000
