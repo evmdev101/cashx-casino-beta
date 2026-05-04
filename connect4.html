@@ -12,14 +12,16 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <script src="wallet-modal.js"></script>
   <script>
-    window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
+    window.CASHX_PVP_BACKEND_URL = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
+      ? 'http://127.0.0.1:8787'
+      : 'https://cashx-pvp-backend.onrender.com';
     window.CASHX_PVP_WAGER_ADDRESS = '0x344e72a3F4972154B1dbd014ae936816ef34DF9f';
   </script>
 
   <style>
     :root {
       --navy: #0d0a16;
-      --panel: rgba(19,15,31,.84);
+      --panel: rgba(13,9,22,.78);
       --panel-solid: #130f1f;
       --gold: #f5a623;
       --gold-dim: #c47f0e;
@@ -31,6 +33,7 @@
       --muted: #8b91ac;
       --border: rgba(200,85,247,.22);
       --shadow: rgba(0,0,0,.42);
+      --gold-border: rgba(245,166,35,.28);
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -41,8 +44,8 @@
       font-family: 'Barlow', sans-serif;
       color: var(--text);
       background:
-        linear-gradient(180deg, rgba(13,10,22,.84), rgba(13,10,22,.97)),
-        url('hero-casino.png') center / cover fixed;
+        radial-gradient(circle at 50% 18%, rgba(200,85,247,.08), transparent 34%),
+        url('connect4-bg.png') center / cover fixed;
       overflow-x: hidden;
       animation: bodyFadeIn .4s ease forwards;
     }
@@ -61,7 +64,7 @@
       position: fixed;
       top: 0; left: 0; right: 0;
       height: 80px;
-      background: rgba(8,5,18,.35);
+      background: rgba(7,4,15,.58);
       border-bottom: 1px solid rgba(200,85,247,.6);
       box-shadow: 0 2px 18px rgba(200,85,247,.2);
       display: flex;
@@ -151,10 +154,13 @@
 
     .sidebar {
       position: fixed;
-      left: 12px;
-      top: 50%;
+      left: 18px;
+      top: 50dvh;
+      z-index: 500;
+      width: 88px;
+      height: min(500px, calc(100dvh - 150px));
+      min-height: 330px;
       transform: translateY(-50%);
-      height: min(520px, calc(100vh - 130px));
       background: rgba(110,30,180,.18);
       border: 1px solid rgba(200,85,247,.72);
       border-radius: 32px;
@@ -163,10 +169,10 @@
       flex-direction: column;
       align-items: center;
       gap: 16px;
-      z-index: 500;
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       box-shadow: 0 8px 32px rgba(0,0,0,.35);
+      contain: layout paint;
     }
     .nav-pill {
       width: 62px;
@@ -175,25 +181,19 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1.5rem;
+      font-size: 1.55rem;
       text-decoration: none;
       color: rgba(220,224,240,.56);
       background: rgba(255,255,255,.06);
-      transition: background .2s, color .2s, transform .15s;
+      transition: background .2s, color .2s, box-shadow .2s, transform .15s;
     }
-    .nav-pill:hover { background: rgba(200,85,247,.2); color: #fff; transform: scale(1.07); }
+    .sidebar:hover { transform: translateY(-50%) translateX(6px); border-color: rgba(180,180,200,.55); box-shadow: 0 14px 40px rgba(0,0,0,.45); }
+    .nav-pill:hover { background: rgba(200,85,247,.22); color: rgba(220,224,240,.95); transform: scale(1.08); }
     .nav-pill.active-purple { background: linear-gradient(135deg, #c855f7, #8b1fcc); color: #fff; box-shadow: 0 4px 22px rgba(200,85,247,.5); }
     .nav-pill-divider { height: 1px; width: 100%; background: linear-gradient(90deg, transparent, rgba(200,85,247,.45), transparent); margin-top: auto; margin-bottom: 6px; }
 
-    .main { min-height: 100vh; padding: 112px 2.4rem 48px 104px; }
-    .hero {
-      max-width: 1240px;
-      margin: 0 auto 1.3rem;
-      display: grid;
-      grid-template-columns: minmax(0, 1fr) auto;
-      gap: 1rem;
-      align-items: end;
-    }
+    .main { min-height: 100vh; padding: 110px 2.4rem 48px 124px; }
+    .hero { display: none; }
     .kicker {
       font-family: 'Michroma', sans-serif;
       font-size: .62rem;
@@ -204,61 +204,50 @@
     }
     h1 {
       font-family: 'Bebas Neue', sans-serif;
-      font-size: clamp(3.2rem, 7vw, 6rem);
+      font-size: clamp(2.35rem, 4.2vw, 4rem);
       letter-spacing: 3px;
       color: #fff;
-      line-height: .92;
+      line-height: .9;
       text-shadow: 0 8px 36px rgba(0,0,0,.45);
     }
     .hero-copy {
-      max-width: 680px;
-      margin-top: .8rem;
-      color: rgba(220,224,240,.82);
-      font-size: 1.04rem;
-      line-height: 1.55;
+      max-width: 620px;
+      margin-top: .45rem;
+      color: rgba(220,224,240,.78);
+      font-size: .9rem;
+      line-height: 1.4;
     }
-    .status-stack { display: grid; gap: .55rem; min-width: 250px; }
-    .status-pill {
-      border: 1px solid rgba(255,255,255,.13);
-      background: rgba(0,0,0,.28);
-      border-radius: 8px;
-      padding: .72rem .9rem;
-      display: flex;
-      justify-content: space-between;
-      gap: .85rem;
-      box-shadow: 0 10px 30px rgba(0,0,0,.18);
-    }
-    .status-pill span:first-child {
-      color: var(--muted);
-      font-family: 'Michroma', sans-serif;
-      font-size: .55rem;
-      letter-spacing: 2px;
-      text-transform: uppercase;
-    }
-    .status-pill span:last-child { font-family: 'Space Mono', monospace; color: #fff; font-size: .82rem; }
     .backend-online { color: var(--green) !important; }
     .backend-offline { color: var(--red) !important; }
 
     .game-shell {
-      max-width: 1240px;
+      max-width: 1340px;
       margin: 0 auto;
       display: grid;
-      grid-template-columns: minmax(280px, 330px) minmax(420px, 1fr) minmax(280px, 330px);
-      gap: 1rem;
-      align-items: stretch;
+      grid-template-columns: minmax(280px, 330px) minmax(560px, 1fr);
+      gap: .9rem;
+      align-items: start;
     }
     .panel {
-      background: var(--panel);
-      border: 1px solid var(--border);
+      background:
+        linear-gradient(180deg, rgba(255,255,255,.045), transparent 24%),
+        var(--panel);
+      border: 1px solid rgba(200,85,247,.26);
       border-radius: 8px;
       box-shadow: 0 24px 70px var(--shadow);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
       overflow: hidden;
     }
+    .panel::before {
+      content: '';
+      display: block;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(245,166,35,.42), rgba(200,85,247,.36), transparent);
+    }
     .panel-head {
-      min-height: 60px;
-      padding: 1rem;
+      min-height: 56px;
+      padding: .9rem 1rem;
       border-bottom: 1px solid rgba(200,85,247,.16);
       display: flex;
       align-items: center;
@@ -278,8 +267,8 @@
       color: var(--green);
       text-transform: uppercase;
     }
-    .panel-body { padding: 1rem; }
-    .field { margin-bottom: .9rem; }
+    .panel-body { padding: .9rem 1rem 1rem; }
+    .field { margin-bottom: .75rem; }
     .field label {
       display: block;
       font-family: 'Michroma', sans-serif;
@@ -296,7 +285,7 @@
       background: rgba(0,0,0,.24);
       color: #fff;
       border-radius: 8px;
-      padding: .78rem .82rem;
+      padding: .66rem .82rem;
       font: 700 .95rem 'Space Mono', monospace;
       outline: none;
     }
@@ -308,8 +297,8 @@
       background: rgba(255,255,255,.06);
       color: var(--text);
       border-radius: 8px;
-      min-height: 42px;
-      padding: .65rem .7rem;
+      min-height: 39px;
+      padding: .55rem .7rem;
       cursor: pointer;
       font-family: 'Barlow Condensed', sans-serif;
       font-weight: 700;
@@ -325,7 +314,7 @@
     }
     .action-btn {
       width: 100%;
-      min-height: 48px;
+      min-height: 46px;
       margin-top: .35rem;
       color: #111;
       background: linear-gradient(135deg, var(--gold), #ff4d6d);
@@ -334,6 +323,134 @@
     }
     .action-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 38px rgba(245,166,35,.34); }
     .ghost-btn { width: 100%; margin-top: .55rem; }
+    .forfeit-btn {
+      border-color: rgba(255,68,85,.32) !important;
+      color: var(--red) !important;
+      margin-top: .75rem;
+      font-size: .82rem;
+      opacity: .8;
+    }
+    .forfeit-btn:hover {
+      border-color: rgba(255,68,85,.65) !important;
+      background: rgba(255,68,85,.07) !important;
+      opacity: 1;
+      transform: translateY(-1px);
+    }
+    #forfeitZone { text-align: center; }
+
+    /* ── Treasure chest win overlay ─────────────────────────────────── */
+    @keyframes coinFloat {
+      0%   { transform: translateY(0)   rotate(var(--r)) scale(1);   opacity:.9; }
+      50%  { transform: translateY(-18px) rotate(calc(var(--r)*-1)) scale(1.15); opacity:1; }
+      100% { transform: translateY(0)   rotate(var(--r)) scale(1);   opacity:.9; }
+    }
+    @keyframes chestBob {
+      0%,100% { transform: scale(1) rotate(-1deg); }
+      50%     { transform: scale(1.06) rotate(1deg); }
+    }
+    @keyframes collectGlow {
+      0%,100% { box-shadow: 0 6px 28px rgba(245,166,35,.45); }
+      50%     { box-shadow: 0 6px 52px rgba(245,166,35,.9), 0 0 0 4px rgba(245,166,35,.2); }
+    }
+    @keyframes treasureIn {
+      from { opacity:0; transform:translateY(18px) scale(.96); }
+      to   { opacity:1; transform:translateY(0)    scale(1);   }
+    }
+    .treasure-win {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: .5rem;
+      background: linear-gradient(160deg, rgba(245,166,35,.12), rgba(200,85,247,.06));
+      border: 2px solid rgba(245,166,35,.55);
+      border-radius: 14px;
+      padding: 1.4rem 1.2rem 1.1rem;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+      animation: treasureIn .45s cubic-bezier(.22,1,.36,1) forwards;
+    }
+    .treasure-win.visible { display: flex; }
+    .treasure-win::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse at 50% 0%, rgba(245,166,35,.18) 0%, transparent 70%);
+      pointer-events: none;
+    }
+    .treasure-coins {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+    }
+    .t-coin {
+      position: absolute;
+      font-size: 1.35rem;
+      top: var(--ty);
+      left: var(--tx);
+      animation: coinFloat 1.6s var(--d) ease-in-out infinite;
+    }
+    .treasure-chest-emoji {
+      font-size: 4.2rem;
+      line-height: 1;
+      animation: chestBob 1.9s ease-in-out infinite;
+      cursor: pointer;
+      user-select: none;
+      filter: drop-shadow(0 4px 12px rgba(245,166,35,.55));
+    }
+    .treasure-amount-big {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2.4rem;
+      letter-spacing: 4px;
+      color: var(--gold);
+      text-shadow: 0 0 24px rgba(245,166,35,.6);
+      line-height: 1;
+    }
+    .treasure-tagline {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .treasure-collect-btn {
+      width: 100%;
+      margin-top: .5rem;
+      padding: .9rem 1rem;
+      background: linear-gradient(135deg, #f5a623 0%, #c47f0e 100%);
+      color: #0d0a16;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: 3px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      animation: collectGlow 2s ease-in-out infinite;
+      transition: opacity .2s, transform .15s;
+    }
+    .treasure-collect-btn:hover  { opacity:.88; transform:translateY(-2px); }
+    .treasure-collect-btn:active { transform:translateY(0); }
+    .treasure-collect-btn:disabled { opacity:.5; cursor:not-allowed; animation:none; }
+    .treasure-safe-note {
+      font-size: .78rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-top: .15rem;
+    }
+    .treasure-safe-note b { color: var(--green); }
+    .treasure-error {
+      width: 100%;
+      background: rgba(255,68,85,.12);
+      border: 1px solid rgba(255,68,85,.4);
+      border-radius: 7px;
+      padding: .6rem .8rem;
+      font-size: .82rem;
+      color: var(--red);
+      text-align: left;
+      line-height: 1.45;
+      display: none;
+    }
+    .treasure-error.visible { display: block; }
     .mini-btn {
       min-height: 36px;
       padding: .5rem .55rem;
@@ -342,7 +459,7 @@
       color: #fff;
     }
     .room-code {
-      margin-top: .75rem;
+      margin-top: .65rem;
       border: 1px solid rgba(55,214,255,.2);
       background: rgba(55,214,255,.055);
       border-radius: 8px;
@@ -364,12 +481,12 @@
       overflow-wrap: anywhere;
     }
     .room-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
-    .money-grid { display: grid; gap: .55rem; margin-top: 1rem; }
+    .money-grid { display: grid; gap: .46rem; margin-top: .75rem; }
     .money-row {
       display: flex;
       justify-content: space-between;
       gap: .75rem;
-      padding: .7rem .75rem;
+      padding: .58rem .75rem;
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 8px;
       background: rgba(0,0,0,.18);
@@ -379,11 +496,11 @@
     .money-row.burn span:last-child { color: var(--red); }
     .money-row.win span:last-child { color: var(--green); }
     .chain-box {
-      margin-top: 1rem;
+      margin-top: .75rem;
       border: 1px solid rgba(61,255,160,.18);
       background: rgba(61,255,160,.045);
       border-radius: 8px;
-      padding: .75rem;
+      padding: .65rem .75rem;
       display: grid;
       gap: .55rem;
     }
@@ -402,12 +519,72 @@
     }
     .chain-box.live { border-color: rgba(61,255,160,.35); background: rgba(61,255,160,.07); }
     .chain-box.test { border-color: rgba(245,166,35,.25); background: rgba(245,166,35,.06); }
+    .tx-progress {
+      margin-top: .75rem;
+      border: 1px solid rgba(245,166,35,.16);
+      background: rgba(0,0,0,.2);
+      border-radius: 8px;
+      padding: .68rem .72rem;
+      display: grid;
+      gap: .65rem;
+    }
+    .tx-progress b {
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: 1.05rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .tx-steps {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: .35rem;
+      position: relative;
+    }
+    .tx-step {
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,.08);
+      background: rgba(255,255,255,.04);
+      border-radius: 7px;
+      padding: .48rem .35rem;
+      display: grid;
+      place-items: center;
+      gap: .25rem;
+      color: var(--muted);
+      font-family: 'Barlow Condensed', sans-serif;
+      font-size: .76rem;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      text-align: center;
+    }
+    .tx-step::before {
+      content: '';
+      width: 9px;
+      height: 9px;
+      border-radius: 50%;
+      background: rgba(255,255,255,.18);
+      box-shadow: 0 0 0 3px rgba(255,255,255,.04);
+    }
+    .tx-step.active {
+      color: #fff;
+      border-color: rgba(245,166,35,.58);
+      background: rgba(245,166,35,.09);
+    }
+    .tx-step.active::before { background: var(--gold); box-shadow: 0 0 14px rgba(245,166,35,.55); }
+    .tx-step.done {
+      color: var(--green);
+      border-color: rgba(61,255,160,.28);
+      background: rgba(61,255,160,.06);
+    }
+    .tx-step.done::before { background: var(--green); box-shadow: 0 0 12px rgba(61,255,160,.45); }
+    .tx-note { color: var(--muted); font-size: .82rem; line-height: 1.35; }
     .lobby-panel {
-      margin-top: 1rem;
+      margin-top: .75rem;
       border: 1px solid rgba(255,255,255,.08);
       background: rgba(0,0,0,.18);
       border-radius: 8px;
-      padding: .75rem;
+      padding: .65rem .75rem;
       display: grid;
       gap: .65rem;
     }
@@ -476,14 +653,48 @@
     }
     .mini-btn-join:hover { background: linear-gradient(135deg, rgba(200,85,247,.42), rgba(245,166,35,.3)) !important; }
     .mini-btn-join:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
+    .mini-btn-manage {
+      background: linear-gradient(135deg, rgba(245,166,35,.22), rgba(245,166,35,.08)) !important;
+      border-color: rgba(245,166,35,.55) !important;
+      color: var(--gold) !important;
+      font-weight: 600;
+    }
+    .mini-btn-manage:hover { background: linear-gradient(135deg, rgba(245,166,35,.38), rgba(245,166,35,.18)) !important; }
+    .mini-btn-manage:disabled { opacity: .55; cursor: not-allowed; transform: none !important; }
 
-    .arena { padding: 1rem; display: grid; gap: 1rem; }
-    .scorebar { display: grid; grid-template-columns: 1fr auto 1fr; gap: .75rem; align-items: center; }
+    .arena {
+      padding: .9rem 1rem 1rem;
+      display: grid;
+      gap: .8rem;
+      align-content: start;
+      background:
+        radial-gradient(circle at 50% 8%, rgba(245,166,35,.08), transparent 36%),
+        linear-gradient(180deg, rgba(12,8,21,.88), rgba(10,7,18,.76));
+    }
+    .arena-meta {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+      color: var(--purple);
+      font-family: 'Michroma', sans-serif;
+      font-size: .56rem;
+      letter-spacing: 3px;
+      text-transform: uppercase;
+    }
+    .arena-meta span:last-child { color: var(--green); text-align: right; }
+    .arena-meta b {
+      font-family: 'Space Mono', monospace;
+      font-size: .72rem;
+      letter-spacing: 0;
+      text-transform: none;
+    }
+    .scorebar { display: grid; grid-template-columns: 1fr auto 1fr; gap: .7rem; align-items: center; }
     .player-card {
-      border: 1px solid rgba(255,255,255,.1);
-      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.11);
+      background: linear-gradient(135deg, rgba(255,255,255,.055), rgba(0,0,0,.22));
       border-radius: 8px;
-      padding: .85rem;
+      padding: .72rem .85rem;
       min-width: 0;
     }
     .player-card.active { border-color: rgba(245,166,35,.72); box-shadow: 0 0 24px rgba(245,166,35,.12); }
@@ -497,7 +708,7 @@
     }
     .player-name {
       font-family: 'Barlow Condensed', sans-serif;
-      font-size: 1.35rem;
+      font-size: 1.25rem;
       font-weight: 700;
       letter-spacing: 1px;
       color: #fff;
@@ -506,8 +717,8 @@
       text-overflow: ellipsis;
     }
     .timer {
-      width: 92px;
-      height: 92px;
+      width: 82px;
+      height: 82px;
       border-radius: 50%;
       display: grid;
       place-items: center;
@@ -521,14 +732,16 @@
       color: #fff;
     }
     .board-wrap {
-      width: min(100%, 680px);
+      width: min(100%, 660px);
       margin: 0 auto;
       aspect-ratio: 7 / 6;
       border-radius: 8px;
-      padding: clamp(.55rem, 1.4vw, .9rem);
-      background: linear-gradient(135deg, rgba(245,166,35,.12), rgba(55,214,255,.08)), rgba(0,0,0,.3);
-      border: 1px solid rgba(200,85,247,.26);
-      box-shadow: inset 0 0 30px rgba(0,0,0,.24), 0 18px 50px rgba(0,0,0,.24);
+      padding: clamp(.5rem, 1.2vw, .78rem);
+      background:
+        linear-gradient(135deg, rgba(245,166,35,.18), rgba(55,214,255,.08)),
+        linear-gradient(180deg, rgba(44,38,33,.72), rgba(17,17,22,.9));
+      border: 1px solid rgba(245,166,35,.18);
+      box-shadow: inset 0 0 34px rgba(0,0,0,.38), 0 22px 60px rgba(0,0,0,.35), 0 0 0 1px rgba(200,85,247,.16);
     }
     .board {
       width: 100%;
@@ -536,11 +749,11 @@
       display: grid;
       grid-template-columns: repeat(7, 1fr);
       grid-template-rows: repeat(6, 1fr);
-      gap: clamp(.34rem, 1vw, .62rem);
+      gap: clamp(.3rem, .8vw, .54rem);
     }
     .slot {
-      border: 1px solid rgba(255,255,255,.09);
-      background: radial-gradient(circle at 50% 45%, rgba(4,3,9,.92) 0 54%, rgba(255,255,255,.08) 55% 100%);
+      border: 1px solid rgba(255,255,255,.1);
+      background: radial-gradient(circle at 50% 45%, rgba(4,3,9,.95) 0 52%, rgba(255,255,255,.1) 53% 72%, rgba(245,166,35,.08) 100%);
       border-radius: 50%;
       display: grid;
       place-items: center;
@@ -583,12 +796,22 @@
       100% { transform: translateY(0) scale(1); opacity:1; }
     }
     .slot.dropping::after { transition: none !important; animation: c4-drop .42s cubic-bezier(.33,1,.68,1) both; }
-    .round-status {
-      min-height: 54px;
-      border: 1px solid rgba(255,255,255,.1);
+    .match-bottom-card {
+      border: 1px solid rgba(200,85,247,.22);
       border-radius: 8px;
-      background: rgba(0,0,0,.2);
-      padding: .85rem 1rem;
+      background: linear-gradient(180deg, rgba(8,5,16,.72), rgba(7,4,14,.6));
+      box-shadow: 0 18px 55px rgba(0,0,0,.28);
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .round-status {
+      min-height: 50px;
+      border: 0;
+      border-bottom: 1px solid rgba(200,85,247,.14);
+      border-radius: 0;
+      background: linear-gradient(135deg, rgba(0,0,0,.16), rgba(255,255,255,.025));
+      padding: .72rem .9rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -656,12 +879,12 @@
       display: none;
     }
     .ready-badge.visible { display: inline; }
-    .feed { display: grid; gap: .55rem; max-height: 360px; overflow: auto; padding-right: .2rem; }
+    .feed { display: none; }
     .feed-item {
       border: 1px solid rgba(255,255,255,.08);
       border-radius: 8px;
       background: rgba(0,0,0,.2);
-      padding: .72rem .78rem;
+      padding: .62rem .72rem;
       display: grid;
       gap: .2rem;
     }
@@ -669,31 +892,182 @@
     .feed-sub { color: var(--muted); font-size: .88rem; line-height: 1.35; }
     .tech-strip { display: grid; gap: .55rem; }
     .tech-row {
-      padding: .75rem;
+      padding: .65rem .75rem;
       border-radius: 8px;
       border: 1px solid rgba(255,255,255,.08);
       background: rgba(0,0,0,.18);
     }
     .tech-row b { display: block; color: #fff; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; margin-bottom: .2rem; text-transform: uppercase; }
     .tech-row span { color: var(--muted); font-size: .9rem; line-height: 1.35; }
-    footer {
-      max-width: 1240px;
-      margin: 1.5rem auto 0;
+    .ledger-area {
+      max-width: 1340px;
+      margin: 1rem auto 0;
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: .9rem;
+    }
+    .burn-strip {
+      border: 1px solid rgba(200,85,247,.22);
+      border-radius: 8px;
+      background: linear-gradient(180deg, rgba(8,5,16,.78), rgba(7,4,14,.64));
+      box-shadow: 0 18px 55px rgba(0,0,0,.28);
+      padding: 1rem;
+      text-align: center;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .arena .burn-strip {
+      margin-top: 0;
+      box-shadow: none;
+    }
+    .match-bottom-card .burn-strip {
+      border: 0;
+      border-radius: 0;
+      background: transparent;
+      box-shadow: none;
+      padding: .95rem 1rem 1rem;
+    }
+    .history-panel { grid-column: 1; }
+    .burn-label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .6rem;
+      letter-spacing: 4px;
       color: var(--muted);
-      font-size: .82rem;
+      text-transform: uppercase;
+    }
+    .burn-value {
+      margin-top: .35rem;
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2rem, 4vw, 3.1rem);
+      letter-spacing: 4px;
+      color: #ff4d6d;
+      text-shadow: 0 0 26px rgba(255,77,109,.35);
+      line-height: 1;
+    }
+    .burn-sub { margin-top: .25rem; color: var(--muted); font-size: .82rem; }
+    .history-panel {
+      border: 1px solid rgba(200,85,247,.22);
+      border-radius: 8px;
+      background: rgba(7,4,14,.72);
+      box-shadow: 0 18px 55px rgba(0,0,0,.28);
+      overflow: hidden;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .history-head {
+      min-height: 58px;
+      padding: .95rem 1rem;
+      border-bottom: 1px solid rgba(200,85,247,.15);
       display: flex;
       justify-content: space-between;
       gap: 1rem;
-      border-top: 1px solid rgba(200,85,247,.16);
-      padding-top: 1.1rem;
+      align-items: center;
     }
-    footer a { color: var(--muted); text-decoration: none; }
+    .history-title {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.5rem;
+      letter-spacing: 2px;
+      color: #fff;
+    }
+    .history-live {
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .history-live::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      margin-right: .35rem;
+      border-radius: 50%;
+      background: var(--green);
+      box-shadow: 0 0 10px rgba(61,255,160,.55);
+      vertical-align: middle;
+    }
+    .history-table-wrap { overflow-x: auto; }
+    .history-table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 760px;
+    }
+    .history-table th {
+      padding: .72rem 1rem;
+      text-align: left;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      border-bottom: 1px solid rgba(255,255,255,.07);
+    }
+    .history-table td {
+      padding: .7rem 1rem;
+      border-bottom: 1px solid rgba(255,255,255,.055);
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: .82rem;
+      white-space: nowrap;
+    }
+    .history-table tr:last-child td { border-bottom: none; }
+    .empty-cell {
+      text-align: center !important;
+      color: var(--muted) !important;
+      padding: 1.35rem 1rem !important;
+      font-family: 'Space Mono', monospace !important;
+    }
+    .result-pill {
+      display: inline-flex;
+      align-items: center;
+      min-width: 58px;
+      justify-content: center;
+      border: 1px solid rgba(61,255,160,.36);
+      color: var(--green);
+      border-radius: 6px;
+      padding: .12rem .45rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .result-pill.loss { border-color: rgba(255,68,85,.36); color: var(--red); }
+    .verify-link {
+      color: var(--purple);
+      border: 1px solid rgba(200,85,247,.38);
+      border-radius: 6px;
+      padding: .12rem .5rem;
+      font-family: 'Michroma', sans-serif;
+      font-size: .55rem;
+      letter-spacing: 1px;
+      text-decoration: none;
+      text-transform: uppercase;
+    }
+    .verify-link:hover { color: #fff; border-color: rgba(245,166,35,.55); }
+    footer {
+      max-width: 1340px;
+      margin: 1.5rem auto 0;
+      color: var(--muted);
+      font-size: .82rem;
+      text-align: center;
+      border: 1px solid rgba(200,85,247,.16);
+      background: rgba(7,4,14,.72);
+      border-radius: 8px;
+      padding: .9rem 1rem;
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    footer a { color: var(--gold); text-decoration: none; }
     footer a:hover { color: var(--gold); }
 
     @media (max-width: 1120px) {
       .game-shell { grid-template-columns: 1fr; }
-      .status-stack { min-width: 0; }
+      .ledger-area { grid-template-columns: 1fr; }
+      .burn-strip,
+      .history-panel { grid-column: 1; }
       .hero { grid-template-columns: 1fr; }
+      .hero-copy { display: block; }
     }
     @media (max-width: 760px) {
       .topnav { height: 70px; padding: 0 1rem; }
@@ -701,12 +1075,13 @@
       .topnav-beta { display: none; }
       .sidebar { display: none; }
       .main { padding: 92px 1rem 34px; }
+      h1 { font-size: 2.55rem; }
       .scorebar { grid-template-columns: 1fr; }
       .timer { width: 76px; height: 76px; margin: 0 auto; }
       .round-status { display: grid; }
       .round-status span { text-align: left; }
       .status-actions { grid-template-columns: 1fr; }
-      footer { flex-direction: column; }
+      footer { margin-left: 0; margin-right: 0; }
     }
   </style>
 </head>
@@ -726,12 +1101,14 @@
   </nav>
 
   <aside class="sidebar">
-    <a href="index.html" class="nav-pill" title="Home">⌂</a>
-    <a href="all-games.html" class="nav-pill active-purple" title="Games">▦</a>
+    <a href="index.html" class="nav-pill" title="Home">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3 3 10.5l1.4 1.7L6 10.9V20h5.2v-5.2h1.6V20H18v-9.1l1.6 1.3 1.4-1.7L12 3z"/></svg>
+    </a>
+    <a href="all-games.html" class="nav-pill active-purple" title="Games">🎰</a>
     <div class="nav-pill-divider"></div>
-    <a href="tictactoe.html" class="nav-pill" title="Tic Tac Toe">✕</a>
+    <a href="https://x.com/TomkiwMich70997" target="_blank" rel="noopener" class="nav-pill" title="Twitter / X">𝕏</a>
     <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" title="Telegram">
-      <svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 24 24" fill="currentColor"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.488-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11.944 0A12 12 0 0 0 0 12a12 12 0 0 0 12 12 12 12 0 0 0 12-12A12 12 0 0 0 12 0a12 12 0 0 0-.056 0zm4.962 7.224c.1-.002.321.023.465.14a.506.506 0 0 1 .171.325c.016.093.036.306.02.472-.18 1.898-.962 6.502-1.36 8.627-.168.9-.499 1.201-.82 1.23-.696.065-1.225-.46-1.9-.902-1.056-.693-1.653-1.124-2.678-1.8-1.185-.78-.417-1.21.258-1.91.177-.184 3.247-2.977 3.307-3.23.007-.032.014-.15-.056-.212s-.174-.041-.249-.024c-.106.024-1.793 1.14-5.061 3.345-.48.33-.913.49-1.302.488-.428-.008-1.252-.241-1.865-.44-.752-.245-1.349-.374-1.297-.789.027-.216.325-.437.893-.663 3.498-1.524 5.83-2.529 6.998-3.014 3.332-1.386 4.025-1.627 4.476-1.635z"/></svg>
     </a>
   </aside>
 
@@ -741,12 +1118,6 @@
         <div class="kicker">PvP Prototype</div>
         <h1>Connect Four Wagers</h1>
         <p class="hero-copy">A bigger skill duel for the CashX PvP engine. Players fund the match once, pieces drop instantly through the backend, and the eventual contract only settles the final pot.</p>
-      </div>
-      <div class="status-stack">
-        <div class="status-pill"><span>Move Layer</span><span>Instant</span></div>
-        <div class="status-pill"><span>Board</span><span>7 x 6</span></div>
-        <div class="status-pill"><span>Burn</span><span>5%</span></div>
-        <div class="status-pill"><span>Backend</span><span id="backendBadge">Checking</span></div>
       </div>
     </section>
 
@@ -796,6 +1167,17 @@
             <span id="chainStatus">Test mode until PvPWager address is added.</span>
           </div>
 
+          <div class="tx-progress" id="txProgress">
+            <b>Wallet Flow</b>
+            <div class="tx-steps">
+              <div class="tx-step" data-tx-step="approve">Approve</div>
+              <div class="tx-step" data-tx-step="fund">Fund</div>
+              <div class="tx-step" data-tx-step="join">Join</div>
+              <div class="tx-step" data-tx-step="claim">Claim</div>
+            </div>
+            <div class="tx-note" id="txProgressNote">Create or join a funded room and the wallet steps will light up here.</div>
+          </div>
+
           <div class="lobby-panel">
             <div class="lobby-head">
               <b>Open Lobbies</b>
@@ -809,6 +1191,10 @@
       </aside>
 
       <section class="panel arena">
+        <div class="arena-meta">
+          <span>7x6 Connect Four Grid</span>
+          <span>Live PvP Game · <b id="backendBadge">Checking</b></span>
+        </div>
         <div class="scorebar">
           <div class="player-card active" id="xCard">
             <div class="player-label">Player X <span class="ready-badge" id="readyBadgeX">READY</span></div>
@@ -825,9 +1211,16 @@
           <div class="board" id="board" aria-label="Connect Four board"></div>
         </div>
 
-        <div class="round-status">
-          <strong id="roundTitle">Create a room</strong>
-          <span id="roundCopy">Open the invite in another tab to test a real two-player flow.</span>
+        <div class="match-bottom-card">
+          <div class="round-status">
+            <strong id="roundTitle">Create a room</strong>
+            <span id="roundCopy">Open the invite in another tab to test a real two-player flow.</span>
+          </div>
+          <div class="burn-strip">
+            <div class="burn-label">Total CASHX Burned From Connect Four</div>
+            <div class="burn-value" id="totalBurned">—</div>
+            <div class="burn-sub">player-funded pots · backend verified</div>
+          </div>
         </div>
         <div class="ready-phase" id="readyPhase" hidden>
           <div class="ready-header">Both players must ready up to start</div>
@@ -844,8 +1237,27 @@
           <button class="action-btn" id="readyUpBtn" type="button">Ready Up</button>
         </div>
 
+        <!-- ── Treasure chest: shown to winner of a funded match ── -->
+        <div class="treasure-win" id="treasureWin">
+          <div class="treasure-coins" aria-hidden="true">
+            <span class="t-coin" style="--tx:8%;  --ty:12%; --d:.00s; --r:14deg">🪙</span>
+            <span class="t-coin" style="--tx:78%; --ty:8%;  --d:.25s; --r:-11deg">🪙</span>
+            <span class="t-coin" style="--tx:20%; --ty:55%; --d:.10s; --r:22deg">🪙</span>
+            <span class="t-coin" style="--tx:65%; --ty:50%; --d:.40s; --r:-7deg">🪙</span>
+            <span class="t-coin" style="--tx:45%; --ty:4%;  --d:.18s; --r:5deg">🪙</span>
+          </div>
+          <span class="treasure-chest-emoji" id="treasureChest" title="Click to collect!">💰</span>
+          <div class="treasure-amount-big" id="treasureAmountBig">0 CASHX</div>
+          <div class="treasure-tagline">is yours — click below to collect!</div>
+          <button class="treasure-collect-btn" id="treasureBtn" type="button">⚡ COLLECT WINNINGS</button>
+          <div class="treasure-safe-note">
+            <b>🔒 Funds are safe.</b> Your winnings are locked in the smart contract.<br>
+            You can close this page and come back anytime — they won't disappear.
+          </div>
+          <div class="treasure-error" id="treasureError"></div>
+        </div>
+
         <div class="status-actions" id="postGameActions">
-          <button class="action-btn" id="settleChainBtn" type="button">Settle On Chain</button>
           <button class="action-btn" id="rematchBtn" type="button">Request Rematch</button>
           <button class="ghost-btn" id="freshRoomBtn" type="button">New Room</button>
         </div>
@@ -857,38 +1269,67 @@
             <button class="ghost-btn" id="declineRematchBtn" type="button">Decline</button>
           </div>
         </div>
+        <div id="forfeitZone" hidden>
+          <button class="ghost-btn forfeit-btn" id="forfeitBtn" type="button">Leave Room</button>
+        </div>
+      </section>
+    </section>
+
+    <div class="feed" id="feed" aria-live="polite"></div>
+
+    <section class="ledger-area">
+      <section class="history-panel">
+        <div class="history-head">
+          <div class="history-title">Recent Connect Four Games</div>
+          <div class="history-live">Live · 15s refresh</div>
+        </div>
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Winner / Player</th>
+                <th>Result</th>
+                <th>Wager</th>
+                <th>Pot</th>
+                <th>Burn</th>
+                <th>TX</th>
+              </tr>
+            </thead>
+            <tbody id="recentGamesBody">
+              <tr><td colspan="7" class="empty-cell">Loading recent Connect Four games...</td></tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
-      <aside class="panel">
-        <div class="panel-head">
-          <div class="panel-title">Engine Notes</div>
-          <div class="panel-tag">PvP</div>
+      <section class="history-panel">
+        <div class="history-head">
+          <div class="history-title">Your Connect Four Games</div>
+          <div class="history-live">Connected wallet</div>
         </div>
-        <div class="panel-body">
-          <div class="tech-strip">
-            <div class="tech-row">
-              <b>Gravity rules</b>
-              <span>Players choose a column. The backend drops the piece into the lowest open slot.</span>
-            </div>
-            <div class="tech-row">
-              <b>Backend validates wins</b>
-              <span>Horizontal, vertical, and diagonal connect-fours are checked server-side.</span>
-            </div>
-            <div class="tech-row">
-              <b>No per-move wallet popups</b>
-              <span>The chain will hold and settle funds. The game itself stays fast.</span>
-            </div>
-          </div>
-
-          <div class="panel-title" style="font-size:1.25rem;margin:1rem 0 .6rem;">Match Feed</div>
-          <div class="feed" id="feed"></div>
+        <div class="history-table-wrap">
+          <table class="history-table">
+            <thead>
+              <tr>
+                <th>ID</th>
+                <th>Result</th>
+                <th>Wager</th>
+                <th>Payout</th>
+                <th>Burn</th>
+                <th>TX</th>
+              </tr>
+            </thead>
+            <tbody id="yourGamesBody">
+              <tr><td colspan="6" class="empty-cell">Connect your wallet to load your Connect Four games.</td></tr>
+            </tbody>
+          </table>
         </div>
-      </aside>
+      </section>
     </section>
 
     <footer>
-      <div>CASHX CASINO · CONNECT FOUR PVP · PULSECHAIN</div>
-      <div><a href="all-games.html">All Games</a> · <a href="tictactoe.html">Vanishing Tic Tac Toe</a> · <a href="beta.html">Beta Info</a></div>
+      $CASHX Connect Four · PvP Beta · <a href="beta.html#connect-four">Beta Info</a> · <a href="verifier.html?game=connect4">Verifier</a> · Player-funded wagers
     </footer>
   </main>
 
@@ -905,6 +1346,7 @@
     const LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
     const PAID_CACHE_KEY = 'cashxConnect4PaidRooms';
     const GAS_BUFFER_BPS = 13000;
+    const TX_STEPS = ['approve', 'fund', 'join', 'claim'];
     const CASHX_ABI = [
       'function approve(address spender, uint256 amount) returns (bool)',
       'function allowance(address owner, address spender) view returns (uint256)',
@@ -913,6 +1355,7 @@
     const PVP_WAGER_ABI = [
       'function createMatch(uint8 gameType, uint256 wager) returns (uint256)',
       'function joinMatch(uint256 matchId)',
+      'function cancelUnmatched(uint256 matchId)',
       'function settleMatch(uint256 matchId, address winner, bytes32 resultDataHash, bytes signature)',
       'event MatchCreated(uint256 indexed matchId, uint8 indexed gameType, address indexed player1, uint256 wager)',
       'event MatchJoined(uint256 indexed matchId, address indexed player2)',
@@ -946,7 +1389,11 @@
     const readyBadgeX = document.getElementById('readyBadgeX');
     const readyBadgeO = document.getElementById('readyBadgeO');
     const postGameActions = document.getElementById('postGameActions');
-    const settleChainBtn = document.getElementById('settleChainBtn');
+    const treasureWin = document.getElementById('treasureWin');
+    const treasureAmountBig = document.getElementById('treasureAmountBig');
+    const treasureBtn = document.getElementById('treasureBtn');
+    const treasureChest = document.getElementById('treasureChest');
+    const treasureError = document.getElementById('treasureError');
     const rematchBtn = document.getElementById('rematchBtn');
     const freshRoomBtn = document.getElementById('freshRoomBtn');
     const rematchBox = document.getElementById('rematchBox');
@@ -955,10 +1402,17 @@
     const rematchActions = document.getElementById('rematchActions');
     const acceptRematchBtn = document.getElementById('acceptRematchBtn');
     const declineRematchBtn = document.getElementById('declineRematchBtn');
+    const forfeitZone = document.getElementById('forfeitZone');
+    const forfeitBtn = document.getElementById('forfeitBtn');
     const chainBox = document.getElementById('chainBox');
     const chainStatus = document.getElementById('chainStatus');
+    const txProgressNote = document.getElementById('txProgressNote');
+    const txStepEls = [...document.querySelectorAll('[data-tx-step]')];
     const openLobbies = document.getElementById('openLobbies');
     const refreshLobbiesBtn = document.getElementById('refreshLobbiesBtn');
+    const totalBurned = document.getElementById('totalBurned');
+    const recentGamesBody = document.getElementById('recentGamesBody');
+    const yourGamesBody = document.getElementById('yourGamesBody');
 
     let connectedAddress = null;
     let walletProvider = null;
@@ -979,6 +1433,7 @@
     let timeLeft = 30;
     let pollHandle = null;
     let lobbyHandle = null;
+    let historyHandle = null;
     let healthHandle = null;
     let countdownHandle = null;
     let lastMoveCell = null;
@@ -994,11 +1449,13 @@
       addFeed('Connect Four loaded', 'Create a room, open another tab, then join as player two.');
       document.getElementById('newMatchBtn').addEventListener('click', createRoom);
       document.getElementById('joinMatchBtn').addEventListener('click', joinRoom);
-      settleChainBtn.addEventListener('click', settleOnChain);
+      treasureBtn.addEventListener('click', () => settleOnChain({ fromBtn: true }));
+      treasureChest.addEventListener('click', () => settleOnChain({ fromBtn: true }));
       rematchBtn.addEventListener('click', requestRematch);
       acceptRematchBtn.addEventListener('click', acceptRematch);
       declineRematchBtn.addEventListener('click', declineRematch);
       freshRoomBtn.addEventListener('click', resetToFreshRoom);
+      forfeitBtn.addEventListener('click', forfeitRoom);
       readyUpBtn.addEventListener('click', readyUp);
       copyInviteBtn.addEventListener('click', copyInviteLink);
       openInviteBtn.addEventListener('click', openInviteTab);
@@ -1020,7 +1477,9 @@
       updateChainStatus();
       checkBackendHealth();
       refreshOpenLobbies();
+      refreshGameHistory();
       lobbyHandle = setInterval(refreshOpenLobbies, 5000);
+      historyHandle = setInterval(refreshGameHistory, 15000);
       healthHandle = setInterval(checkBackendHealth, 10000);
       if (currentRoomId) loadRoom(currentRoomId);
     }
@@ -1050,6 +1509,7 @@
         );
         setBackendBadge('Online', true);
         refreshOpenLobbies();
+        refreshGameHistory();
         startPolling();
       } catch (err) {
         showBackendError(err);
@@ -1061,6 +1521,7 @@
       stopCountdown();
       currentRoom = null;
       currentRoomId = '';
+      forfeitZone.hidden = true;
       myMark = null;
       lastMoveCell = null;
       board = Array(COLUMNS * ROWS).fill('');
@@ -1075,12 +1536,68 @@
       postGameActions.classList.remove('visible');
       rematchBox.classList.remove('visible');
       readyPhase.hidden = true;
+      resetTxProgress();
       readyBadgeX.classList.remove('visible');
       readyBadgeO.classList.remove('visible');
       roundTitle.textContent = 'Create a room';
       roundCopy.textContent = 'Open the invite in another tab to test a real two-player flow.';
       addFeed('Ready', 'Create a fresh Connect Four room.');
       history.replaceState(null, '', location.pathname);
+    }
+
+    async function forfeitRoom() {
+      if (!currentRoom || !currentRoomId) return;
+      const room = currentRoom;
+      const status = room.status;
+
+      // Build a confirmation message appropriate to the current state
+      let confirmMsg;
+      if (status === 'waiting') {
+        confirmMsg = 'Cancel this room? It will be removed from the lobby.';
+        if (room.chain) {
+          confirmMsg += '\n\nThis will open your wallet once to refund the funded CASHX escrow.';
+        }
+      } else if (status === 'ready-check') {
+        confirmMsg = 'Leave this room? The other player will win by forfeit.';
+        if (room.chain) confirmMsg += '\n\nNote: on-chain wagers will be claimable by the other player.';
+      } else if (status === 'active') {
+        confirmMsg = 'Forfeit this match? The other player wins immediately.';
+        if (room.chain) confirmMsg += '\n\nNote: on-chain wagers will be claimable by the other player.';
+      } else {
+        return; // already finished, nothing to do
+      }
+
+      if (!confirm(confirmMsg)) return;
+
+      forfeitBtn.disabled = true;
+      try {
+        let chainCancelled = false;
+        if (status === 'waiting' && room.chain) {
+          await cancelChainMatch(room);
+          chainCancelled = true;
+        }
+        const result = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoomId) + '/forfeit', {
+          player: playerId(),
+          chainCancelled,
+        });
+        if (result.cancelled) {
+          addFeed('Room cancelled', room.chain ? 'Escrow refunded and room removed.' : 'Your room has been removed.');
+          resetToFreshRoom();
+        } else {
+          syncRoom(result.room);
+          if (status === 'waiting') {
+            addFeed('Room cancelled', 'The room has been removed.');
+          } else if (status === 'ready-check') {
+            addFeed('Left room', 'You left before the match started. The other player wins.');
+          } else {
+            addFeed('Forfeited', 'You forfeited the match. The other player wins.');
+          }
+        }
+      } catch (err) {
+        showBackendError(err);
+      } finally {
+        forfeitBtn.disabled = false;
+      }
     }
 
     async function joinRoom() {
@@ -1102,6 +1619,7 @@
         addFeed(joinTitle, joinMsg);
         setBackendBadge('Online', true);
         refreshOpenLobbies();
+        refreshGameHistory();
         startPolling();
       } catch (err) {
         showBackendError(err);
@@ -1150,6 +1668,7 @@
         });
         addFeed('Piece dropped', 'Player ' + seat.mark + ' dropped in column ' + (column + 1) + '.');
         syncRoom(room);
+        if (room.status === 'settled' || room.status === 'draw') refreshGameHistory();
       } catch (err) {
         showBackendError(err);
       }
@@ -1175,9 +1694,19 @@
       updateActivePlayer();
       updateRoomUrl(room.id);
       postGameActions.classList.toggle('visible', room.status === 'settled');
-      settleChainBtn.hidden = !(room.status === 'settled' && room.chain && connectedAddress && room.winner && samePlayer(connectedAddress, room.winner) && !isRoomPaid(room.id));
+      const showTreasure = room.status === 'settled'
+        && room.chain
+        && connectedAddress
+        && room.winner
+        && samePlayer(connectedAddress, room.winner)
+        && !isRoomPaid(room.id);
+      treasureWin.classList.toggle('visible', Boolean(showTreasure));
+      if (showTreasure) {
+        treasureAmountBig.textContent = formatAmount(Number(room.payout)) + ' CASHX';
+      }
       updateRematchNotice(room);
       updateChainStatus();
+      syncTxProgressFromRoom(room);
 
       if (room.status === 'waiting') {
         stopCountdown();
@@ -1222,20 +1751,21 @@
         const winnerSeat = room.players.find(player => player.address === room.winner);
         const isWinnerWallet = connectedAddress && samePlayer(connectedAddress, room.winner);
         const payoutText = formatAmount(Number(room.payout)) + ' CASHX payout after burn.';
+        const isForfeit = room.winReason === 'forfeit';
         if (isWinnerWallet) {
-          roundTitle.textContent = 'You won';
-          roundCopy.textContent = room.chain
-            ? 'Confirm the wallet popup to claim ' + payoutText
-            : payoutText;
+          roundTitle.textContent = isForfeit ? 'Opponent forfeited' : 'You won';
+          roundCopy.textContent = isForfeit
+            ? (room.chain ? 'Opponent left the match. Click Claim Winnings to receive ' + payoutText : 'Opponent left — ' + payoutText)
+            : (room.chain ? 'Click Claim Winnings to receive ' + payoutText : payoutText);
           maybeAutoSettleWinner(room);
         } else if (myMark) {
-          roundTitle.textContent = 'You lost';
-          roundCopy.textContent = room.chain
-            ? 'Winner will claim the payout on chain.'
-            : 'Winner gets ' + payoutText;
+          roundTitle.textContent = isForfeit ? 'You forfeited' : 'You lost';
+          roundCopy.textContent = isForfeit
+            ? (room.chain ? 'You left the match. The winner will claim on chain.' : 'You left — winner gets ' + payoutText)
+            : (room.chain ? 'Winner will claim the payout on chain.' : 'Winner gets ' + payoutText);
         } else {
           roundTitle.textContent = 'Player ' + (winnerSeat ? winnerSeat.mark : '?') + ' wins';
-          roundCopy.textContent = payoutText;
+          roundCopy.textContent = isForfeit ? 'Opponent forfeited. ' + payoutText : payoutText;
         }
         updateChainStatus();
       } else {
@@ -1245,6 +1775,21 @@
         readyBadgeO.classList.remove('visible');
         roundTitle.textContent = 'Draw';
         roundCopy.textContent = 'Board filled. Live contract rules can refund or rematch.';
+      }
+
+      // Show/hide leave-room / forfeit button based on current status and player membership
+      const isInRoom = Boolean(myMark);
+      if (isInRoom && (room.status === 'waiting' || room.status === 'ready-check' || room.status === 'active')) {
+        forfeitZone.hidden = false;
+        if (room.status === 'waiting') {
+          forfeitBtn.textContent = '✕ Cancel Room';
+        } else if (room.status === 'ready-check') {
+          forfeitBtn.textContent = '✕ Leave Room';
+        } else {
+          forfeitBtn.textContent = '⚑ Forfeit Match';
+        }
+      } else {
+        forfeitZone.hidden = true;
       }
     }
     function paidRoomIds() {
@@ -1567,7 +2112,15 @@
           card.innerHTML =
             '<div><strong>' + escapeHtml(formatAmount(Number(room.wager)) + ' CASHX') + '</strong>' +
             '<span>' + escapeHtml(matchText) + ' · <em>Your Room</em></span></div>' +
-            '<span class="mini-btn mini-btn-yours">Waiting…</span>';
+            '<button class="mini-btn mini-btn-manage" type="button">▶ Manage</button>';
+          const btn = card.querySelector('button');
+          btn.addEventListener('click', async () => {
+            btn.disabled = true;
+            btn.textContent = 'Opening…';
+            await goToMyRoom(room.id);
+            btn.disabled = false;
+            btn.textContent = '▶ Manage';
+          });
         } else {
           card.innerHTML =
             '<div><strong>' + escapeHtml(formatAmount(Number(room.wager)) + ' CASHX') + '</strong>' +
@@ -1586,6 +2139,92 @@
       });
     }
 
+    async function refreshGameHistory() {
+      try {
+        const data = await fetchJson('/api/pvp/rooms?game=connect4&limit=50');
+        const rooms = data.rooms || [];
+        const settled = rooms.filter(room => room.status === 'settled' || room.status === 'draw');
+        renderBurnTotal(settled);
+        renderRecentGames(settled.slice(0, 10));
+        renderYourGames(settled);
+      } catch (_) {
+        if (totalBurned.textContent === '—') totalBurned.textContent = '0 CASHX';
+      }
+    }
+
+    function roomBurn(room) {
+      const pot = Number(room.wager || 0) * 2;
+      return Math.floor(pot * 0.05);
+    }
+
+    function roomPayout(room) {
+      const pot = Number(room.wager || 0) * 2;
+      return pot - roomBurn(room);
+    }
+
+    function renderBurnTotal(rooms) {
+      const burned = rooms.reduce((sum, room) => sum + (room.status === 'settled' ? roomBurn(room) : 0), 0);
+      totalBurned.textContent = formatAmount(burned) + ' CASHX';
+    }
+
+    function renderRecentGames(rooms) {
+      if (!rooms.length) {
+        recentGamesBody.innerHTML = '<tr><td colspan="7" class="empty-cell">No finished Connect Four games yet.</td></tr>';
+        return;
+      }
+      recentGamesBody.innerHTML = rooms.map(room => {
+        const settled = room.status === 'settled';
+        const winner = settled ? shortPlayer(room.winner) : 'Draw';
+        const result = settled ? 'WIN' : 'DRAW';
+        const pillClass = settled ? 'result-pill' : 'result-pill loss';
+        return '<tr>' +
+          '<td>#' + escapeHtml(room.chain && room.chain.matchId ? room.chain.matchId : room.id.slice(0, 4)) + '</td>' +
+          '<td>' + escapeHtml(winner) + '</td>' +
+          '<td><span class="' + pillClass + '">' + result + '</span></td>' +
+          '<td>' + escapeHtml(formatAmount(Number(room.wager))) + ' CASHX</td>' +
+          '<td>' + escapeHtml(formatAmount(Number(room.wager || 0) * 2)) + ' CASHX</td>' +
+          '<td>' + escapeHtml(formatAmount(settled ? roomBurn(room) : 0)) + ' CASHX</td>' +
+          '<td>' + verifyLink(room) + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function renderYourGames(rooms) {
+      if (!connectedAddress) {
+        yourGamesBody.innerHTML = '<tr><td colspan="6" class="empty-cell">Connect your wallet to load your Connect Four games.</td></tr>';
+        return;
+      }
+      const mine = rooms
+        .filter(room => room.players && room.players.some(player => samePlayer(player.address, connectedAddress)))
+        .slice(0, 10);
+      if (!mine.length) {
+        yourGamesBody.innerHTML = '<tr><td colspan="6" class="empty-cell">No Connect Four games for this wallet yet.</td></tr>';
+        return;
+      }
+      yourGamesBody.innerHTML = mine.map(room => {
+        const settled = room.status === 'settled';
+        const iWon = settled && samePlayer(room.winner, connectedAddress);
+        const result = settled ? (iWon ? 'WIN' : 'LOSS') : 'DRAW';
+        const pillClass = iWon ? 'result-pill' : 'result-pill loss';
+        return '<tr>' +
+          '<td>#' + escapeHtml(room.chain && room.chain.matchId ? room.chain.matchId : room.id.slice(0, 4)) + '</td>' +
+          '<td><span class="' + pillClass + '">' + result + '</span></td>' +
+          '<td>' + escapeHtml(formatAmount(Number(room.wager))) + ' CASHX</td>' +
+          '<td>' + escapeHtml(formatAmount(iWon ? roomPayout(room) : 0)) + ' CASHX</td>' +
+          '<td>' + escapeHtml(formatAmount(settled ? roomBurn(room) : 0)) + ' CASHX</td>' +
+          '<td>' + verifyLink(room) + '</td>' +
+        '</tr>';
+      }).join('');
+    }
+
+    function verifyLink(room) {
+      if (room.chain && room.chain.matchId) {
+        const href = 'verifier.html?game=connect4&match=' + encodeURIComponent(room.chain.matchId);
+        return '<a class="verify-link" href="' + href + '">Verify</a>';
+      }
+      return '<span class="verify-link">Local</span>';
+    }
+
     async function openLobby(roomId) {
       currentRoomId = roomId;
       updateRoomUrl(roomId);
@@ -1594,6 +2233,15 @@
       window.scrollTo({ top: 0, behavior: 'smooth' });
       // One-click: immediately join instead of requiring a second button press
       await joinRoom();
+    }
+
+    // Navigate to a room the player already created — don't re-join, just load and scroll
+    async function goToMyRoom(roomId) {
+      currentRoomId = roomId;
+      updateRoomUrl(roomId);
+      await loadRoom(roomId);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      startPolling();
     }
 
     async function requestRematch() {
@@ -1611,6 +2259,15 @@
       try {
         const sourceRoom = currentRoom;
         if (!sourceRoom || sourceRoom.status !== 'settled') throw new Error('Finish this game first.');
+
+        // If the rematch was already accepted by the other player and I was the requester,
+        // just join the new room — don't create another one.
+        const rm = sourceRoom.rematch;
+        if (rm && rm.status === 'accepted' && rm.newRoomId && samePlayer(rm.requestedBy, playerId())) {
+          addFeed('Joining rematch room', 'Navigating to the new room…');
+          await openLobby(rm.newRoomId);
+          return;
+        }
         roundTitle.textContent = 'Accepting rematch';
         roundCopy.textContent = isChainEnabled()
           ? 'Creating fresh escrow for the next round.'
@@ -1669,6 +2326,8 @@
       const seat = room && room.players ? room.players.find(player => samePlayer(player.address, playerId())) : null;
       rematchBox.classList.remove('visible');
       rematchActions.hidden = false;
+      declineRematchBtn.hidden = false;
+      acceptRematchBtn.textContent = 'Accept';
       rematchBtn.disabled = false;
       rematchBtn.textContent = 'Request Rematch';
 
@@ -1690,12 +2349,22 @@
         rematchCopy.textContent = 'Create a new room when you are ready.';
         rematchActions.hidden = true;
       } else if (rematch.status === 'accepted') {
+        const requestedByMe = samePlayer(rematch.requestedBy, playerId());
         rematchBox.classList.add('visible');
         rematchTitle.textContent = 'Rematch accepted';
-        rematchCopy.textContent = rematch.newRoomId
-          ? 'New room ready: ' + rematch.newRoomId.slice(0, 8) + '.'
-          : 'New rematch room is ready.';
-        rematchActions.hidden = true;
+        if (requestedByMe && rematch.newRoomId) {
+          // I sent the request — the other player created the new room. Show a Join button.
+          rematchCopy.textContent = 'New room ready — click below to join the rematch!';
+          rematchActions.hidden = false;
+          acceptRematchBtn.textContent = '▶ Join Rematch Room';
+          declineRematchBtn.hidden = true;
+        } else {
+          // I accepted — I already created and navigated to the new room.
+          rematchCopy.textContent = rematch.newRoomId
+            ? 'New room ready: ' + rematch.newRoomId.slice(0, 8) + '. Waiting for opponent.'
+            : 'Rematch room is ready. Waiting for the other player to join.';
+          rematchActions.hidden = true;
+        }
       }
     }
 
@@ -1749,6 +2418,68 @@
       feedEl.prepend(item);
     }
 
+    function setTxStage(stage, note) {
+      const activeIndex = TX_STEPS.indexOf(stage);
+      txStepEls.forEach(step => {
+        const stepIndex = TX_STEPS.indexOf(step.dataset.txStep);
+        step.classList.toggle('done', stepIndex > -1 && stepIndex < activeIndex);
+        step.classList.toggle('active', step.dataset.txStep === stage);
+      });
+      if (note) txProgressNote.textContent = note;
+    }
+
+    function completeTxStage(stage, note) {
+      const doneIndex = TX_STEPS.indexOf(stage);
+      txStepEls.forEach(step => {
+        const stepIndex = TX_STEPS.indexOf(step.dataset.txStep);
+        step.classList.toggle('done', stepIndex > -1 && stepIndex <= doneIndex);
+        step.classList.remove('active');
+      });
+      if (note) txProgressNote.textContent = note;
+    }
+
+    function resetTxProgress() {
+      txStepEls.forEach(step => {
+        step.classList.remove('active');
+        step.classList.remove('done');
+      });
+      txProgressNote.textContent = 'Create or join a funded room and the wallet steps will light up here.';
+    }
+
+    function hasActiveTxStage() {
+      return txStepEls.some(step => step.classList.contains('active'));
+    }
+
+    function syncTxProgressFromRoom(room) {
+      if (hasActiveTxStage()) return;
+      if (!room || !room.chain) {
+        resetTxProgress();
+        return;
+      }
+
+      const matchLabel = room.chain.matchId ? 'match #' + room.chain.matchId : 'this match';
+      if (room.status === 'waiting') {
+        completeTxStage('fund', 'Funded ' + matchLabel + ' is waiting for Player O.');
+        return;
+      }
+      if (room.status === 'ready-check' || room.status === 'active') {
+        completeTxStage('join', 'Both escrows are funded. Play the match.');
+        return;
+      }
+      if (room.status === 'settled') {
+        if (isRoomPaid(room.id)) {
+          completeTxStage('claim', 'Claim complete. Winner paid and burn applied.');
+        } else if (connectedAddress && room.winner && samePlayer(connectedAddress, room.winner)) {
+          setTxStage('claim', 'You won. Click Collect Winnings to claim.');
+        } else {
+          completeTxStage('join', 'Match finished. Waiting for the winner to claim.');
+        }
+        return;
+      }
+
+      resetTxProgress();
+    }
+
     function escapeHtml(value) {
       return String(value).replace(/[&<>"']/g, char => ({
         '&': '&amp;',
@@ -1761,6 +2492,12 @@
 
     function formatAmount(value) {
       return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
+    }
+
+    function shortAddress(value) {
+      const text = String(value || '');
+      if (!text) return '—';
+      return text.slice(0, 6) + '...' + text.slice(-4);
     }
 
     function isChainEnabled() {
@@ -1778,6 +2515,7 @@
       cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
       updateWalletButtonText();
       updateChainStatus();
+      refreshGameHistory();
     }
 
     async function restoreWalletSession() {
@@ -1794,18 +2532,24 @@
         }
         updateWalletButtonText();
         updateChainStatus();
+        refreshGameHistory();
         if (currentRoomId) loadRoom(currentRoomId);
       } catch (_) {}
     }
 
     async function approveIfNeeded(wagerWei) {
       const allowance = await cashxContract.allowance(connectedAddress, PVP_WAGER_ADDRESS);
-      if (allowance.gte(wagerWei)) return;
+      if (allowance.gte(wagerWei)) {
+        completeTxStage('approve', 'Approve already done. Next wallet step will fund or join.');
+        return;
+      }
+      setTxStage('approve', 'Step 1: approve CASHX spending in your wallet.');
       roundTitle.textContent = 'Approve CASHX';
       roundCopy.textContent = 'Approve once so the contract can escrow this wager.';
       addFeed('Wallet step', 'Approving CASHX for the wager contract.');
       const tx = await cashxContract.approve(PVP_WAGER_ADDRESS, wagerWei, await txOptions(cashxContract, 'approve', [PVP_WAGER_ADDRESS, wagerWei]));
       await waitForTx(tx);
+      completeTxStage('approve', 'Approval confirmed. Next step: fund the match.');
     }
     async function ensureWagerBalance(wagerWei) {
       const balance = await cashxContract.balanceOf(connectedAddress);
@@ -1826,6 +2570,7 @@
 
       roundTitle.textContent = 'Create on chain';
       roundCopy.textContent = 'Funding Player X escrow.';
+      setTxStage('fund', 'Step 2: create and fund the Connect Four room.');
       addFeed('Wallet step', 'Creating the funded Connect Four match.');
       await preflightContractCall(pvpContract, 'createMatch', [0, wagerWei]);
       const tx = await pvpContract.createMatch(0, wagerWei, await txOptions(pvpContract, 'createMatch', [0, wagerWei]));
@@ -1835,6 +2580,7 @@
         .map(log => parsePvpLog(log))
         .find(parsed => parsed && parsed.name === 'MatchCreated');
       if (!event) throw new Error('Match was not created. The wallet transaction finished, but the contract event was missing.');
+      completeTxStage('fund', 'Room funded. Send the invite or wait for a player to join.');
 
       return {
         matchId: event.args.matchId.toString(),
@@ -1854,36 +2600,71 @@
 
       roundTitle.textContent = 'Join on chain';
       roundCopy.textContent = 'Funding Player O escrow.';
+      setTxStage('join', 'Step 3: join and match the wager.');
       addFeed('Wallet step', 'Joining the funded Connect Four match.');
       await preflightContractCall(pvpContract, 'joinMatch', [matchId]);
       const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
       await waitForTx(tx);
+      completeTxStage('join', 'Joined on chain. Both players can start the match.');
+    }
+
+    async function cancelChainMatch(room) {
+      if (!room || !room.chain || !room.chain.matchId) throw new Error('No funded match found for this room.');
+      if (!isChainEnabled()) throw new Error('Live escrow is not configured.');
+      await ensureWallet();
+      const creator = room.chain.player1 || (room.players[0] && room.players[0].address);
+      if (!samePlayer(connectedAddress, creator)) {
+        throw new Error('Only the wallet that created this funded room can cancel it.');
+      }
+
+      roundTitle.textContent = 'Cancel funded room';
+      roundCopy.textContent = 'Confirm in your wallet to refund your CASHX escrow.';
+      setTxStage('fund', 'Cancelling funded match #' + room.chain.matchId + ' in your wallet.');
+      addFeed('Wallet step', 'Cancelling the unmatched Connect Four match.');
+      await preflightContractCall(pvpContract, 'cancelUnmatched', [room.chain.matchId]);
+      const tx = await pvpContract.cancelUnmatched(room.chain.matchId, await txOptions(pvpContract, 'cancelUnmatched', [room.chain.matchId]));
+      await waitForTx(tx);
+      completeTxStage('fund', 'Escrow refunded. Removing the room from the lobby.');
+    }
+
+    function showTreasureError(msg) {
+      // Errors inside the treasure card — won't be wiped by the 1-second poll
+      treasureError.textContent = '⚠ ' + msg;
+      treasureError.classList.add('visible');
+    }
+    function clearTreasureError() {
+      treasureError.textContent = '';
+      treasureError.classList.remove('visible');
     }
 
     async function settleOnChain(options = {}) {
       if (settlingOnChain) return;
       settlingOnChain = true;
-      settleChainBtn.disabled = true;
+      treasureBtn.disabled = true;
+      clearTreasureError();
       try {
         if (!currentRoom || currentRoom.status !== 'settled') throw new Error('Finish the game first.');
-        if (!currentRoom.chain) throw new Error('This was a test room. Create a funded room after deploy.');
-        if (!isChainEnabled()) throw new Error('PvPWager address is not set yet.');
+        if (!currentRoom.chain) throw new Error('This was a test room — no on-chain funds to claim.');
+        if (!isChainEnabled()) throw new Error('PvPWager contract address is not set.');
         await ensureWallet();
         if (!currentRoom.winner || !samePlayer(connectedAddress, currentRoom.winner)) {
-          throw new Error('Only the winner wallet can claim from this page.');
+          throw new Error('Only the winner wallet can claim winnings.');
         }
 
-        roundTitle.textContent = options.auto ? 'Claiming payout' : 'Signing result';
-        roundCopy.textContent = options.auto ? 'Getting winner proof, then wallet will ask to claim.' : 'Getting the backend winner signature.';
+        treasureBtn.textContent = '⏳ Getting proof…';
+        setTxStage('claim', 'Step 4: getting the signed result before payout.');
+        roundTitle.textContent = 'Verifying result';
+        roundCopy.textContent = 'Getting winner proof from backend…';
         const signed = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/sign-result', {
           contractAddress: PVP_WAGER_ADDRESS,
           chainId: PULSECHAIN_ID,
           wagerWei: currentRoom.chain.wagerWei,
         });
 
-        roundTitle.textContent = 'Claim payout';
-        roundCopy.textContent = 'Confirm wallet to send the winner payout and burn the fee.';
-        addFeed('Wallet step', 'Settling the winner payout on chain.');
+        treasureBtn.textContent = '⏳ Confirm in MetaMask…';
+        roundTitle.textContent = 'Confirm in wallet';
+        roundCopy.textContent = 'Approve the transaction to receive your winnings.';
+        addFeed('Wallet popup', 'Approve to send winner payout and burn the fee.');
         await preflightContractCall(pvpContract, 'settleMatch', [signed.matchId, signed.winner, signed.resultDataHash, signed.signature]);
         const tx = await pvpContract.settleMatch(
           signed.matchId,
@@ -1894,22 +2675,28 @@
         );
         await waitForTx(tx);
         markRoomPaid(currentRoom.id);
-        addFeed('Settled on chain', 'Winner payout sent and burn completed.');
-        roundTitle.textContent = 'Paid on chain';
-        roundCopy.textContent = 'Winner payout has been claimed.';
+        completeTxStage('claim', 'Claim complete. Winner paid and burn applied.');
+        addFeed('Winnings claimed! 🎉', 'Payout sent to your wallet — burn fee deducted.');
+        roundTitle.textContent = '🏆 Winnings claimed!';
+        roundCopy.textContent = 'Your payout has been sent to your wallet.';
+        treasureWin.classList.remove('visible'); // hide chest once paid
         updateChainStatus('Paid on chain.');
+        refreshGameHistory();
       } catch (err) {
+        const msg = err && err.message ? err.message : String(err);
         if (options.auto) {
-          roundTitle.textContent = 'Payout ready';
-          roundCopy.textContent = 'Wallet claim did not finish. Use Settle On Chain to try again.';
-          addFeed('Payout not claimed', err && err.message ? err.message : String(err));
+          // Auto-settle failed silently — just log it; don't thrash the UI
+          addFeed('Auto-claim skipped', msg);
+          // Do NOT reset autoSettleRoomId — prevents the glitch loop
         } else {
-          showBackendError(err);
+          // Button/chest click — show the error prominently inside the treasure card
+          showTreasureError(msg);
+          addFeed('Claim failed', msg);
         }
-        autoSettleRoomId = '';
       } finally {
         settlingOnChain = false;
-        settleChainBtn.disabled = false;
+        treasureBtn.disabled = false;
+        treasureBtn.textContent = '⚡ COLLECT WINNINGS';
       }
     }
     function parsePvpLog(log) {
@@ -1943,15 +2730,32 @@
       if (/allowance|insufficient allowance/i.test(raw)) return new Error('CASHX approval did not go through yet. Approve again, then create the room.');
       if (/Wager below minimum/i.test(raw)) return new Error('Minimum wager is 500 CASHX.');
       if (/Wager above maximum/i.test(raw)) return new Error('Maximum wager is 1,000,000 CASHX.');
+      if (/Only creator before timeout/i.test(raw)) return new Error('Only the wallet that created this room can cancel it before the join timer expires.');
+      if (/Match not waiting/i.test(raw)) return new Error('This funded match is no longer waiting, so it cannot be cancelled from the lobby.');
       if (/paused/i.test(raw)) return new Error('The wager contract is paused right now.');
       return new Error(raw || 'Wallet could not prepare this transaction. Try a smaller wager, then try again.');
     }
 
 
     async function waitForTx(tx) {
+      const TX_TIMEOUT_MS = 90000; // 90 s — plenty for PulseChain under normal conditions
+      let timeoutHandle;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => {
+          reject(Object.assign(new Error(
+            'Transaction is taking longer than usual. ' +
+            'Open MetaMask → Activity → tap the pending tx → "Speed Up" to resubmit with higher gas. ' +
+            'Then try again here.'
+          ), { code: 'TX_TIMEOUT' }));
+        }, TX_TIMEOUT_MS);
+      });
       try {
-        return assertSuccessfulReceipt(await tx.wait());
+        const receipt = await Promise.race([tx.wait(), timeoutPromise]);
+        clearTimeout(timeoutHandle);
+        return assertSuccessfulReceipt(receipt);
       } catch (err) {
+        clearTimeout(timeoutHandle);
+        if (err && err.code === 'TX_TIMEOUT') throw err;
         if (err && err.code === 'TRANSACTION_REPLACED' && err.receipt) {
           if (err.cancelled) throw new Error('Transaction was cancelled in wallet.');
           return assertSuccessfulReceipt(err.receipt);
@@ -1987,7 +2791,7 @@
       } else {
         chainStatus.textContent = 'Live escrow ready. Creating a room will ask for approve + fund.';
       }
-      settleChainBtn.hidden = !(currentRoom && currentRoom.status === 'settled' && currentRoom.chain && connectedAddress && currentRoom.winner && samePlayer(connectedAddress, currentRoom.winner) && !isRoomPaid(currentRoom.id));
+      // treasure chest visibility is managed by syncRoom; nothing extra needed here
     }
 
     function setupWallet() {
@@ -2045,6 +2849,7 @@
         cashxContract = null;
         updateWalletButtonText();
         updateChainStatus();
+        refreshGameHistory();
         addFeed('Wallet disconnected', 'Connect a wallet to enable on-chain escrow.');
       });
 

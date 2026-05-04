@@ -1,3 +1,4 @@
+import 'dotenv/config';
 import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -229,6 +230,42 @@ app.post('/api/pvp/rooms/:id/timeout', (req, res) => {
     if (!settleExpiredRoom(room)) throw new Error('Move clock has not expired yet');
     saveRooms();
     res.json(publicRoom(room));
+  } catch (err) {
+    sendError(res, err);
+  }
+});
+
+app.post('/api/pvp/rooms/:id/forfeit', (req, res) => {
+  try {
+    const room = getRoom(req.params.id);
+    const player = normalizePlayer(req.body.player);
+    const seat = room.players.find(entry => entry.address === player);
+    if (!seat) throw new Error('Player is not in this room');
+
+    // Waiting room with only the creator: funded rooms must be refunded on chain first.
+    if (room.status === 'waiting' && room.players.length === 1) {
+      if (room.chain && !req.body.chainCancelled) {
+        throw new Error('Refund the on-chain escrow first, then remove the room.');
+      }
+      rooms.delete(room.id);
+      saveRooms();
+      return res.json({ ok: true, cancelled: true });
+    }
+
+    // Ready-check or active — other player wins by forfeit
+    if (room.status === 'ready-check' || room.status === 'active') {
+      const otherSeat = room.players.find(entry => entry.address !== player);
+      if (!otherSeat) throw new Error('Could not find the other player');
+      room.status = 'settled';
+      room.winner = otherSeat.address;
+      room.winReason = 'forfeit';
+      room.winningCells = [];
+      room.updatedAt = Date.now();
+      saveRooms();
+      return res.json({ ok: true, room: publicRoom(room) });
+    }
+
+    throw new Error('Cannot leave a room that is already finished');
   } catch (err) {
     sendError(res, err);
   }

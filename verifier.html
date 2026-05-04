@@ -145,7 +145,7 @@
     }
     .tabs {
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: .6rem;
       margin-bottom: 1rem;
     }
@@ -361,7 +361,7 @@
       <div class="label">Public result verifier</div>
       <h1>Verify A Result</h1>
       <p>
-        Enter a Dice bet ID, Multiplayer game ID, Mines game ID, or paste a transaction hash. This page pulls public on-chain data and recomputes the result in your browser using the same randomness math as the beta contracts.
+        Enter a Dice bet ID, Multiplayer game ID, Mines game ID, Connect Four match ID, or paste a transaction hash. This page pulls public on-chain data and recomputes or checks the result in your browser using the same beta contract records.
       </p>
     </section>
 
@@ -373,6 +373,7 @@
             <button class="tab active" id="diceTab" type="button" onclick="setMode('dice')">Dice Bet</button>
             <button class="tab" id="multiTab" type="button" onclick="setMode('multi')">Multiplayer</button>
             <button class="tab" id="minesTab" type="button" onclick="setMode('mines')">Mines</button>
+            <button class="tab" id="connect4Tab" type="button" onclick="setMode('connect4')">Connect 4</button>
           </div>
 
           <div class="form-row">
@@ -433,6 +434,7 @@
     const ASYNC_GAMES_ADDRESS = '0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39';
     const MINES_GAME_ADDRESS  = '0xF5Ba5129dD41acb8aF5050aF1EcA84dD497E3095';
     const LIVE_MINES_GAME_ADDRESS = '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
+    const PVP_WAGER_ADDRESS   = '0x344e72a3F4972154B1dbd014ae936816ef34DF9f';
     const RPC_URL             = 'https://rpc.pulsechain.com';
 
     const DICE_ABI = [
@@ -461,16 +463,25 @@
       'event GameStarted(uint256 indexed gameId, address indexed player, uint256 bet, uint8 mineCount, bytes32 serverSeedHash)',
       'event GameSettled(uint256 indexed gameId, address indexed player, bool won, uint256 bet, uint256 payout, uint256 burned, uint256 multiplierBps, uint256 revealedMask, uint256 mineMask, bytes32 serverSeed)',
     ];
+    const PVP_WAGER_ABI = [
+      'function matches(uint256) view returns (uint8 gameType, uint8 status, address player1, address player2, uint256 wager, uint256 createdAt, uint256 startedAt, address winner, uint256 settledAt)',
+      'function totalBurned() view returns (uint256)',
+      'event MatchCreated(uint256 indexed matchId, uint8 indexed gameType, address indexed player1, uint256 wager)',
+      'event MatchJoined(uint256 indexed matchId, address indexed player2)',
+      'event MatchSettled(uint256 indexed matchId, address indexed winner, uint256 payout, uint256 burned, bytes32 resultHash)',
+    ];
 
     const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
     const diceContract = new ethers.Contract(DICE_GAME_ADDRESS, DICE_ABI, provider);
     const asyncContract = new ethers.Contract(ASYNC_GAMES_ADDRESS, ASYNC_ABI, provider);
     const minesContract = new ethers.Contract(MINES_GAME_ADDRESS, MINES_ABI, provider);
     const liveMinesContract = new ethers.Contract(LIVE_MINES_GAME_ADDRESS, LIVE_MINES_ABI, provider);
+    const pvpWagerContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, provider);
     const diceIface = new ethers.utils.Interface(DICE_ABI);
     const asyncIface = new ethers.utils.Interface(ASYNC_ABI);
     const minesIface = new ethers.utils.Interface(MINES_ABI);
     const liveMinesIface = new ethers.utils.Interface(LIVE_MINES_ABI);
+    const pvpWagerIface = new ethers.utils.Interface(PVP_WAGER_ABI);
     let mode = 'dice';
 
     function setMode(nextMode) {
@@ -478,6 +489,7 @@
       document.getElementById('diceTab').classList.toggle('active', mode === 'dice');
       document.getElementById('multiTab').classList.toggle('active', mode === 'multi');
       document.getElementById('minesTab').classList.toggle('active', mode === 'mines');
+      document.getElementById('connect4Tab').classList.toggle('active', mode === 'connect4');
       document.getElementById('secretRow').style.display = (mode === 'dice' || mode === 'mines') ? 'block' : 'none';
       document.getElementById('picksRow').style.display = mode === 'mines' ? 'block' : 'none';
 
@@ -491,6 +503,11 @@
         document.getElementById('verifyId').placeholder = 'Paste the settle transaction hash here';
         document.getElementById('idHint').textContent = 'Best option for Live Mines: paste the GameSettled transaction hash. The verifier pulls the revealed server seed automatically.';
         document.getElementById('explainText').textContent = 'Live Mines verification checks the backend seed hash, generated mine mask, revealed tiles, win/loss result, payout, and burn amount.';
+      } else if (mode === 'connect4') {
+        document.getElementById('idLabel').textContent = 'Connect Four Match ID Or TX Hash';
+        document.getElementById('verifyId').placeholder = 'Example: 5 or a settle transaction hash';
+        document.getElementById('idHint').textContent = 'Connect Four match numbers are shown in the recent games table after a funded room settles.';
+        document.getElementById('explainText').textContent = 'Connect Four verification checks the player-funded wager record, players, winner, payout, burn amount, and settlement event when available.';
       } else {
         document.getElementById('idLabel').textContent = 'Multiplayer Game ID Or TX Hash';
         document.getElementById('verifyId').placeholder = 'Example: 8 or 0x transaction hash';
@@ -517,6 +534,7 @@
         }
         if (mode === 'dice') await verifyDice(resolved.id, resolved);
         else if (mode === 'mines') await verifyMines(resolved.id, resolved);
+        else if (mode === 'connect4') await verifyConnect4(resolved.id, resolved);
         else await verifyMultiplayer(resolved.id, resolved);
       } catch (err) {
         setStatus(readableError(err), 'bad');
@@ -640,6 +658,21 @@
         }
         if (found) return found;
         throw new Error('That transaction does not contain a Mines game event.');
+      }
+
+      if (activeMode === 'connect4') {
+        let found = null;
+        for (const log of receipt.logs) {
+          if (log.address.toLowerCase() !== PVP_WAGER_ADDRESS.toLowerCase()) continue;
+          try {
+            const parsed = pvpWagerIface.parseLog(log);
+            if (parsed.args && parsed.args.matchId) {
+              found = { id: parsed.args.matchId.toString(), txHash: raw, eventName: parsed.name };
+            }
+          } catch (_) {}
+        }
+        if (found) return found;
+        throw new Error('That transaction does not contain a Connect Four wager event.');
       }
 
       for (const log of receipt.logs) {
@@ -963,6 +996,66 @@
       }
     }
 
+    async function verifyConnect4(matchId, resolvedInput) {
+      setStatus('Loading Connect Four wager data...', '');
+      document.getElementById('resultGrid').innerHTML = '';
+
+      try {
+        const m = await pvpWagerContract.matches(matchId);
+        if (m.player1 === ethers.constants.AddressZero) {
+          setStatus('No Connect Four match found for that ID.', 'bad');
+          return;
+        }
+
+        const pot = m.wager.mul(2);
+        const computedBurn = pot.mul(500).div(10000);
+        const computedPayout = pot.sub(computedBurn);
+        const statusName = pvpStatusName(m.status);
+        const isSettled = Number(m.status) === 3;
+        const currentBlock = await provider.getBlockNumber().catch(() => 0);
+        const fromBlock = currentBlock ? Math.max(0, currentBlock - 2500000) : 0;
+        const [createdEvents, joinedEvents, settledEvents] = await Promise.all([
+          pvpWagerContract.queryFilter(pvpWagerContract.filters.MatchCreated(matchId), fromBlock, 'latest').catch(() => []),
+          pvpWagerContract.queryFilter(pvpWagerContract.filters.MatchJoined(matchId), fromBlock, 'latest').catch(() => []),
+          pvpWagerContract.queryFilter(pvpWagerContract.filters.MatchSettled(matchId), fromBlock, 'latest').catch(() => []),
+        ]);
+        const settled = settledEvents[settledEvents.length - 1];
+        const eventMatches = settled
+          ? settled.args.winner.toLowerCase() === m.winner.toLowerCase() &&
+            settled.args.payout.eq(computedPayout) &&
+            settled.args.burned.eq(computedBurn)
+          : !isSettled;
+
+        setStatus(
+          isSettled
+            ? (eventMatches ? 'Verified: Connect Four settlement matches the wager contract.' : 'Mismatch: settlement event does not match computed payout or burn.')
+            : 'Connect Four match found. Final verification is available after settlement.',
+          isSettled && !eventMatches ? 'bad' : 'ok'
+        );
+
+        renderGrid([
+          kv('Match ID', '#' + matchId),
+          kv('Input Source', inputSourceLabel(resolvedInput)),
+          kv('Game Type', Number(m.gameType) === 0 ? 'Connect Four' : 'Vanishing Tic Tac Toe'),
+          kv('Status', statusName),
+          kv('Player X', addressLink(m.player1)),
+          kv('Player O', m.player2 === ethers.constants.AddressZero ? 'Waiting' : addressLink(m.player2)),
+          kv('Player Wager', fmtCashx(m.wager) + ' CASHX'),
+          kv('Total Pot', fmtCashx(pot) + ' CASHX'),
+          kv('Winner', isSettled ? addressLink(m.winner) : 'Not settled'),
+          kv('Payout', isSettled ? fmtCashx(computedPayout) + ' CASHX' : 'Pending'),
+          kv('Burned', isSettled ? fmtCashx(computedBurn) + ' CASHX' : 'Pending'),
+          kv('Created Event', createdEvents.length ? 'Found' : 'Not found in recent block window'),
+          kv('Joined Event', joinedEvents.length ? 'Found' : 'Not found yet'),
+          kv('Settlement Event Matches', settled ? (eventMatches ? 'Yes' : 'No') : 'No settlement event yet'),
+          kv('Wager Contract', addressLink(PVP_WAGER_ADDRESS)),
+          settled ? kv('Result Hash', settled.args.resultHash, 'full') : '',
+        ].filter(Boolean));
+      } catch (err) {
+        setStatus('Could not verify Connect Four match: ' + readableError(err), 'bad');
+      }
+    }
+
     async function verifyMultiplayer(gameId, resolvedInput) {
       setStatus('Loading multiplayer game and settlement data...', '');
       document.getElementById('resultGrid').innerHTML = '';
@@ -1204,6 +1297,10 @@
       return Number(gameType) === 0 ? 'Card War' : 'Dice Battle';
     }
 
+    function pvpStatusName(status) {
+      return ['None', 'Waiting', 'Active', 'Settled', 'Cancelled', 'Refunded'][Number(status)] || 'Unknown';
+    }
+
     function inputSourceLabel(resolvedInput) {
       if (!resolvedInput || resolvedInput.source === 'id') return 'Direct ID';
       return 'TX Hash' + (resolvedInput.eventName ? ' · ' + resolvedInput.eventName : '');
@@ -1231,16 +1328,19 @@
 
     function initVerifierFromUrl() {
       const params = new URLSearchParams(window.location.search);
+      const requestedGame = (params.get('game') || '').toLowerCase();
       const requestedMode = (params.get('mode') || '').toLowerCase();
       if (requestedMode === 'multi' || requestedMode === 'multiplayer') {
         setMode('multi');
       } else if (requestedMode === 'mines' || requestedMode === 'mine') {
         setMode('mines');
+      } else if (requestedMode === 'connect4' || requestedMode === 'connect-four' || requestedGame === 'connect4' || requestedGame === 'connect-four') {
+        setMode('connect4');
       } else {
         setMode('dice');
       }
 
-      const value = params.get('tx') || params.get('id') || params.get('game') || params.get('bet');
+      const value = params.get('tx') || params.get('match') || params.get('id') || (requestedGame && requestedGame !== 'connect4' ? requestedGame : '') || params.get('bet');
       if (!value) return;
 
       document.getElementById('verifyId').value = value.trim();
