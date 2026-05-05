@@ -951,14 +951,21 @@
     }
 
     .card-back-face {
-      background:
-        repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,166,35,.04) 4px, rgba(245,166,35,.04) 8px),
-        linear-gradient(160deg, #0f1b38, #0a1228);
+      background: #0d0a1e;
       border: 1px solid rgba(245,166,35,.4);
+      padding: 0;
+      overflow: hidden;
       display: flex;
       align-items: center;
       justify-content: center;
       animation: cardBackPulse 2s ease-in-out infinite;
+    }
+    .card-back-face img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 3px;
+      display: block;
     }
     /* Stop pulsing once card has flipped (back face hidden) */
     .card-inner.flipped .card-back-face { animation: none; }
@@ -1077,9 +1084,16 @@
       overflow: hidden;
     }
     .wlp-back {
-      background:
-        repeating-linear-gradient(45deg, transparent, transparent 4px, rgba(245,166,35,.04) 4px, rgba(245,166,35,.04) 8px),
-        #0d0a1e;
+      background: #0d0a1e;
+      padding: 0;
+      overflow: hidden;
+    }
+    .wlp-back img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 7px;
+      display: block;
     }
     .wlp-front {
       transform: rotateY(180deg);
@@ -1584,7 +1598,7 @@
               <div class="wlp-slot">
                 <div class="wlp-card-wrap">
                   <div class="wlp-card-inner" id="wlpCardLeft">
-                    <div class="wlp-back"><span class="card-back-logo">CK</span></div>
+                    <div class="wlp-back"><img src="cards/card-back.png" alt=""></div>
                     <div class="wlp-front" id="wlpFrontLeft"></div>
                   </div>
                 </div>
@@ -1594,7 +1608,7 @@
               <div class="wlp-slot">
                 <div class="wlp-card-wrap">
                   <div class="wlp-card-inner" id="wlpCardRight">
-                    <div class="wlp-back"><span class="card-back-logo">CK</span></div>
+                    <div class="wlp-back"><img src="cards/card-back.png" alt=""></div>
                     <div class="wlp-front" id="wlpFrontRight"></div>
                   </div>
                 </div>

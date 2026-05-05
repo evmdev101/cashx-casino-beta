@@ -229,6 +229,7 @@ async function refreshPublicStats() {
 }
 
 async function startGame() {
+  window._minesStopDemo?.();
   if (state.transacting || state.activeGame) return;
   if (!state.signer) {
     await connectWallet();

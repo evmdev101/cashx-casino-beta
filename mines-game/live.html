@@ -192,5 +192,86 @@
     window.CASHX_MINES_BACKEND_URL = 'https://cashx-mines-backend.onrender.com';
   </script>
   <script src="main-live.js"></script>
+  <script>
+  /* ── Mines idle demo ── plays a simulated round on the board whenever no real game is running */
+  (function startMinesIdleDemo() {
+    let demoTimer = null;
+
+    function isIdle() {
+      return !state.activeGame && !state.transacting;
+    }
+
+    function shuffle(arr) {
+      const a = arr.slice();
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function setIdleMode(active) {
+      els.board.classList.toggle('idle-mode', active);
+    }
+
+    function runDemo() {
+      if (!isIdle()) {
+        demoTimer = setTimeout(runDemo, 1200);
+        return;
+      }
+
+      setIdleMode(true);
+
+      /* randomise mine count and tile order */
+      const mineCount = [3, 5, 8][Math.floor(Math.random() * 3)];
+      const indices = shuffle([...Array(25).keys()]);
+      const minePositions = indices.slice(0, mineCount);
+      const safePositions = indices.slice(mineCount);
+      const safesToReveal = Math.min(safePositions.length, 2 + Math.floor(Math.random() * 4));
+      const safeQueue = safePositions.slice(0, safesToReveal);
+      let step = 0;
+
+      function nextStep() {
+        if (!isIdle()) { setIdleMode(false); return; }
+
+        if (step < safeQueue.length) {
+          /* reveal next safe tile */
+          const tile = els.board.querySelector('[data-index="' + safeQueue[step] + '"]');
+          if (tile) { tile.className = 'tile safe'; tile.textContent = '◆'; }
+          step++;
+          demoTimer = setTimeout(nextStep, 460 + Math.random() * 380);
+        } else {
+          /* pause then blow up a mine */
+          demoTimer = setTimeout(function () {
+            if (!isIdle()) { setIdleMode(false); return; }
+            minePositions.forEach(function (idx) {
+              const tile = els.board.querySelector('[data-index="' + idx + '"]');
+              if (tile) { tile.className = 'tile mine'; tile.textContent = '✹'; }
+            });
+            /* hold on the blast, then reset and loop */
+            demoTimer = setTimeout(function () {
+              if (!isIdle()) { setIdleMode(false); return; }
+              resetGrid();
+              setIdleMode(true);
+              demoTimer = setTimeout(runDemo, 900 + Math.random() * 600);
+            }, 1900);
+          }, 340);
+        }
+      }
+
+      demoTimer = setTimeout(nextStep, 720);
+    }
+
+    /* called by main-live.js startGame() to cleanly cancel the demo */
+    window._minesStopDemo = function () {
+      if (demoTimer) clearTimeout(demoTimer);
+      demoTimer = null;
+      setIdleMode(false);
+    };
+
+    /* kick off after page init */
+    demoTimer = setTimeout(runDemo, 1200);
+  })();
+  </script>
 </body>
 </html>

@@ -575,7 +575,7 @@ function renderCardWarVisual(g, gameId, isNewlyResolved) {
     html +=
       '<div class="card-flip-container" title="' + title + '" style="--deal-rot:' + ((i - 2) * 3) + 'deg">' +
         '<div class="card-inner' + (startFlipped ? ' flipped' : '') + '">' +
-          '<div class="card-face card-back-face"><span class="card-back-logo">CK</span></div>' +
+          '<div class="card-face card-back-face"><img src="cards/card-back.png" alt=""></div>' +
           '<div class="' + frontClass + '">' +
             frontContent +
           '</div>' +
