@@ -12,9 +12,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <script src="wallet-modal.js"></script>
   <script>
-    window.CASHX_PVP_BACKEND_URL = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
-      ? 'http://127.0.0.1:8790'
-      : 'https://cashx-pvp-backend.onrender.com';
+    window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
     window.CASHX_PVP_WAGER_ADDRESS = '0x344e72a3F4972154B1dbd014ae936816ef34DF9f';
   </script>
 
@@ -638,7 +636,18 @@
       letter-spacing: 1px;
       text-transform: uppercase;
     }
-    .lobby-list { display: grid; gap: .5rem; max-height: 220px; overflow: auto; padding-right: .15rem; }
+    .lobby-list { display: grid; gap: .5rem; padding-right: .15rem; }
+    .open-lobbies-section {
+      width: min(1100px, 100%);
+      margin: 2rem auto 0;
+      border-radius: 16px;
+      overflow: hidden;
+      background: rgba(8,4,18,.68);
+      border: 1px solid rgba(255,255,255,.12);
+      padding: 1rem 1.4rem 1.2rem;
+      display: grid;
+      gap: .75rem;
+    }
     .lobby-empty { color: var(--muted); font-size: .88rem; line-height: 1.35; }
     .lobby-card {
       border: 1px solid rgba(55,214,255,.18);
@@ -1202,7 +1211,7 @@
             <div class="money-row win"><span>Winner Gets</span><span id="payoutValue">190,000</span></div>
           </div>
 
-          <div class="chain-box test" id="chainBox">
+          <div class="chain-box test" id="chainBox" style="display:none">
             <b>Chain Escrow</b>
             <span id="chainStatus">Test mode until PvPWager address is added.</span>
           </div>
@@ -1218,15 +1227,6 @@
             <div class="tx-note" id="txProgressNote">Create or join a funded room and the wallet steps will light up here.</div>
           </div>
 
-          <div class="lobby-panel">
-            <div class="lobby-head">
-              <b>Open Lobbies</b>
-              <button class="mini-btn" id="refreshLobbiesBtn" type="button">Refresh</button>
-            </div>
-            <div class="lobby-list" id="openLobbies">
-              <div class="lobby-empty">Checking for waiting rooms...</div>
-            </div>
-          </div>
         </div>
       </aside>
 
@@ -1318,6 +1318,20 @@
     </section>
 
     <div class="feed" id="feed" aria-live="polite"></div>
+
+    <!-- Open Lobbies — standalone section -->
+    <section class="open-lobbies-section">
+      <div class="history-head">
+        <div class="history-title">Open Lobbies — Connect Four</div>
+        <div style="display:flex;align-items:center;gap:.8rem;">
+          <div class="history-live"><span class="refresh-dot"></span> Live</div>
+          <button class="mini-btn" id="refreshLobbiesBtn" type="button">Refresh</button>
+        </div>
+      </div>
+      <div class="lobby-list" id="openLobbies">
+        <div class="lobby-empty">Checking for waiting rooms...</div>
+      </div>
+    </section>
 
     <section class="ledger-area">
       <section class="history-panel">
