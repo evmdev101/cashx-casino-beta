@@ -12,9 +12,8 @@ contract AsyncGames {
     IERC20 public constant CASHX = IERC20(0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665);
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    uint256 public constant TIER_1 = 100_000 * 1e18;
-    uint256 public constant TIER_2 = 500_000 * 1e18;
-    uint256 public constant TIER_3 = 1_000_000 * 1e18;
+    uint256 public constant MIN_ENTRY =       500 * 1e18;
+    uint256 public constant MAX_ENTRY = 1_000_000 * 1e18;
 
     uint256 public constant TIMEOUT = 7 days;
     uint256 public constant SETTLE_BLOCK_WINDOW = 250;
@@ -42,6 +41,9 @@ contract AsyncGames {
     mapping(address => uint256[])                   private playerGameIds;
     uint256[]                                       private activeGameIds;
     mapping(uint256 => uint256)                     private activeGameIndexPlusOne;
+
+    /// @notice Tracks which players have an active cancel request per game.
+    mapping(uint256 => mapping(address => bool)) public cancelRequests;
 
     uint256 public gameCount;
     address public owner;
@@ -74,6 +76,8 @@ contract AsyncGames {
         address indexed player,
         uint256         amount
     );
+    event CancelRequested(uint256 indexed gameId, address indexed player);
+    event GameMutuallyCancelled(uint256 indexed gameId);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -96,15 +100,15 @@ contract AsyncGames {
         owner = msg.sender;
     }
 
-    function createGame(GameType gameType, uint8 maxPlayers, uint8 tier)
+    function createGame(GameType gameType, uint8 maxPlayers, uint256 entryAmount)
         external
         noReentrant
         whenNotPaused
     {
         require(maxPlayers >= 2 && maxPlayers <= 5, "Players must be 2-5");
-        require(tier >= 1 && tier <= 3, "Tier must be 1-3");
+        require(entryAmount >= MIN_ENTRY && entryAmount <= MAX_ENTRY, "Entry out of range");
 
-        uint256 entry = _tierAmount(tier);
+        uint256 entry = entryAmount;
         require(CASHX.transferFrom(msg.sender, address(this), entry), "Transfer failed");
 
         gameCount++;
@@ -235,6 +239,59 @@ contract AsyncGames {
         }
     }
 
+    // -------------------------------------------------------------------------
+    // Mutual cancel — any player in a full game may request; when ALL players
+    // have requested, everyone is refunded in full with no burn.
+    // For games that are not yet full, use leaveGame() instead.
+    // -------------------------------------------------------------------------
+
+    /// @notice Signal that you want to cancel a full game.
+    ///         When every player in the game has requested, all entry fees are returned in full.
+    ///         For games not yet full, call leaveGame() to exit individually.
+    function requestCancel(uint256 gameId) external noReentrant {
+        Game storage g = games[gameId];
+
+        require(!g.resolved && !g.cancelled, "Game not active");
+        require(g.readyToSettle, "Game not full yet — use leaveGame instead");
+        require(inGame[gameId][msg.sender], "Not in this game");
+        require(!cancelRequests[gameId][msg.sender], "Cancel already requested");
+
+        cancelRequests[gameId][msg.sender] = true;
+        emit CancelRequested(gameId, msg.sender);
+
+        // Check whether all players have now requested.
+        uint8 n = g.playerCount;
+        uint8 count = 0;
+        for (uint8 i = 0; i < n; i++) {
+            if (cancelRequests[gameId][g.players[i]]) count++;
+        }
+
+        if (count == n) {
+            _executeMutualCancelGame(gameId);
+        }
+    }
+
+    /// @dev Refund all players in full. Called once every player has requested cancel.
+    function _executeMutualCancelGame(uint256 gameId) internal {
+        Game storage g = games[gameId];
+
+        g.cancelled = true;
+
+        uint8 n = g.playerCount;
+        for (uint8 i = 0; i < n; i++) {
+            address player = g.players[i];
+            inGame[gameId][player] = false;
+            require(CASHX.transfer(player, g.entryAmount), "Refund failed");
+            emit PlayerRefunded(gameId, player, g.entryAmount);
+        }
+
+        emit GameMutuallyCancelled(gameId);
+    }
+
+    // -------------------------------------------------------------------------
+    // Internal helpers
+    // -------------------------------------------------------------------------
+
     function _resolveGame(uint256 gameId, bytes32 entropy) internal {
         Game storage g = games[gameId];
         uint8 n = g.playerCount;
@@ -329,12 +386,6 @@ contract AsyncGames {
         return die1 + die2;
     }
 
-    function _tierAmount(uint8 tier) internal pure returns (uint256) {
-        if (tier == 1) return TIER_1;
-        if (tier == 2) return TIER_2;
-        return TIER_3;
-    }
-
     function _findPlayerIndex(
         Game storage g,
         address player,
@@ -345,6 +396,10 @@ contract AsyncGames {
         }
         revert("Player not found");
     }
+
+    // -------------------------------------------------------------------------
+    // View functions
+    // -------------------------------------------------------------------------
 
     function getGame(uint256 gameId) external view returns (Game memory) {
         return games[gameId];
@@ -361,6 +416,10 @@ contract AsyncGames {
     function getPlayerGames(address player) external view returns (uint256[] memory) {
         return playerGameIds[player];
     }
+
+    // -------------------------------------------------------------------------
+    // Owner admin
+    // -------------------------------------------------------------------------
 
     function _addActiveGame(uint256 gameId) internal {
         if (activeGameIndexPlusOne[gameId] != 0) return;

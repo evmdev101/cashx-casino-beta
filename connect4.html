@@ -13,7 +13,7 @@
   <script src="wallet-modal.js"></script>
   <script>
     window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
-    window.CASHX_PVP_WAGER_ADDRESS = '0x344e72a3F4972154B1dbd014ae936816ef34DF9f';
+    window.CASHX_PVP_WAGER_ADDRESS = '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
   </script>
 
   <style>
@@ -334,6 +334,37 @@
     }
     .action-btn:hover { transform: translateY(-2px); box-shadow: 0 15px 38px rgba(245,166,35,.34); }
     .ghost-btn { width: 100%; margin-top: .55rem; }
+    #cancelZone { text-align: center; margin-top: .4rem; }
+    .cancel-req-btn {
+      border-color: rgba(255,170,0,.32) !important;
+      color: #ffaa00 !important;
+      font-size: .82rem;
+    }
+    .cancel-req-btn:hover {
+      border-color: rgba(255,170,0,.62) !important;
+      background: rgba(255,170,0,.07) !important;
+    }
+    .cancel-revoke-btn {
+      border-color: rgba(140,140,180,.28) !important;
+      color: var(--muted) !important;
+      font-size: .78rem;
+      margin-top: .3rem;
+    }
+    .cancel-force-btn {
+      border-color: rgba(255,68,85,.38) !important;
+      color: var(--red) !important;
+      font-size: .78rem;
+      margin-top: .3rem;
+    }
+    #cancelStatus {
+      font-size: .76rem;
+      color: var(--muted);
+      line-height: 1.45;
+      margin-bottom: .35rem;
+      padding: .3rem .5rem;
+      background: rgba(255,255,255,.04);
+      border-radius: 5px;
+    }
     .forfeit-btn {
       border-color: rgba(255,68,85,.32) !important;
       color: var(--red) !important;
@@ -1246,6 +1277,11 @@
           </div>
           <div class="field">
             <label for="wagerInput">Player Wager</label>
+            <div class="segmented wager-quick" style="margin-bottom:.45rem;">
+              <button data-wager="100000"  onclick="setWagerQuick(100000)">100K</button>
+              <button data-wager="500000"  onclick="setWagerQuick(500000)">500K</button>
+              <button data-wager="1000000" onclick="setWagerQuick(1000000)">1M</button>
+            </div>
             <div class="input-row">
               <input id="wagerInput" type="number" min="500" step="500" value="1000" />
               <div class="unit">CASHX</div>
@@ -1376,6 +1412,13 @@
           <button class="ghost-btn forfeit-btn" id="forfeitBtn" type="button">Leave Room</button>
         </div>
 
+        <div id="cancelZone" hidden>
+          <div id="cancelStatus"></div>
+          <button class="ghost-btn cancel-req-btn" id="cancelReqBtn" type="button">⇌ Request Mutual Cancel</button>
+          <button class="ghost-btn cancel-revoke-btn" id="cancelRevokeBtn" type="button" hidden>↩ Revoke Cancel Request</button>
+          <button class="ghost-btn cancel-force-btn" id="cancelForceBtn" type="button" hidden>⚡ Force Refund (24h Elapsed)</button>
+        </div>
+
         <div class="game-burn">
           <div class="burn-label">🔥 Total CASHX Burned From Connect Four</div>
           <div class="burn-value" id="totalBurned">—</div>
@@ -1480,9 +1523,18 @@
       'function joinMatch(uint256 matchId)',
       'function cancelUnmatched(uint256 matchId)',
       'function settleMatch(uint256 matchId, address winner, bytes32 resultDataHash, bytes signature)',
+      'function requestCancel(uint256 matchId)',
+      'function revokeCancel(uint256 matchId)',
+      'function claimCancelTimeout(uint256 matchId)',
+      'function refundExpired(uint256 matchId)',
+      'function cancelRequests(uint256 matchId, address player) view returns (bool)',
+      'function cancelRequestedAt(uint256 matchId) view returns (uint256)',
       'event MatchCreated(uint256 indexed matchId, uint8 indexed gameType, address indexed player1, uint256 wager)',
       'event MatchJoined(uint256 indexed matchId, address indexed player2)',
       'event MatchSettled(uint256 indexed matchId, address indexed winner, uint256 payout, uint256 burned, bytes32 resultHash)',
+      'event CancelRequested(uint256 indexed matchId, address indexed requester)',
+      'event CancelRevoked(uint256 indexed matchId, address indexed requester)',
+      'event MatchMutuallyCancelled(uint256 indexed matchId)',
     ];
 
     // Read-only provider for pulling on-chain burn totals (no wallet needed)
@@ -1536,6 +1588,11 @@
     const declineRematchBtn = document.getElementById('declineRematchBtn');
     const forfeitZone = document.getElementById('forfeitZone');
     const forfeitBtn = document.getElementById('forfeitBtn');
+    const cancelZone = document.getElementById('cancelZone');
+    const cancelStatus = document.getElementById('cancelStatus');
+    const cancelReqBtn = document.getElementById('cancelReqBtn');
+    const cancelRevokeBtn = document.getElementById('cancelRevokeBtn');
+    const cancelForceBtn = document.getElementById('cancelForceBtn');
     const chainBox = document.getElementById('chainBox');
     const chainStatus = document.getElementById('chainStatus');
     const txProgressNote = document.getElementById('txProgressNote');
@@ -1574,6 +1631,7 @@
     let lastMoveCell = null;
     let autoSettleRoomId = '';
     let settlingOnChain = false;
+    let joiningRoom = false;
     let _dropTargetIdx = -1;
 
     init();
@@ -1591,6 +1649,9 @@
       declineRematchBtn.addEventListener('click', declineRematch);
       freshRoomBtn.addEventListener('click', resetToFreshRoom);
       forfeitBtn.addEventListener('click', forfeitRoom);
+      cancelReqBtn.addEventListener('click', requestMutualCancel);
+      cancelRevokeBtn.addEventListener('click', revokeMutualCancel);
+      cancelForceBtn.addEventListener('click', forceCancelRefund);
       readyUpBtn.addEventListener('click', readyUp);
       copyInviteBtn.addEventListener('click', copyInviteLink);
       openInviteBtn.addEventListener('click', openInviteTab);
@@ -1659,6 +1720,7 @@
       currentRoom = null;
       currentRoomId = '';
       forfeitZone.hidden = true;
+      cancelZone.hidden = true;
       myMark = null;
       lastMoveCell = null;
       board = Array(COLUMNS * ROWS).fill('');
@@ -1738,6 +1800,10 @@
     }
 
     async function joinRoom() {
+      if (joiningRoom) return; // prevent double-join if button clicked twice or auto+manual fire together
+      joiningRoom = true;
+      const joinBtn = document.getElementById('joinMatchBtn');
+      if (joinBtn) { joinBtn.disabled = true; joinBtn.textContent = 'Joining…'; }
       try {
         setBackendBadge('Checking', false);
         if (!currentRoomId) throw new Error('Create or open a room first.');
@@ -1760,6 +1826,10 @@
         startPolling();
       } catch (err) {
         showBackendError(err);
+        // Only re-enable the button on error so the player can retry
+        if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = 'Join Room'; }
+      } finally {
+        joiningRoom = false;
       }
     }
 
@@ -1929,6 +1999,14 @@
       } else {
         forfeitZone.hidden = true;
       }
+
+      // Show mutual cancel zone only for active funded matches
+      const showCancelZone = isInRoom
+        && room.status === 'active'
+        && room.chain && room.chain.matchId
+        && connectedAddress;
+      cancelZone.hidden = !showCancelZone;
+      if (showCancelZone) refreshCancelState(room).catch(() => {});
     }
     function paidRoomIds() {
       try {
@@ -2055,7 +2133,20 @@
       oCard.classList.toggle('active', active === 'O');
     }
 
+    function setWagerQuick(amount) {
+      wagerInput.value = amount;
+      updateMoney();
+    }
+
+    function _syncWagerQuickBtns() {
+      const val = Number(wagerInput.value);
+      document.querySelectorAll('.wager-quick button').forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.wager) === val);
+      });
+    }
+
     function updateMoney() {
+      _syncWagerQuickBtns();
       const wager = Math.max(0, Number(wagerInput.value || 0));
       const pot = wager * 2;
       const burn = Math.floor(pot * 0.05);
@@ -2278,7 +2369,10 @@
       try {
         const data = await fetchJson('/api/pvp/rooms?game=connect4&limit=50');
         const rooms = data.rooms || [];
-        const settled = rooms.filter(room => room.status === 'settled' || room.status === 'draw');
+        let settled = rooms.filter(room => room.status === 'settled' || room.status === 'draw');
+        if (!settled.length) {
+          settled = await fetchOnChainSettledRooms();
+        }
         renderBurnTotal(settled);
         renderRecentGames(settled.slice(0, 10));
         renderYourGames(settled);
@@ -2313,12 +2407,53 @@
       }
     }
 
+    async function fetchOnChainSettledRooms() {
+      if (!pvpContractRO) return [];
+      try {
+        const current = await roProvider.getBlockNumber();
+        const fromBlock = Math.max(0, current - 200000);
+        const events = await pvpContractRO.queryFilter(
+          pvpContractRO.filters.MatchSettled(),
+          fromBlock,
+          current
+        );
+        return events
+          .sort((a, b) => (b.blockNumber - a.blockNumber) || (b.logIndex - a.logIndex))
+          .map(ev => {
+            const payoutWei = ev.args.payout || ethers.BigNumber.from(0);
+            const burnedWei = ev.args.burned || ethers.BigNumber.from(0);
+            const potWei = payoutWei.add(burnedWei);
+            return {
+              id: 'chain-' + ev.args.matchId.toString(),
+              game: 'connect4',
+              status: 'settled',
+              winner: ev.args.winner,
+              wager: Number(ethers.utils.formatUnits(potWei.div(2), 18)),
+              pot: Number(ethers.utils.formatUnits(potWei, 18)),
+              burn: Number(ethers.utils.formatUnits(burnedWei, 18)),
+              payout: Number(ethers.utils.formatUnits(payoutWei, 18)),
+              chain: {
+                matchId: ev.args.matchId.toString(),
+                contractAddress: PVP_WAGER_ADDRESS,
+                chainId: 369,
+                txHash: ev.transactionHash
+              },
+              players: [{ address: ev.args.winner }]
+            };
+          });
+      } catch (_) {
+        return [];
+      }
+    }
+
     function roomBurn(room) {
+      if (room.burn != null) return Number(room.burn);
       const pot = Number(room.wager || 0) * 2;
       return Math.floor(pot * 0.05);
     }
 
     function roomPayout(room) {
+      if (room.payout != null) return Number(room.payout);
       const pot = Number(room.wager || 0) * 2;
       return pot - roomBurn(room);
     }
@@ -2569,6 +2704,8 @@
       roundTitle.textContent = 'Game message';
       roundCopy.textContent = message;
       addFeed('Game message', message);
+      // Also show in the tx note area so polling doesn't overwrite it before the user reads it
+      if (txProgressNote) txProgressNote.textContent = '⚠ ' + message;
       checkBackendHealth();
     }
 
@@ -2774,6 +2911,28 @@
       if (!isChainEnabled()) return;
       await ensureWallet();
       const wagerWei = ethers.BigNumber.from(String(wagerWeiValue || '0'));
+
+      // Check if this wallet already joined this match on-chain (handles the case where
+      // the chain tx confirmed but the backend /join call failed, leaving the room desynced).
+      let alreadyJoined = false;
+      if (pvpContractRO) {
+        try {
+          const currentBlock = await roProvider.getBlockNumber();
+          const fromBlock = Math.max(0, currentBlock - 2000000);
+          const joinEvents = await pvpContractRO.queryFilter(
+            pvpContractRO.filters.MatchJoined(matchId), fromBlock, currentBlock
+          );
+          alreadyJoined = joinEvents.some(ev => samePlayer(ev.args.player2, connectedAddress));
+        } catch (_) {}
+      }
+
+      if (alreadyJoined) {
+        // Chain join already confirmed — just sync the backend, no wallet needed
+        addFeed('Chain sync', 'Your on-chain join was already confirmed. Re-syncing backend room.');
+        completeTxStage('join', 'Chain join already confirmed. Syncing room now.');
+        return;
+      }
+
       await ensureWagerBalance(wagerWei);
       await approveIfNeeded(wagerWei);
 
@@ -2785,6 +2944,112 @@
       const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
       await waitForTx(tx);
       completeTxStage('join', 'Joined on chain. Both players can start the match.');
+    }
+
+    // ── Mutual Cancel ───────────────────────────────────────────────────────────
+
+    async function refreshCancelState(room) {
+      if (!pvpContractRO || !room.chain || !room.chain.matchId || !connectedAddress) return;
+      const matchId = room.chain.matchId;
+      const opponentSeat = (room.players || []).find(p => !samePlayer(p.address, connectedAddress));
+      const opponentAddr  = opponentSeat ? opponentSeat.address : null;
+
+      try {
+        const [myReq, theirReq, reqAt] = await Promise.all([
+          pvpContractRO.cancelRequests(matchId, connectedAddress),
+          opponentAddr ? pvpContractRO.cancelRequests(matchId, opponentAddr) : Promise.resolve(false),
+          pvpContractRO.cancelRequestedAt(matchId),
+        ]);
+
+        const CANCEL_WINDOW = 24 * 3600;
+        const now = Math.floor(Date.now() / 1000);
+        const reqAtNum = reqAt.toNumber ? reqAt.toNumber() : Number(reqAt);
+        const timeoutElapsed = reqAtNum > 0 && (now - reqAtNum) >= CANCEL_WINDOW;
+
+        let statusText = '';
+        if (myReq && theirReq) {
+          statusText = '✅ Both players requested — cancellation executing…';
+        } else if (myReq && !theirReq) {
+          if (timeoutElapsed) {
+            statusText = '⏰ 24h elapsed — you can now force the full refund below.';
+          } else {
+            const remaining = CANCEL_WINDOW - (now - reqAtNum);
+            const h = Math.floor(remaining / 3600);
+            const m = Math.floor((remaining % 3600) / 60);
+            statusText = '⏳ Cancel requested — opponent has '
+              + (h > 0 ? h + 'h ' : '') + m + 'm to respond.';
+          }
+        } else if (!myReq && theirReq) {
+          statusText = '⚠️ Opponent requested mutual cancel — click below to accept your full refund.';
+        }
+
+        cancelStatus.textContent = statusText;
+        cancelStatus.style.display = statusText ? 'block' : 'none';
+
+        cancelReqBtn.hidden    = myReq;
+        cancelRevokeBtn.hidden = !myReq;
+        cancelForceBtn.hidden  = !(myReq && timeoutElapsed && !theirReq);
+      } catch (e) {
+        console.warn('refreshCancelState:', e);
+      }
+    }
+
+    async function requestMutualCancel() {
+      if (!pvpContract || !currentRoom || !currentRoom.chain) return;
+      const matchId = currentRoom.chain.matchId;
+      cancelReqBtn.disabled = true;
+      try {
+        addFeed('Cancel request', 'Submitting mutual cancel request…');
+        const tx = await pvpContract.requestCancel(
+          matchId,
+          await txOptions(pvpContract, 'requestCancel', [matchId])
+        );
+        addFeed('Waiting', 'Transaction sent — waiting for block…');
+        await waitForTx(tx);
+        addFeed('Requested', 'Cancel request recorded. Waiting for opponent.');
+        await refreshCancelState(currentRoom);
+      } catch (err) {
+        showBackendError(err);
+        cancelReqBtn.disabled = false;
+      }
+    }
+
+    async function revokeMutualCancel() {
+      if (!pvpContract || !currentRoom || !currentRoom.chain) return;
+      const matchId = currentRoom.chain.matchId;
+      cancelRevokeBtn.disabled = true;
+      try {
+        addFeed('Revoke cancel', 'Revoking cancel request…');
+        const tx = await pvpContract.revokeCancel(
+          matchId,
+          await txOptions(pvpContract, 'revokeCancel', [matchId])
+        );
+        await waitForTx(tx);
+        addFeed('Revoked', 'Your cancel request has been removed.');
+        await refreshCancelState(currentRoom);
+      } catch (err) {
+        showBackendError(err);
+        cancelRevokeBtn.disabled = false;
+      }
+    }
+
+    async function forceCancelRefund() {
+      if (!pvpContract || !currentRoom || !currentRoom.chain) return;
+      const matchId = currentRoom.chain.matchId;
+      cancelForceBtn.disabled = true;
+      try {
+        addFeed('Force refund', 'Claiming cancel timeout — both players will be refunded…');
+        const tx = await pvpContract.claimCancelTimeout(
+          matchId,
+          await txOptions(pvpContract, 'claimCancelTimeout', [matchId])
+        );
+        await waitForTx(tx);
+        addFeed('Refunded', 'Cancel timeout executed. Both players received full refunds.');
+        await refreshCancelState(currentRoom);
+      } catch (err) {
+        showBackendError(err);
+        cancelForceBtn.disabled = false;
+      }
     }
 
     async function cancelChainMatch(room) {
@@ -2887,8 +3152,14 @@
     }
     async function txOptions(contract, method, args) {
       try {
-        const estimate = await contract.estimateGas[method](...args);
-        return { gasLimit: estimate.mul(GAS_BUFFER_BPS).div(10000) };
+        const [estimate, gasPrice] = await Promise.all([
+          contract.estimateGas[method](...args),
+          walletProvider.getGasPrice(),
+        ]);
+        return {
+          gasLimit: estimate.mul(GAS_BUFFER_BPS).div(10000),
+          gasPrice: gasPrice.mul(150).div(100), // 1.5× boost for fast inclusion
+        };
       } catch (err) {
         throw friendlyChainError(err);
       }

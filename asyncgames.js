@@ -1,32 +1,75 @@
 'use strict';
 
 // Constants
-const ASYNC_GAMES_ADDRESS = '0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39';
+const ASYNC_GAMES_ADDRESS = '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
 const CASHX_ADDRESS       = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
 const PULSECHAIN_ID       = 369;
 const PULSECHAIN_HEX      = '0x171';
 const RPC_URL             = 'https://pulsechain-rpc.publicnode.com';
 
-// Gas overrides for every write transaction
-const GAS = {
-  gasLimit: 500000,
-  gasPrice: ethers.utils.parseUnits('100', 'gwei'),
-};
+// Converts raw chain errors into readable messages.
+function friendlyChainError(err) {
+  const raw = String(
+    err && (err.reason || err.errorName || (err.data && err.data.message) ||
+    (err.error && err.error.message) || err.message) || ''
+  );
+  if (/insufficient funds|not enough funds/i.test(raw))
+    return new Error('This wallet needs a little PLS for gas.');
+  if (/transfer failed|ERC20|balance/i.test(raw))
+    return new Error('CASHX transfer failed — check your CASHX balance and try again.');
+  if (/entry out of range/i.test(raw))
+    return new Error('Entry amount is outside the allowed range (500 – 1,000,000 CASHX).');
+  if (/game is full/i.test(raw))
+    return new Error('This game just filled up — pick another table.');
+  if (/already in/i.test(raw))
+    return new Error('You are already in this game.');
+  if (/not active/i.test(raw))
+    return new Error('This game is no longer active.');
+  if (raw) return new Error(raw);
+  return err || new Error('Unknown error');
+}
 
-const TIER_AMOUNTS = {
-  1: ethers.BigNumber.from('100000').mul(ethers.BigNumber.from('10').pow(18)),
-  2: ethers.BigNumber.from('500000').mul(ethers.BigNumber.from('10').pow(18)),
-  3: ethers.BigNumber.from('1000000').mul(ethers.BigNumber.from('10').pow(18)),
-};
+// Simulates the call with callStatic so any revert is surfaced before MetaMask opens.
+async function preflightCall(contract, method, args) {
+  try {
+    await contract.callStatic[method](...args);
+  } catch (err) {
+    throw friendlyChainError(err);
+  }
+}
+
+// Dynamic gas options — estimates gas per call and boosts gas price 1.5× so
+// PulseChain's EIP-1559 nodes always include the transaction promptly.
+// Throws (with a friendly message) if the call would revert, so MetaMask is
+// never given a doomed transaction.
+async function getTxOptions(contract, method, args) {
+  try {
+    const [estimate, gasPrice] = await Promise.all([
+      contract.estimateGas[method](...args),
+      provider.getGasPrice(),
+    ]);
+    return {
+      gasLimit: estimate.mul(130).div(100),  // 30% safety buffer
+      gasPrice: gasPrice.mul(150).div(100),  // 1.5× boost
+    };
+  } catch (err) {
+    throw friendlyChainError(err);
+  }
+}
+
+const MIN_ENTRY_CASHX = 500;
+const MAX_ENTRY_CASHX = 1_000_000;
 
 // ABIs
 const ASYNC_ABI = [
-  'function createGame(uint8 gameType, uint8 maxPlayers, uint8 tier) external',
+  'function createGame(uint8 gameType, uint8 maxPlayers, uint256 entryAmount) external',
   'function joinGame(uint256 gameId) external',
   'function settleGame(uint256 gameId) external',
   'function leaveGame(uint256 gameId) external',
   'function refundGame(uint256 gameId) external',
   'function refundExpiredSettle(uint256 gameId) external',
+  'function requestCancel(uint256 gameId) external',
+  'function cancelRequests(uint256 gameId, address player) view returns (bool)',
   'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
   'function getActiveGames() view returns (uint256[])',
   'function getPlayerGames(address player) view returns (uint256[])',
@@ -461,6 +504,12 @@ function renderGameRow(g, gameId, isNewlyResolved) {
   const timedOut = now >= g.createdAt.toNumber() + 7 * 24 * 3600;
   const n        = Number(g.playerCount);
 
+  // Hoist settle-block state so rowClass can use it
+  const readyToSettle    = !!g.readyToSettle;
+  const settleBlockReady = readyToSettle && latestKnownBlock > Number(g.settleBlock);
+  const settleExpired    = readyToSettle && latestKnownBlock > Number(g.settleBlock) + 250;
+  const isSettling       = !g.resolved && !g.cancelled && readyToSettle && !settleExpired;
+
   // Status badge
   let badge, badgeClass, actions = '';
   if (g.resolved) {
@@ -474,17 +523,19 @@ function renderGameRow(g, gameId, isNewlyResolved) {
     const playerIdx = Array.from(g.players).findIndex(
       p => p.toLowerCase() === (playerAddress || '').toLowerCase()
     );
-    const readyToSettle = !!g.readyToSettle;
-    const settleBlockReady = readyToSettle && latestKnownBlock > Number(g.settleBlock);
-    const settleExpired = readyToSettle && latestKnownBlock > Number(g.settleBlock) + 250;
     if (playerIdx >= 0 && readyToSettle) {
       badge      = settleExpired ? 'EXPIRED' : (settleBlockReady ? 'READY' : 'SETTLING');
       badgeClass = 'badge-waiting';
-      actions    = settleExpired
+      const mainAction = settleExpired
         ? '<button class="btn-action-sm btn-refund" onclick="refundExpiredSettle(' + idStr + ')">' + copy.refund + '</button>'
         : settleBlockReady
         ? '<button class="btn-action-sm btn-refund" onclick="settleGame(' + idStr + ')">' + copy.settle + '</button>'
         : '';
+      // Mutual cancel button — available whenever the game is full and awaiting settlement
+      const cancelAction = !settleExpired
+        ? '<button class="btn-action-sm btn-cancel-game" onclick="requestCancelGame(' + idStr + ')" title="All players must request to get full refunds">⇌ Request Cancel</button>'
+        : '';
+      actions = mainAction + cancelAction;
     } else if (playerIdx >= 0 && timedOut) {
       badge      = 'TIMEOUT';
       badgeClass = 'badge-timeout';
@@ -509,8 +560,13 @@ function renderGameRow(g, gameId, isNewlyResolved) {
     visualHtml = renderDiceBattleVisual(g, gameId, isNewlyResolved);
   }
 
-  const rowClass = 'my-game-row' + (isNewlyResolved ? ' reveal-live' : '');
-  const revealCopy = isCW ? 'Dealing cards...' : 'Rolling dice...';
+  const rowClass = 'my-game-row' +
+    (isNewlyResolved ? ' reveal-live' : '') +
+    (isSettling      ? ' settling-state' : '');
+  const revealCopy  = isCW ? 'Dealing cards...' : 'Rolling dice...';
+  const settlingMsg = settleBlockReady
+    ? (isCW ? 'Ready — confirm reveal in wallet' : 'Ready — confirm roll in wallet')
+    : 'Waiting for reveal block · hold tight';
 
   return '<div class="' + rowClass + '" data-game-id="' + idStr + '">' +
     '<div class="my-game-header">' +
@@ -521,6 +577,12 @@ function renderGameRow(g, gameId, isNewlyResolved) {
     '<div class="my-game-meta">' +
       '<span>' + copy.entryMeta + ': ' + fmtEntry(g.entryAmount) + '</span>' +
       '<span>' + n + '/' + g.maxPlayers + ' ' + copy.playersMeta.toLowerCase() + '</span>' +
+    '</div>' +
+    '<div class="settling-banner">' +
+      'SETTLING <span class="settling-dots">' +
+        '<span>.</span><span>.</span><span>.</span>' +
+        '<span>.</span><span>.</span><span>.</span>' +
+      '</span>&nbsp; ' + settlingMsg +
     '</div>' +
     '<div class="reveal-banner">' + revealCopy + '</div>' +
     visualHtml +
@@ -844,19 +906,20 @@ async function createGame() {
   _disableActions();
 
   try {
-    const entry = TIER_AMOUNTS[selectedTier];
+    const entry = getEntryWei();
     const copy = gameCopy();
 
     const allowance = await cashxContractRO.allowance(playerAddress, ASYNC_GAMES_ADDRESS);
     if (allowance.lt(entry)) {
       setStatus('Step 1/2: Approve CASHX spend in MetaMask…', 'pending');
-      const approveTx = await cashxContractSigned.approve(ASYNC_GAMES_ADDRESS, entry, GAS);
+      const approveTx = await cashxContractSigned.approve(ASYNC_GAMES_ADDRESS, entry, await getTxOptions(cashxContractSigned, 'approve', [ASYNC_GAMES_ADDRESS, entry]));
       setStatus('Step 1/2: Waiting for approval confirmation…', 'pending');
       await waitForTx(approveTx);
     }
 
     setStatus('Approval confirmed. Confirm ' + copy.createTitle.toLowerCase() + ' in MetaMask…', 'pending');
-    const tx = await asyncContractSigned.createGame(activeTab, selectedPlayers, selectedTier, GAS);
+    await preflightCall(asyncContractSigned, 'createGame', [activeTab, selectedPlayers, entry]);
+    const tx = await asyncContractSigned.createGame(activeTab, selectedPlayers, entry, await getTxOptions(asyncContractSigned, 'createGame', [activeTab, selectedPlayers, entry]));
     setStatus('Creating ' + (activeTab === 0 ? 'war table' : 'battle arena') + '… waiting for block confirmation…', 'pending');
     try {
       await tx.wait();
@@ -909,13 +972,14 @@ async function joinGame(gameId) {
     const allowance = await cashxContractRO.allowance(playerAddress, ASYNC_GAMES_ADDRESS);
     if (allowance.lt(entry)) {
       setStatus('Step 1/2: Approve CASHX spend in MetaMask…', 'pending');
-      const approveTx = await cashxContractSigned.approve(ASYNC_GAMES_ADDRESS, entry, GAS);
+      const approveTx = await cashxContractSigned.approve(ASYNC_GAMES_ADDRESS, entry, await getTxOptions(cashxContractSigned, 'approve', [ASYNC_GAMES_ADDRESS, entry]));
       setStatus('Step 1/2: Waiting for approval confirmation…', 'pending');
       await waitForTx(approveTx);
     }
 
     setStatus('Approval confirmed. Confirm ' + copy.join.toLowerCase() + ' in MetaMask…', 'pending');
-    const tx = await asyncContractSigned.joinGame(gameId, GAS);
+    await preflightCall(asyncContractSigned, 'joinGame', [gameId]);
+    const tx = await asyncContractSigned.joinGame(gameId, await getTxOptions(asyncContractSigned, 'joinGame', [gameId]));
     setStatus((Number(g.gameType) === 0 ? 'Taking your seat at the war table' : 'Entering the dice arena') + '… waiting for confirmation…', 'pending');
     let receipt;
     try {
@@ -975,7 +1039,7 @@ async function settleGame(gameId) {
     const g = await asyncContractRO.getGame(gameId);
     const copy = gameCopy(Number(g.gameType));
     setStatus('Confirm ' + copy.settle.toLowerCase() + ' in MetaMask…', 'pending');
-    const tx = await asyncContractSigned.settleGame(gameId, GAS);
+    const tx = await asyncContractSigned.settleGame(gameId, await getTxOptions(asyncContractSigned, 'settleGame', [gameId]));
     setStatus((Number(g.gameType) === 0 ? 'Revealing cards' : 'Rolling dice') + '… waiting for confirmation…', 'pending');
 
     let receipt;
@@ -1039,7 +1103,7 @@ async function leaveGame(gameId) {
 
   try {
     setStatus('Confirm leaving game #' + gameId + ' in MetaMask…', 'pending');
-    const tx = await asyncContractSigned.leaveGame(gameId, GAS);
+    const tx = await asyncContractSigned.leaveGame(gameId, await getTxOptions(asyncContractSigned, 'leaveGame', [gameId]));
     setStatus('Leaving game… waiting for confirmation…', 'pending');
     await tx.wait();
     setStatus('Left game #' + gameId + '. Entry refunded.', 'success');
@@ -1075,7 +1139,7 @@ async function refundGame(gameId) {
 
   try {
     setStatus('Confirm refund claim in MetaMask…', 'pending');
-    const tx = await asyncContractSigned.refundGame(gameId, GAS);
+    const tx = await asyncContractSigned.refundGame(gameId, await getTxOptions(asyncContractSigned, 'refundGame', [gameId]));
     setStatus('Claiming refund… waiting for confirmation…', 'pending');
     await tx.wait();
     setStatus('Refund claimed for game #' + gameId + '!', 'success');
@@ -1096,7 +1160,7 @@ async function refundExpiredSettle(gameId) {
 
   try {
     setStatus('Confirm expired-game refund in MetaMask…', 'pending');
-    const tx = await asyncContractSigned.refundExpiredSettle(gameId, GAS);
+    const tx = await asyncContractSigned.refundExpiredSettle(gameId, await getTxOptions(asyncContractSigned, 'refundExpiredSettle', [gameId]));
     setStatus('Refunding players… waiting for confirmation…', 'pending');
     await tx.wait();
     setStatus('Expired game refunded.', 'success');
@@ -1114,14 +1178,118 @@ async function refundExpiredSettle(gameId) {
   _enableActions();
 }
 
+// Request mutual cancel for a full game (all players must also request)
+async function requestCancelGame(gameId) {
+  if (!signer || transacting) return;
+
+  try {
+    const pendingNonce   = await provider.getTransactionCount(playerAddress, 'pending');
+    const confirmedNonce = await provider.getTransactionCount(playerAddress, 'latest');
+    if (pendingNonce > confirmedNonce) {
+      setStatus('You have a pending transaction. Please wait for it to confirm.', 'error');
+      return;
+    }
+  } catch (_) {}
+
+  transacting = true;
+  _disableActions();
+
+  try {
+    setStatus('Confirm cancel request in MetaMask…', 'pending');
+    const tx = await asyncContractSigned.requestCancel(gameId, await getTxOptions(asyncContractSigned, 'requestCancel', [gameId]));
+    setStatus('Submitting cancel request…', 'pending');
+    const receipt = await waitForTx(tx);
+
+    // Check if game was mutually cancelled (all players had already requested)
+    const iface = new ethers.utils.Interface(ASYNC_ABI);
+    let mutuallyCancelled = false;
+    for (const log of (receipt ? receipt.logs : [])) {
+      try {
+        const parsed = iface.parseLog(log);
+        if (parsed.name === 'GameMutuallyCancelled') { mutuallyCancelled = true; break; }
+      } catch (_) {}
+    }
+
+    if (mutuallyCancelled) {
+      setStatus('All players agreed — game #' + gameId + ' cancelled. Full refunds sent.', 'success');
+    } else {
+      setStatus('Cancel request submitted for game #' + gameId + '. Waiting for all other players to request too.', 'success');
+    }
+
+    await Promise.all([
+      refreshFilteredActiveGames(),
+      refreshFilteredPlayerGames(),
+      refreshBalance(),
+    ]);
+  } catch (err) {
+    _handleTxError(err);
+  }
+
+  transacting = false;
+  _enableActions();
+}
+
 // Selection
+const TIER_VALUES = { 1: 100000, 2: 500000, 3: 1000000 };
+
+// Returns the entry amount as a BigNumber (wei), reading from the custom input.
+function getEntryWei() {
+  const input = document.getElementById('tierCustomInput');
+  const raw   = parseFloat(input ? input.value : '0') || MIN_ENTRY_CASHX;
+  const clamped = Math.max(MIN_ENTRY_CASHX, Math.min(MAX_ENTRY_CASHX, Math.floor(raw)));
+  return ethers.utils.parseUnits(String(clamped), 18);
+}
+
 function selectTier(tier) {
   selectedTier = tier;
   document.querySelectorAll('#tierBtns .sel-btn').forEach(b => {
     b.classList.toggle('active', Number(b.dataset.tier) === tier);
   });
+  // Set the input to the chosen quick-select amount
+  const input = document.getElementById('tierCustomInput');
+  if (input) input.value = TIER_VALUES[tier];
   _updatePotEstimate();
 }
+
+// Wire up the custom amount input.
+// While typing: pot estimate updates live; tier buttons go dark.
+// On blur / Enter: clamp to valid range (no forced snap to a tier preset).
+(function () {
+  const input = document.getElementById('tierCustomInput');
+  if (!input) return;
+
+  function clampInput() {
+    const raw     = parseFloat(input.value) || MIN_ENTRY_CASHX;
+    const clamped = Math.max(MIN_ENTRY_CASHX, Math.min(MAX_ENTRY_CASHX, Math.floor(raw)));
+    input.value   = clamped;
+    // Re-highlight a tier button only if the value exactly matches a preset
+    const matchTier = Object.entries(TIER_VALUES).find(([, v]) => v === clamped);
+    if (matchTier) {
+      selectedTier = Number(matchTier[0]);
+      document.querySelectorAll('#tierBtns .sel-btn').forEach(b => {
+        b.classList.toggle('active', Number(b.dataset.tier) === selectedTier);
+      });
+    } else {
+      selectedTier = 0;
+      document.querySelectorAll('#tierBtns .sel-btn').forEach(b => b.classList.remove('active'));
+    }
+    _updatePotEstimate();
+  }
+
+  // Live pot estimate while typing; clear tier button highlights
+  input.addEventListener('input', () => {
+    document.querySelectorAll('#tierBtns .sel-btn').forEach(b => b.classList.remove('active'));
+    _updatePotEstimate();
+  });
+
+  // Clamp on blur (click away / tab out)
+  input.addEventListener('blur', clampInput);
+
+  // Clamp on Enter key too
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { input.blur(); }
+  });
+})();
 
 function selectPlayers(n) {
   selectedPlayers = n;
@@ -1352,7 +1520,7 @@ function updateWalletFlowFromStatus(msg, type) {
 }
 
 function _updatePotEstimate() {
-  const entry  = TIER_AMOUNTS[selectedTier];
+  const entry  = getEntryWei();
   const pot    = entry.mul(selectedPlayers);
   const winner = pot.mul(95).div(100);
   const burned = pot.sub(winner);

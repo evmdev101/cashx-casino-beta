@@ -10,6 +10,10 @@ interface IERC20PvP {
 /// @title PvPWager - two-player CASHX wager escrow for skill games
 /// @notice Players fund both sides of the pot. A trusted game server signs the final winner.
 ///         The contract burns a fee and pays the rest of the pot to the winner.
+///         Either player may request a mutual cancel at any time while a match is active.
+///         If both players request, funds are returned in full with no burn.
+///         If the other player ignores a cancel request for longer than cancelResponseWindow,
+///         the requesting player may force a full refund unilaterally.
 contract PvPWager {
 
     IERC20PvP public constant CASHX = IERC20PvP(0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665);
@@ -38,6 +42,7 @@ contract PvPWager {
     uint256 public maxWager = 1_000_000 * 1e18;
     uint256 public joinTimeout = 1 days;
     uint256 public matchTimeout = 1 days;
+    uint256 public cancelResponseWindow = 24 hours; // how long the other player has to respond to a cancel request
     uint256 public totalBurned;
     uint256 public matchCount;
     bool    public paused;
@@ -46,6 +51,11 @@ contract PvPWager {
     mapping(uint256 => Match) public matches;
     mapping(address => uint256[]) private playerMatchIds;
     mapping(bytes32 => bool) public usedResultHashes;
+
+    /// @notice Tracks which players have an active cancel request for a match.
+    mapping(uint256 => mapping(address => bool)) public cancelRequests;
+    /// @notice Timestamp of the earliest outstanding cancel request per match.
+    mapping(uint256 => uint256) public cancelRequestedAt;
 
     event MatchCreated(
         uint256 indexed matchId,
@@ -67,6 +77,9 @@ contract PvPWager {
     event GameSignerUpdated(address signer);
     event Paused(bool paused);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
+    event CancelRequested(uint256 indexed matchId, address indexed requester);
+    event CancelRevoked(uint256 indexed matchId, address indexed requester);
+    event MatchMutuallyCancelled(uint256 indexed matchId);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -92,6 +105,10 @@ contract PvPWager {
         emit OwnershipTransferred(address(0), msg.sender);
         emit GameSignerUpdated(gameSigner);
     }
+
+    // -------------------------------------------------------------------------
+    // Core match lifecycle
+    // -------------------------------------------------------------------------
 
     /// @notice Create a two-player wager match and escrow player one's CASHX.
     function createMatch(GameType gameType, uint256 wager)
@@ -213,6 +230,90 @@ contract PvPWager {
         emit MatchRefunded(matchId, m.player2, m.wager);
     }
 
+    // -------------------------------------------------------------------------
+    // Mutual cancel — either player may request at any time during an active match
+    // -------------------------------------------------------------------------
+
+    /// @notice Signal that you want to cancel an active match.
+    ///         - If the other player has already requested, funds are returned to both immediately.
+    ///         - Otherwise your request is recorded; the other player can accept or ignore it.
+    function requestCancel(uint256 matchId) external noReentrant {
+        Match storage m = matches[matchId];
+
+        require(m.status == Status.Active, "Match not active");
+        require(msg.sender == m.player1 || msg.sender == m.player2, "Not a player");
+        require(!cancelRequests[matchId][msg.sender], "Cancel already requested");
+
+        cancelRequests[matchId][msg.sender] = true;
+
+        // Record timestamp of the FIRST outstanding request so the timeout starts here.
+        if (cancelRequestedAt[matchId] == 0) {
+            cancelRequestedAt[matchId] = block.timestamp;
+        }
+
+        emit CancelRequested(matchId, msg.sender);
+
+        // If both players have now requested, execute the cancel in the same tx.
+        address other = (msg.sender == m.player1) ? m.player2 : m.player1;
+        if (cancelRequests[matchId][other]) {
+            _executeMutualCancel(matchId);
+        }
+    }
+
+    /// @notice Withdraw your cancel request if you change your mind.
+    function revokeCancel(uint256 matchId) external {
+        Match storage m = matches[matchId];
+
+        require(m.status == Status.Active, "Match not active");
+        require(cancelRequests[matchId][msg.sender], "No cancel request to revoke");
+
+        cancelRequests[matchId][msg.sender] = false;
+
+        // Reset the timer if neither player has an active request anymore.
+        address other = (msg.sender == m.player1) ? m.player2 : m.player1;
+        if (!cancelRequests[matchId][other]) {
+            cancelRequestedAt[matchId] = 0;
+        }
+
+        emit CancelRevoked(matchId, msg.sender);
+    }
+
+    /// @notice Force a full mutual refund if you previously requested cancel and the other
+    ///         player has not responded within cancelResponseWindow.
+    ///         Both players receive their full wager back — no burn.
+    function claimCancelTimeout(uint256 matchId) external noReentrant {
+        Match storage m = matches[matchId];
+
+        require(m.status == Status.Active, "Match not active");
+        require(msg.sender == m.player1 || msg.sender == m.player2, "Not a player");
+        require(cancelRequests[matchId][msg.sender], "Request cancel first");
+        require(cancelRequestedAt[matchId] != 0, "No outstanding cancel request");
+        require(
+            block.timestamp >= cancelRequestedAt[matchId] + cancelResponseWindow,
+            "Response window still open"
+        );
+
+        _executeMutualCancel(matchId);
+    }
+
+    /// @dev Refund both players in full. Called when both agree or after timeout.
+    function _executeMutualCancel(uint256 matchId) internal {
+        Match storage m = matches[matchId];
+
+        m.status = Status.Refunded;
+
+        require(CASHX.transfer(m.player1, m.wager), "Player1 refund failed");
+        require(CASHX.transfer(m.player2, m.wager), "Player2 refund failed");
+
+        emit MatchMutuallyCancelled(matchId);
+        emit MatchRefunded(matchId, m.player1, m.wager);
+        emit MatchRefunded(matchId, m.player2, m.wager);
+    }
+
+    // -------------------------------------------------------------------------
+    // View helpers
+    // -------------------------------------------------------------------------
+
     function resultHash(
         uint256 matchId,
         address winner,
@@ -252,6 +353,10 @@ contract PvPWager {
         return CASHX.balanceOf(address(this));
     }
 
+    // -------------------------------------------------------------------------
+    // Owner admin
+    // -------------------------------------------------------------------------
+
     function setGameSigner(address newSigner) external onlyOwner {
         require(newSigner != address(0), "Zero signer");
         gameSigner = newSigner;
@@ -270,6 +375,11 @@ contract PvPWager {
         require(newMatchTimeout >= 5 minutes, "Match timeout too short");
         joinTimeout = newJoinTimeout;
         matchTimeout = newMatchTimeout;
+    }
+
+    function setCancelResponseWindow(uint256 newWindow) external onlyOwner {
+        require(newWindow >= 1 hours, "Window too short");
+        cancelResponseWindow = newWindow;
     }
 
     function pause() external onlyOwner {

@@ -12,9 +12,7 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <script src="wallet-modal.js"></script>
   <script>
-    window.CASHX_PVP_BACKEND_URL = (location.hostname === '127.0.0.1' || location.hostname === 'localhost')
-      ? 'http://127.0.0.1:8790'
-      : 'https://cashx-pvp-backend.onrender.com';
+    window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
   </script>
 
   <style>
@@ -1020,7 +1018,7 @@ const LIVE_ABI = [
   'function getGame(uint256 gameId) view returns (tuple(uint8 gameType, uint8 maxPlayers, uint8 playerCount, uint256 entryAmount, uint256 createdAt, bool resolved, bool cancelled, bool readyToSettle, uint256 settleBlock, address[5] players, uint8[5] results, address winner))',
 ];
 const liveRpc      = new ethers.providers.JsonRpcProvider('https://pulsechain-rpc.publicnode.com');
-const liveContract = new ethers.Contract('0x953b84786f3bC6Cbc7524471FE1B6b0f61E9ce39', LIVE_ABI, liveRpc);
+const liveContract = new ethers.Contract('0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2', LIVE_ABI, liveRpc);
 
 function fmtEntry(amount) {
   const n = parseFloat(ethers.utils.formatUnits(amount, 18));
