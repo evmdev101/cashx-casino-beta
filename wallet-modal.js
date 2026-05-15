@@ -1,7 +1,11 @@
 'use strict';
 
-const WM_CHAIN_ID  = 369;
-const WM_CHAIN_HEX = '0x171';
+const WM_CONFIG = window.CashX && window.CashX.config;
+const WM_CHAIN_ID  = WM_CONFIG ? WM_CONFIG.chain.id : 369;
+const WM_CHAIN_HEX = WM_CONFIG ? WM_CONFIG.chain.hexId : '0x171';
+const WM_CHAIN_NAME = WM_CONFIG ? WM_CONFIG.chain.name : 'PulseChain';
+const WM_RPC_URL = WM_CONFIG ? WM_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com';
+const WM_EXPLORER_URL = WM_CONFIG ? WM_CONFIG.chain.explorerBaseUrl : 'https://scan.pulsechain.com';
 
 // Inject styles once
 (function () {
@@ -132,7 +136,7 @@ function showWalletModal() {
           </button>
         </div>
         <div class="wm-msg" id="wmMsg"></div>
-        <div class="wm-footer">Connecting to PulseChain (Chain ID 369)</div>
+        <div class="wm-footer">Connecting to PulseChain (Chain ID ${WM_CHAIN_ID})</div>
       </div>
     `;
     document.body.appendChild(overlay);
@@ -159,6 +163,12 @@ function showWalletModal() {
       }
       setMsg('Connecting…', 'info');
       try {
+        if (window.CashX && window.CashX.wallet && window.CashX.contracts) {
+          const result = await window.CashX.wallet.connectWallet();
+          overlay.remove();
+          resolve(result);
+          return;
+        }
         await window.ethereum.request({ method: 'eth_requestAccounts' });
         let p = new ethers.providers.Web3Provider(window.ethereum);
         const net = await p.getNetwork();
@@ -174,10 +184,10 @@ function showWalletModal() {
               await window.ethereum.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
-                  chainId: WM_CHAIN_HEX, chainName: 'PulseChain',
+                  chainId: WM_CHAIN_HEX, chainName: WM_CHAIN_NAME,
                   nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 },
-                  rpcUrls: ['https://rpc.pulsechain.com'],
-                  blockExplorerUrls: ['https://scan.pulsechain.com'],
+                  rpcUrls: [WM_RPC_URL],
+                  blockExplorerUrls: [WM_EXPLORER_URL],
                 }],
               });
             } else throw sw;

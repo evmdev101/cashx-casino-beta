@@ -260,7 +260,7 @@ async function startGame() {
       updateBanner('Approval confirmed.', 'win');
     }
 
-    setWalletFlow('fund', allowance.lt(betAmount)
+    setWalletFlow('start', allowance.lt(betAmount)
       ? 'Step 2 of 2: Confirm game start in MetaMask...'
       : 'Step 1 of 1: Confirm game start in MetaMask...');
     updateBanner(allowance.lt(betAmount)
@@ -291,7 +291,7 @@ async function startGame() {
     resetGrid();
     hideRoundResult();
     updateBanner('Game live. Pick a tile.', 'live');
-    setWalletFlow('fund', 'Game funded and live. Cash out or hit a mine to settle.');
+    setWalletFlow('reveal', 'Game started. Pick tiles instantly; cash out or hit a mine to settle.');
     await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
   } catch (err) {
     updateBanner(readableError(err), 'loss');
@@ -377,7 +377,7 @@ async function settleResult(result) {
     return;
   }
 
-  setWalletFlow('claim', result.won ? 'Step 1 of 1: Confirm cash out payout in MetaMask...' : 'Step 1 of 1: Confirm final settlement in MetaMask...');
+  setWalletFlow('payout', result.won ? 'Step 1 of 1: Confirm cash out payout in MetaMask...' : 'Step 1 of 1: Confirm final settlement in MetaMask...');
   updateBanner(result.won ? 'Confirm cash out payout' : 'Confirm final settlement');
   const tx = await state.minesContract.settleGame(
     state.activeGame.gameId,
@@ -387,7 +387,7 @@ async function settleResult(result) {
     result.signature
   );
   await waitForTx(tx);
-  setWalletFlow('claim', 'Settlement complete. Payout and burn applied.');
+  setWalletFlow('payout', 'Settlement complete. Payout and burn applied.');
   await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
 }
 
@@ -602,7 +602,7 @@ function updateBanner(text, type = '') {
 }
 
 function setWalletFlow(stage, note) {
-  const steps = ['approve', 'fund', 'join', 'claim'];
+  const steps = ['approve', 'start', 'reveal', 'payout'];
   const activeIndex = steps.indexOf(stage);
   document.querySelectorAll('[data-tx-step]').forEach(step => {
     const index = steps.indexOf(step.dataset.txStep);

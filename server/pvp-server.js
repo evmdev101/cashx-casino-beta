@@ -71,7 +71,7 @@ app.get('/api/pvp/health', (_, res) => {
   res.json({
     ok: true,
     mode: 'prototype',
-    games: ['tictactoe', 'connect4'],
+    games: ['tictactoe', 'connect4', '8ball'],
     burnBps: Number(BURN_BPS),
     rooms: rooms.size,
     chainId: PVP_CHAIN_ID,
@@ -89,7 +89,7 @@ app.post('/api/pvp/rooms', (req, res) => {
     const room = {
       id: crypto.randomUUID(),
       game,
-      variant: game === 'connect4' ? 'classic' : 'vanishing',
+      variant: game === 'connect4' || game === '8ball' ? 'classic' : 'vanishing',
       status: 'waiting',
       players: [
         { address: creator, mark: 'X' },
@@ -209,13 +209,15 @@ app.post('/api/pvp/rooms/:id/move', (req, res) => {
     if (result) {
       room.status = 'settled';
       room.winner = result.winner ? room.players.find(entry => entry.mark === result.winner).address : null;
-      room.winReason = result.winner ? 'connect' : 'draw';
+      room.winReason = result.reason || (result.winner ? 'connect' : 'draw');
       room.winningCells = result.winningCells || [];
       saveRooms();
       return res.json(publicRoom(room));
     }
 
-    room.turn = room.turn === 'X' ? 'O' : 'X';
+    if (!appliedMove.keepTurn) {
+      room.turn = room.turn === 'X' ? 'O' : 'X';
+    }
     saveRooms();
     res.json(publicRoom(room));
   } catch (err) {
@@ -404,8 +406,8 @@ function publicRoom(room) {
     board: room.board,
     markHistory: room.markHistory,
     maxMarksPerPlayer: MAX_MARKS_PER_PLAYER,
-    columns: room.game === 'connect4' ? CONNECT4_COLUMNS : 3,
-    rows: room.game === 'connect4' ? CONNECT4_ROWS : 3,
+    columns: room.game === 'connect4' ? CONNECT4_COLUMNS : room.game === '8ball' ? 18 : 3,
+    rows: room.game === 'connect4' ? CONNECT4_ROWS : 1,
     turn: room.turn,
     winner: room.winner,
     winReason: room.winReason,
@@ -467,10 +469,12 @@ function settleExpiredRoom(room) {
 }
 
 function createBoard(game) {
+  if (game === '8ball') return Array(18).fill('');
   return Array(game === 'connect4' ? CONNECT4_COLUMNS * CONNECT4_ROWS : 9).fill('');
 }
 
 function applyGameMove(room, mark, move) {
+  if (room.game === '8ball') return applyEightBallMove(room, mark, move);
   if (room.game === 'connect4') {
     const cell = applyConnect4Move(room, mark, move.column);
     return { column: move.column, cell };
@@ -493,6 +497,65 @@ function applyVanishingMove(room, mark, cell) {
   return vanishedCell;
 }
 
+function applyEightBallMove(room, mark, move) {
+  const { pocketed = [], scratch = false } = move;
+  const board = room.board;
+  const markIdx = mark === 'X' ? 16 : 17;
+  const opponentMark = mark === 'X' ? 'O' : 'X';
+  const opponentIdx = opponentMark === 'X' ? 16 : 17;
+
+  board[0] = scratch ? 'scratch' : '';
+
+  const eightBallPocketed = pocketed.includes(8);
+  const otherPocketed = pocketed.filter(b => b !== 8);
+
+  // Validate balls are still on the table
+  for (const b of otherPocketed) {
+    if (board[b] !== '') throw new Error('Ball ' + b + ' is already pocketed');
+  }
+  if (eightBallPocketed && board[8] !== '') throw new Error('8-ball is already pocketed');
+
+  // Assign ball types on first legal pocket
+  if (!board[markIdx] && !board[opponentIdx] && otherPocketed.length > 0) {
+    const firstBall = otherPocketed[0];
+    const myType = firstBall <= 7 ? 'solid' : 'stripe';
+    board[markIdx] = myType;
+    board[opponentIdx] = myType === 'solid' ? 'stripe' : 'solid';
+  }
+
+  // Mark pocketed balls (ball number == board index for 1-15)
+  for (const b of otherPocketed) {
+    board[b] = mark;
+  }
+
+  // Handle 8-ball pocket
+  if (eightBallPocketed) {
+    const myType = board[markIdx];
+    const myBalls = myType === 'solid' ? [1,2,3,4,5,6,7] : myType === 'stripe' ? [9,10,11,12,13,14,15] : [];
+    const allCleared = myBalls.length > 0 && myBalls.every(b => board[b] !== '');
+    board[8] = (myType && allCleared && !scratch) ? mark : mark + '_foul';
+    return { pocketed, scratch, keepTurn: false };
+  }
+
+  // Keep turn if legally pocketed own ball without scratch
+  const myType = board[markIdx];
+  const myBallNums = myType === 'solid' ? [1,2,3,4,5,6,7] : myType === 'stripe' ? [9,10,11,12,13,14,15] : null;
+  const keepTurn = !scratch && otherPocketed.length > 0 && (
+    !myBallNums || otherPocketed.some(b => myBallNums.includes(b))
+  );
+  return { pocketed, scratch, keepTurn };
+}
+
+function getEightBallResult(board) {
+  const s = board[8];
+  if (!s) return null;
+  if (s === 'X') return { winner: 'X', winningCells: [8], reason: 'eight-ball' };
+  if (s === 'O') return { winner: 'O', winningCells: [8], reason: 'eight-ball' };
+  if (s === 'X_foul') return { winner: 'O', winningCells: [8], reason: 'eight-ball-foul' };
+  if (s === 'O_foul') return { winner: 'X', winningCells: [8], reason: 'eight-ball-foul' };
+  return null;
+}
+
 function applyConnect4Move(room, mark, column) {
   for (let row = CONNECT4_ROWS - 1; row >= 0; row--) {
     const cell = row * CONNECT4_COLUMNS + column;
@@ -505,6 +568,7 @@ function applyConnect4Move(room, mark, column) {
 }
 
 function getGameResult(room) {
+  if (room.game === '8ball') return getEightBallResult(room.board);
   return room.game === 'connect4'
     ? getConnect4Result(room.board)
     : getTicTacToeResult(room.board);
@@ -566,7 +630,7 @@ function getRoom(id) {
 
 function normalizeGame(value) {
   const game = String(value || 'tictactoe').toLowerCase();
-  if (!['tictactoe', 'connect4'].includes(game)) throw new Error('Unsupported game');
+  if (!['tictactoe', 'connect4', '8ball'].includes(game)) throw new Error('Unsupported game');
   return game;
 }
 
@@ -618,7 +682,9 @@ function normalizeAddress(value) {
 }
 
 function gameTypeId(game) {
-  return game === 'connect4' ? 0 : 1;
+  if (game === 'connect4') return 0;
+  if (game === '8ball') return 2;
+  return 1; // tictactoe
 }
 
 function buildResultHash({ contractAddress, chainId, matchId, gameType, player1, player2, wagerWei, winner, resultDataHash }) {
@@ -629,6 +695,15 @@ function buildResultHash({ contractAddress, chainId, matchId, gameType, player1,
 }
 
 function normalizeMove(game, body) {
+  if (game === '8ball') {
+    const pocketed = Array.isArray(body.pocketed) ? body.pocketed.map(Number) : [];
+    const scratch = Boolean(body.scratch);
+    for (const b of pocketed) {
+      if (!Number.isInteger(b) || b < 1 || b > 15) throw new Error('Invalid ball number: ' + b);
+    }
+    if (new Set(pocketed).size !== pocketed.length) throw new Error('Duplicate ball numbers');
+    return { pocketed, scratch };
+  }
   if (game === 'connect4') {
     const column = Number(body.column ?? body.cell);
     if (!Number.isInteger(column) || column < 0 || column >= CONNECT4_COLUMNS) throw new Error('Column must be 0 to 6');

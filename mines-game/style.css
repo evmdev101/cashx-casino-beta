@@ -223,10 +223,10 @@ p {
   margin-top: 1rem;
   border: 1px solid rgba(245,166,35,.16);
   background: rgba(0,0,0,.2);
-  border-radius: 8px;
-  padding: .68rem .72rem;
+  border-radius: 12px;
+  padding: .8rem;
   display: grid;
-  gap: .65rem;
+  gap: .7rem;
 }
 
 .tx-progress b {
@@ -239,32 +239,36 @@ p {
 
 .tx-steps {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: .35rem;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: .48rem;
 }
 
 .tx-step {
   min-width: 0;
   border: 1px solid rgba(255,255,255,.08);
   background: rgba(255,255,255,.04);
-  border-radius: 7px;
-  padding: .48rem .35rem;
-  display: grid;
-  place-items: center;
-  gap: .25rem;
+  border-radius: 9px;
+  padding: .58rem .62rem;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .5rem;
   color: var(--text-dim);
   font-family: "Rajdhani", sans-serif;
-  font-size: .76rem;
+  font-size: .78rem;
   font-weight: 700;
-  letter-spacing: 1px;
+  letter-spacing: .9px;
   text-transform: uppercase;
   text-align: center;
+  white-space: nowrap;
 }
 
 .tx-step::before {
   content: "";
-  width: 9px;
-  height: 9px;
+  width: 10px;
+  height: 10px;
+  flex: 0 0 10px;
   border-radius: 50%;
   background: rgba(255,255,255,.18);
   box-shadow: 0 0 0 3px rgba(255,255,255,.04);
@@ -638,7 +642,7 @@ select:focus {
   color: transparent; /* image replaces ✹ text */
   border-color: rgba(255, 68, 85, .62);
   background:
-    url('mine-bomb.png') center / 96% no-repeat,
+    url('mine-bomb.png') center / 118% no-repeat,
     radial-gradient(circle at 50% 45%, rgba(255, 68, 85, .25), rgba(35, 12, 18, .98));
   box-shadow: 0 0 24px rgba(255, 68, 85, .28);
   animation:

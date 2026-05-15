@@ -13,6 +13,19 @@
 
   <!-- ethers.js v5 -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="contracts/abis/erc20.js"></script>
+  <script src="contracts/abis/diceGame.js"></script>
+  <script src="contracts/abis/asyncGames.js"></script>
+  <script src="contracts/abis/minesGame.js"></script>
+  <script src="contracts/abis/pvpWager.js"></script>
+  <script src="lib/config.js"></script>
+  <script src="lib/contracts.js"></script>
+  <script src="lib/wallet.js"></script>
+  <script src="lib/transactions.js"></script>
+  <script src="utils/betting.js"></script>
+  <script src="utils/gameState.js"></script>
+  <script src="utils/gameHistory.js"></script>
+  <script src="utils/burn.js"></script>
 
   <style>
     /* Reset */
@@ -164,6 +177,13 @@
     }
     .topnav-right { display: flex; align-items: center; gap: 1rem; }
     #addressDisplay { font-family: 'Space Mono', monospace; font-size: .75rem; color: var(--text-dim); }
+    .topnav-center {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 1;
+    }
     #connectBtn {
       font-family: 'Bebas Neue', sans-serif;
       font-size: .9rem;
@@ -182,6 +202,209 @@
     }
     #connectBtn:hover { box-shadow: 0 0 28px rgba(255,77,109,.55), 0 0 16px rgba(245,166,35,.3); transform: translateY(-3px) scale(1.06); }
     #connectBtn.connected { background: linear-gradient(135deg, #c855f7, #8b1fcc); color: #fff; border: none; cursor: pointer; }
+
+    .wallet-hub {
+      position: relative;
+      display: none;
+      align-items: center;
+      padding: .38rem;
+      border: 1px solid rgba(200,85,247,.24);
+      border-radius: 999px;
+      background: rgba(42,18,62,.72);
+      box-shadow: inset 0 0 18px rgba(255,255,255,.04), 0 12px 34px rgba(0,0,0,.28);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+    }
+    .wallet-hub.visible { display: inline-flex; }
+    .wallet-account-hub {
+      position: relative;
+      display: none;
+      align-items: center;
+    }
+    .wallet-account-hub.visible { display: inline-flex; }
+    .wallet-balance-pill,
+    .wallet-avatar-btn {
+      border: 0;
+      cursor: pointer;
+      font-family: 'Bebas Neue', sans-serif;
+      letter-spacing: 1.4px;
+      white-space: nowrap;
+    }
+    .wallet-balance-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      min-height: 38px;
+      padding: .36rem .62rem .36rem .42rem;
+      border-radius: 999px;
+      color: #fff;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .wallet-token-mark {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #090411;
+      background: linear-gradient(135deg, var(--amber), var(--purple));
+      box-shadow: 0 0 16px rgba(200,85,247,.34);
+      font-family: 'Orbitron', monospace;
+      font-size: .68rem;
+      font-weight: 900;
+    }
+    .wallet-balance-main {
+      display: grid;
+      gap: 1px;
+      text-align: left;
+      line-height: 1;
+    }
+    .wallet-balance-main span:first-child {
+      color: rgba(220,224,240,.62);
+      font-family: 'Michroma', sans-serif;
+      font-size: .42rem;
+      letter-spacing: 1.3px;
+    }
+    .wallet-balance-main span:last-child {
+      color: var(--amber);
+      font-family: 'Orbitron', monospace;
+      font-size: .72rem;
+      font-weight: 900;
+    }
+    .wallet-chevron { color: rgba(220,224,240,.72); font-size: .8rem; transform: translateY(-1px); }
+    .wallet-avatar-btn {
+      width: 46px;
+      height: 46px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #fff;
+      background:
+        radial-gradient(circle at center, rgba(255,255,255,.12), transparent 66%),
+        url('favicon.ico') center / 72% no-repeat,
+        rgba(255,255,255,.08);
+      border: 2px solid rgba(200,85,247,.7);
+      font-family: 'Orbitron', monospace;
+      font-size: .7rem;
+      text-indent: -999px;
+      overflow: hidden;
+      box-shadow: 0 0 0 3px rgba(255,31,154,.18), 0 0 18px rgba(200,85,247,.28);
+    }
+    .wallet-avatar-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 0 0 3px rgba(255,31,154,.26), 0 0 24px rgba(200,85,247,.42);
+    }
+    .wallet-account-menu {
+      position: absolute;
+      top: calc(100% + 12px);
+      right: 0;
+      width: 190px;
+      display: none;
+      padding: .48rem;
+      border: 1px solid rgba(255,31,154,.36);
+      border-radius: 18px;
+      color: var(--text);
+      background: rgba(26,10,38,.98);
+      box-shadow: 0 24px 70px rgba(0,0,0,.62);
+      z-index: 920;
+    }
+    .wallet-account-menu.open { display: grid; animation: dropIn .18s ease; }
+    .wallet-account-item {
+      min-height: 44px;
+      padding: 0 .95rem;
+      display: flex;
+      align-items: center;
+      border: 0;
+      border-radius: 12px;
+      color: #fff;
+      background: transparent;
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 800;
+      letter-spacing: .8px;
+      text-align: left;
+    }
+    .wallet-account-item:hover { background: rgba(255,255,255,.07); }
+    .wallet-account-item.danger { color: #ff6b7d; }
+    .wallet-account-sep {
+      height: 1px;
+      margin: .25rem 0;
+      background: rgba(255,31,154,.18);
+    }
+    .wallet-balance-menu {
+      position: absolute;
+      top: calc(100% + 12px);
+      right: 0;
+      width: 278px;
+      display: none;
+      border: 1px solid rgba(200,85,247,.32);
+      border-radius: 16px;
+      padding: .75rem;
+      color: var(--text);
+      background: rgba(14,7,24,.97);
+      box-shadow: 0 24px 70px rgba(0,0,0,.6);
+      z-index: 900;
+    }
+    .wallet-balance-menu.open { display: grid; gap: .7rem; animation: dropIn .18s ease; }
+    .wallet-menu-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .7rem;
+      padding-bottom: .65rem;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+    }
+    .wallet-menu-head b {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 1.15rem;
+      letter-spacing: 1.5px;
+      color: #fff;
+    }
+    .wallet-menu-address {
+      color: rgba(220,224,240,.58);
+      font-family: 'Space Mono', monospace;
+      font-size: .68rem;
+    }
+    .wallet-menu-balance {
+      padding: .85rem;
+      border-radius: 12px;
+      border: 1px solid rgba(245,166,35,.18);
+      background: rgba(245,166,35,.06);
+    }
+    .wallet-menu-balance span {
+      display: block;
+      color: rgba(220,224,240,.62);
+      font-family: 'Michroma', sans-serif;
+      font-size: .48rem;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      margin-bottom: .35rem;
+    }
+    .wallet-menu-balance strong {
+      color: var(--amber);
+      font-family: 'Orbitron', monospace;
+      font-size: .95rem;
+    }
+    .wallet-menu-actions {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .5rem;
+    }
+    .wallet-menu-action {
+      min-height: 36px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 9px;
+      color: rgba(220,224,240,.86);
+      background: rgba(255,255,255,.05);
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 700;
+      letter-spacing: .8px;
+    }
+    .wallet-menu-action:hover { color: #fff; border-color: rgba(200,85,247,.38); background: rgba(200,85,247,.12); }
+    .wallet-menu-action.danger:hover { color: var(--red); border-color: rgba(255,68,85,.34); background: rgba(255,68,85,.1); }
 
     /* Two-column game shell */
     .game-shell {
@@ -248,14 +471,32 @@
     .stats-bar { display: flex; gap: .8rem; }
     .stat-card {
       flex: 1;
+      min-width: 0;
       background: rgba(5,2,12,.92);
       border: 1px solid rgba(255,255,255,.14);
-      padding: .75rem 1rem;
+      padding: .72rem .85rem;
       border-radius: 10px;
       backdrop-filter: blur(10px);
     }
-    .stat-label { font-size: .6rem; letter-spacing: 2.5px; text-transform: uppercase; color: var(--text-dim); margin-bottom: .25rem; }
-    .stat-value { font-family: 'Orbitron', monospace; font-size: .95rem; font-weight: 700; color: var(--amber); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .stat-label {
+      font-size: .56rem;
+      letter-spacing: 2px;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: .25rem;
+      white-space: nowrap;
+    }
+    .stat-value {
+      font-family: 'Orbitron', monospace;
+      font-size: clamp(.68rem, 2.4vw, .9rem);
+      font-weight: 700;
+      color: var(--amber);
+      line-height: 1.2;
+      max-width: 100%;
+      white-space: normal;
+      overflow-wrap: anywhere;
+      text-wrap: balance;
+    }
 
     /* 3D Dice stage */
     .dice-stage {
@@ -492,6 +733,12 @@
       transition: border-color .2s, box-shadow .2s;
       margin-bottom: .5rem;
     }
+    #betAmount::-webkit-outer-spin-button,
+    #betAmount::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    #betAmount[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     #betAmount:focus { border-color: var(--purple); box-shadow: 0 0 16px rgba(200,85,247,.2); }
     #betAmount::placeholder { color: rgba(220,224,240,.68); font-size: .85rem; }
 
@@ -565,9 +812,9 @@
     .status-tip strong { color: rgba(245,166,35,.85); font-weight: 600; }
     .tx-progress { margin: 1rem 0 1.15rem; border: 1px solid rgba(245,166,35,.16); background: rgba(0,0,0,.2); border-radius: 8px; padding: .68rem .72rem; display: grid; gap: .65rem; }
     .tx-progress b { color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 1.05rem; letter-spacing: 1px; text-transform: uppercase; }
-    .tx-steps { display: grid; grid-template-columns: repeat(4, 1fr); gap: .35rem; }
-    .tx-step { min-width: 0; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); border-radius: 7px; padding: .48rem .35rem; display: grid; place-items: center; gap: .25rem; color: var(--text-dim); font-family: 'Barlow Condensed', sans-serif; font-size: .76rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; text-align: center; }
-    .tx-step::before { content: ''; width: 9px; height: 9px; border-radius: 50%; background: rgba(255,255,255,.18); box-shadow: 0 0 0 3px rgba(255,255,255,.04); }
+    .tx-steps { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .48rem; }
+    .tx-step { min-width: 0; min-height: 42px; border: 1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.04); border-radius: 9px; padding: .58rem .62rem; display: flex; align-items: center; justify-content: center; gap: .5rem; color: var(--text-dim); font-family: 'Barlow Condensed', sans-serif; font-size: .78rem; font-weight: 700; letter-spacing: .9px; text-transform: uppercase; text-align: center; white-space: nowrap; }
+    .tx-step::before { content: ''; width: 10px; height: 10px; flex: 0 0 10px; border-radius: 50%; background: rgba(255,255,255,.18); box-shadow: 0 0 0 3px rgba(255,255,255,.04); }
     .tx-step.active { color: #fff; border-color: rgba(245,166,35,.58); background: rgba(245,166,35,.09); }
     .tx-step.active::before { background: var(--gold); box-shadow: 0 0 14px rgba(245,166,35,.55); }
     .tx-step.done { color: var(--green); border-color: rgba(61,255,160,.28); background: rgba(61,255,160,.06); }
@@ -881,12 +1128,52 @@
       .hamburger { display: flex; }
       .page-wrap { margin-left: 0; transition: none; }
     }
+    @media (max-width: 980px) {
+      .page-wrap { padding: 96px 1rem 2rem; justify-content: flex-start; }
+      .game-shell {
+        width: min(460px, 100%);
+        grid-template-columns: 1fr;
+      }
+      .game-controls {
+        border-right: 0;
+        border-bottom: 1px solid rgba(255,255,255,.1);
+      }
+      .stats-bar { gap: .55rem; }
+      .stat-card { padding: .68rem .72rem; }
+      .stat-label { font-size: .52rem; letter-spacing: 1.6px; }
+      .stat-value { font-size: clamp(.68rem, 3.1vw, .86rem); }
+    }
+    @media (max-width: 860px) {
+      .topnav { padding: 0 .95rem; gap: .75rem; }
+      .topnav-center {
+        position: static;
+        transform: none;
+        flex: 1;
+        display: flex;
+        justify-content: flex-end;
+      }
+      .topnav-right { gap: .5rem; }
+    }
+    @media (max-width: 640px) {
+      .topnav-brand { font-size: 1.45rem; letter-spacing: 2px; }
+      .topnav-beta,
+      #addressDisplay,
+      .wallet-balance-main span:first-child { display: none; }
+      .wallet-hub { gap: .35rem; padding: .28rem; }
+      .wallet-balance-pill { min-height: 34px; padding: .3rem .52rem .3rem .32rem; }
+      .wallet-token-mark { width: 25px; height: 25px; font-size: .6rem; }
+      .wallet-balance-main span:last-child { font-size: .64rem; }
+      .wallet-balance-menu { right: -.5rem; width: min(280px, calc(100vw - 1.5rem)); }
+      .wallet-avatar-btn { width: 38px; height: 38px; }
+    }
     @media (max-width: 480px) {
       header { padding: .7rem 1rem; }
       .logo  { font-size: 1rem; letter-spacing: 2px; }
       #diceResult { font-size: 4rem; }
       .bet-btn { font-size: .78rem; padding: .9rem .3rem; }
       .bet-buttons { gap: .6rem; }
+      .stats-bar { display: grid; grid-template-columns: 1fr; }
+      .stat-value { font-size: .82rem; }
     }
   </style>
 </head>
@@ -904,12 +1191,50 @@
 <!-- Top Navbar -->
 <nav class="topnav">
   <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
+  <div class="topnav-center">
+    <div class="wallet-hub" id="walletHub">
+      <button class="wallet-balance-pill" type="button" onclick="toggleBalanceMenu(event)" aria-label="Open wallet balance">
+        <span class="wallet-token-mark">CX</span>
+        <span class="wallet-balance-main">
+          <span>Wallet</span>
+          <span id="topCashxBalance">0 CASHX</span>
+        </span>
+        <span class="wallet-chevron">⌄</span>
+      </button>
+      <div class="wallet-balance-menu" id="walletBalanceMenu">
+        <div class="wallet-menu-head">
+          <div>
+            <b>Connected Wallet</b>
+            <div class="wallet-menu-address" id="walletMenuAddress">—</div>
+          </div>
+          <span class="wallet-token-mark">CX</span>
+        </div>
+        <div class="wallet-menu-balance">
+          <span>CASHX in wallet</span>
+          <strong id="walletMenuBalance">0 CASHX</strong>
+        </div>
+        <div class="wallet-menu-actions">
+          <button class="wallet-menu-action" type="button" onclick="copyConnectedWallet()">Copy</button>
+          <button class="wallet-menu-action danger" type="button" onclick="disconnectWallet()">Disconnect</button>
+        </div>
+      </div>
+    </div>
+  </div>
   <div class="topnav-right">
     <span id="addressDisplay"></span>
+    <div class="wallet-account-hub" id="walletAccountHub">
+      <button class="wallet-avatar-btn" id="walletAvatarBtn" type="button" onclick="toggleAccountMenu(event)" aria-label="Open account menu">CashX</button>
+      <div class="wallet-account-menu" id="walletAccountMenu">
+        <button class="wallet-account-item" type="button" onclick="openAccountFromMenu()">Account</button>
+        <div class="wallet-account-sep"></div>
+        <button class="wallet-account-item" type="button" onclick="openReferralsFromMenu()">Referrals</button>
+        <div class="wallet-account-sep"></div>
+        <button class="wallet-account-item danger" type="button" onclick="disconnectWallet()">Disconnect</button>
+      </div>
+    </div>
     <button id="connectBtn" onclick="connectWallet()"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg> Connect</button>
   </div>
 </nav>
-
 
 <!-- Page wrapper (pushes content past sidebar) -->
 <div class="page-wrap">
@@ -971,11 +1296,11 @@
         <b>Wallet Flow</b>
         <div class="tx-steps">
           <div class="tx-step" data-tx-step="approve">Approve</div>
-          <div class="tx-step" data-tx-step="fund">Fund</div>
-          <div class="tx-step" data-tx-step="join">Join</div>
-          <div class="tx-step" data-tx-step="claim">Claim</div>
+          <div class="tx-step" data-tx-step="bet">Bet</div>
+          <div class="tx-step" data-tx-step="reveal">Reveal</div>
+          <div class="tx-step" data-tx-step="payout">Payout</div>
         </div>
-        <div class="tx-note" id="txProgressNote">Place a funded roll and the wallet steps will light up here.</div>
+        <div class="tx-note" id="txProgressNote">Place a VS House roll and the wallet steps will light up here.</div>
       </div>
 
     </aside>
@@ -1097,6 +1422,7 @@
 </div><!-- end .page-wrap -->
 
 <script src="wallet-modal.js"></script>
+  <script src="cashx-nav.js" data-asset-prefix=""></script>
 <script src="game.js"></script>
 <script>
   function toggleSidebar() {
@@ -1189,3 +1515,4 @@
 </script>
 </body>
 </html>
+

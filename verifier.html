@@ -10,6 +10,19 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="contracts/abis/erc20.js"></script>
+  <script src="contracts/abis/diceGame.js"></script>
+  <script src="contracts/abis/asyncGames.js"></script>
+  <script src="contracts/abis/minesGame.js"></script>
+  <script src="contracts/abis/pvpWager.js"></script>
+  <script src="lib/config.js"></script>
+  <script src="lib/contracts.js"></script>
+  <script src="lib/wallet.js"></script>
+  <script src="lib/transactions.js"></script>
+  <script src="utils/betting.js"></script>
+  <script src="utils/gameState.js"></script>
+  <script src="utils/gameHistory.js"></script>
+  <script src="utils/burn.js"></script>
 
   <style>
     :root {
@@ -343,6 +356,7 @@
       .player-row { grid-template-columns: 1fr; }
     }
   </style>
+  <script src="cashx-nav.js" data-asset-prefix=""></script>
 </head>
 <body>
   <nav class="topnav">
@@ -430,12 +444,13 @@
   <script>
     'use strict';
 
-    const DICE_GAME_ADDRESS   = '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
-    const ASYNC_GAMES_ADDRESS = '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
-    const MINES_GAME_ADDRESS  = '0xF5Ba5129dD41acb8aF5050aF1EcA84dD497E3095';
-    const LIVE_MINES_GAME_ADDRESS = '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
-    const PVP_WAGER_ADDRESS   = '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
-    const RPC_URL             = 'https://rpc.pulsechain.com';
+    const CX_CONFIG = window.CashX && window.CashX.config;
+    const DICE_GAME_ADDRESS   = CX_CONFIG ? CX_CONFIG.contracts.diceGame : '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
+    const ASYNC_GAMES_ADDRESS = CX_CONFIG ? CX_CONFIG.contracts.asyncGames : '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
+    const MINES_GAME_ADDRESS  = CX_CONFIG ? CX_CONFIG.contracts.minesGame : '0xF5Ba5129dD41acb8aF5050aF1EcA84dD497E3095';
+    const LIVE_MINES_GAME_ADDRESS = CX_CONFIG ? CX_CONFIG.contracts.liveMinesGame : '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
+    const PVP_WAGER_ADDRESS   = CX_CONFIG ? CX_CONFIG.contracts.pvpWager : '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
+    const RPC_URL             = CX_CONFIG ? CX_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com';
 
     const DICE_ABI = [
       'function pendingBets(uint256) view returns (address player, bool over, uint256 amount, bytes32 commitHash, uint256 targetBlock, bool settled)',
@@ -1351,3 +1366,4 @@
   </script>
 </body>
 </html>
+

@@ -10,7 +10,21 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="contracts/abis/erc20.js"></script>
+  <script src="contracts/abis/diceGame.js"></script>
+  <script src="contracts/abis/asyncGames.js"></script>
+  <script src="contracts/abis/minesGame.js"></script>
+  <script src="contracts/abis/pvpWager.js"></script>
+  <script src="lib/config.js"></script>
+  <script src="lib/contracts.js"></script>
+  <script src="lib/wallet.js"></script>
+  <script src="lib/transactions.js"></script>
+  <script src="utils/betting.js"></script>
+  <script src="utils/gameState.js"></script>
+  <script src="utils/gameHistory.js"></script>
+  <script src="utils/burn.js"></script>
   <script src="wallet-modal.js"></script>
+  <script src="cashx-nav.js" data-asset-prefix=""></script>
   <script>
     window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
     window.CASHX_PVP_WAGER_ADDRESS = '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
@@ -1505,10 +1519,11 @@
     const WALLET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
     const COLUMNS = 7;
     const ROWS = 6;
-    const PVP_API = (window.CASHX_PVP_BACKEND_URL || 'http://localhost:8790').replace(/\/$/, '');
-    const PVP_WAGER_ADDRESS = String(window.CASHX_PVP_WAGER_ADDRESS || '').trim();
-    const CASHX_ADDRESS = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
-    const PULSECHAIN_ID = 369;
+    const CX_CONFIG = window.CashX && window.CashX.config;
+    const PVP_API = (window.CASHX_PVP_BACKEND_URL || (CX_CONFIG && CX_CONFIG.featureFlags.pvpBackendUrl) || 'http://localhost:8790').replace(/\/$/, '');
+    const PVP_WAGER_ADDRESS = String(window.CASHX_PVP_WAGER_ADDRESS || (CX_CONFIG && CX_CONFIG.contracts.pvpWager) || '').trim();
+    const CASHX_ADDRESS = CX_CONFIG ? CX_CONFIG.addresses.cashxToken : '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
+    const PULSECHAIN_ID = CX_CONFIG ? CX_CONFIG.chain.id : 369;
     const LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
     const PAID_CACHE_KEY = 'cashxConnect4PaidRooms';
     const GAS_BUFFER_BPS = 13000;
@@ -1538,7 +1553,7 @@
     ];
 
     // Read-only provider for pulling on-chain burn totals (no wallet needed)
-    const PULSECHAIN_RPC = 'https://rpc.pulsechain.com';
+    const PULSECHAIN_RPC = CX_CONFIG ? CX_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com';
     const roProvider = ethers.utils.isAddress(PVP_WAGER_ADDRESS)
       ? new ethers.providers.JsonRpcProvider(PULSECHAIN_RPC)
       : null;
@@ -3439,3 +3454,4 @@
   </script>
 </body>
 </html>
+

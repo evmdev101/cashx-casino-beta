@@ -9,11 +9,25 @@
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@400;600;700&family=Bebas+Neue&family=Michroma&family=Permanent+Marker&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
 
   <!-- ethers.js v5 — read-only, no wallet needed on lobby -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="contracts/abis/erc20.js"></script>
+  <script src="contracts/abis/diceGame.js"></script>
+  <script src="contracts/abis/asyncGames.js"></script>
+  <script src="contracts/abis/minesGame.js"></script>
+  <script src="contracts/abis/pvpWager.js"></script>
+  <script src="lib/config.js"></script>
+  <script src="lib/contracts.js"></script>
+  <script src="lib/wallet.js"></script>
+  <script src="lib/transactions.js"></script>
+  <script src="utils/betting.js"></script>
+  <script src="utils/gameState.js"></script>
+  <script src="utils/gameHistory.js"></script>
+  <script src="utils/burn.js"></script>
   <script src="wallet-modal.js"></script>
+  <script src="cashx-nav.js" data-asset-prefix=""></script>
 
   <style>
     /* Variables */
@@ -527,6 +541,53 @@
       font-size: clamp(2rem, 5vw, 3rem);
       letter-spacing: 2px;
       color: #fff;
+    }
+    #games .section-head {
+      width: min(680px, 100%);
+      margin: 0 auto 3.4rem;
+      text-align: center;
+    }
+    #games .section-label {
+      display: none;
+    }
+    #games .section-title {
+      position: relative;
+      display: inline-block;
+      font-family: 'Permanent Marker', 'Bebas Neue', sans-serif;
+      font-size: clamp(2.7rem, 6vw, 4.5rem);
+      font-weight: 400;
+      line-height: 1;
+      letter-spacing: 1px;
+      color: transparent;
+      background: linear-gradient(90deg, #ffffff 0%, #f5e6c4 45%, #f5a623 100%);
+      -webkit-background-clip: text;
+      background-clip: text;
+      text-shadow:
+        0 0 18px rgba(200,85,247,.32),
+        0 0 26px rgba(245,166,35,.16);
+      transform: rotate(1deg);
+    }
+    #games .section-title::before,
+    #games .section-title::after {
+      content: '';
+      position: absolute;
+      left: 50%;
+      width: 120px;
+      height: 4px;
+      border-radius: 999px;
+      background: linear-gradient(90deg, #c855f7 0%, #f5a623 55%, #c855f7 100%);
+      transform: translateX(-50%) rotate(-1deg);
+      box-shadow:
+        0 0 14px rgba(200,85,247,.45),
+        0 0 16px rgba(245,166,35,.25);
+    }
+    #games .section-title::before {
+      top: -1.6rem;
+    }
+    #games .section-title::after {
+      bottom: -1.45rem;
+      width: 100px;
+      height: 5px;
     }
 
     /* Games grid */
@@ -1173,7 +1234,6 @@
         <a href="all-games.html" class="btn-gold">PLAY GAMES</a>
         <a href="fairness.html" class="btn-outline">Learn More</a>
       </div>
-      <p class="hero-tagline">Burn CASHX on Every Bet <span style="color:var(--gold);font-size:1.1em;vertical-align:middle;text-shadow:0 0 12px rgba(245,166,35,.8);">✦</span> Decentralized Gaming on PulseChain</p>
       <p class="hero-beta-note">Beta release: play responsibly and use amounts you are comfortable testing with.</p>
     </div>
 
@@ -1353,11 +1413,12 @@
 'use strict';
 
 // Contract config
-const DICE_GAME_ADDRESS     = '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
-const DICE_GAME_ADDRESS_V1  = '0xbd8505526cF22A9810d7644Fb4969b6ae643E05D';
-const ASYNC_GAMES_ADDRESS   = '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
-const PVP_WAGER_ADDRESS     = '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
-const RPC_URL               = 'https://rpc.pulsechain.com';
+const CX_CONFIG = window.CashX && window.CashX.config;
+const DICE_GAME_ADDRESS     = CX_CONFIG ? CX_CONFIG.contracts.diceGame : '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
+const DICE_GAME_ADDRESS_V1  = CX_CONFIG ? CX_CONFIG.contracts.diceGameV1 : '0xbd8505526cF22A9810d7644Fb4969b6ae643E05D';
+const ASYNC_GAMES_ADDRESS   = CX_CONFIG ? CX_CONFIG.contracts.asyncGames : '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
+const PVP_WAGER_ADDRESS     = CX_CONFIG ? CX_CONFIG.contracts.pvpWager : '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
+const RPC_URL               = CX_CONFIG ? CX_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com';
 
 const DICE_ABI = [
   'function totalBurned() external view returns (uint256)',
@@ -1820,3 +1881,4 @@ setInterval(() => {
 
 </body>
 </html>
+

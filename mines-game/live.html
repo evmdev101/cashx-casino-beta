@@ -10,6 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Michroma&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
   <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
   <script src="../wallet-modal.js"></script>
+  <script src="../cashx-nav.js" data-asset-prefix="../"></script>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -77,11 +78,11 @@
           <b>Wallet Flow</b>
           <div class="tx-steps">
             <div class="tx-step" data-tx-step="approve">Approve</div>
-            <div class="tx-step" data-tx-step="fund">Fund</div>
-            <div class="tx-step" data-tx-step="join">Join</div>
-            <div class="tx-step" data-tx-step="claim">Claim</div>
+            <div class="tx-step" data-tx-step="start">Start</div>
+            <div class="tx-step" data-tx-step="reveal">Reveal</div>
+            <div class="tx-step" data-tx-step="payout">Payout</div>
           </div>
-          <div class="tx-note" id="txProgressNote">Start a funded Mines game and the wallet steps will light up here.</div>
+          <div class="tx-note" id="txProgressNote">Start a VS House Mines game and the wallet steps will light up here.</div>
         </div>
       </section>
 
@@ -275,3 +276,4 @@
   </script>
 </body>
 </html>
+

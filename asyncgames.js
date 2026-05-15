@@ -1,11 +1,13 @@
 'use strict';
 
 // Constants
-const ASYNC_GAMES_ADDRESS = '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
-const CASHX_ADDRESS       = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
-const PULSECHAIN_ID       = 369;
-const PULSECHAIN_HEX      = '0x171';
-const RPC_URL             = 'https://pulsechain-rpc.publicnode.com';
+const CX_CONFIG = window.CashX && window.CashX.config;
+const CX_TX = window.CashX && window.CashX.transactions;
+const ASYNC_GAMES_ADDRESS = CX_CONFIG ? CX_CONFIG.contracts.asyncGames : '0x54896B009b229DB1630d01D7D92bB1a5C78EEDc2';
+const CASHX_ADDRESS       = CX_CONFIG ? CX_CONFIG.addresses.cashxToken : '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
+const PULSECHAIN_ID       = CX_CONFIG ? CX_CONFIG.chain.id : 369;
+const PULSECHAIN_HEX      = CX_CONFIG ? CX_CONFIG.chain.hexId : '0x171';
+const RPC_URL             = CX_CONFIG ? CX_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com';
 
 // Converts raw chain errors into readable messages.
 function friendlyChainError(err) {
@@ -246,10 +248,10 @@ async function switchToPulseChain() {
           method: 'wallet_addEthereumChain',
           params: [{
             chainId:           PULSECHAIN_HEX,
-            chainName:         'PulseChain',
-            nativeCurrency:    { name: 'Pulse', symbol: 'PLS', decimals: 18 },
-            rpcUrls:           ['https://rpc.pulsechain.com'],
-            blockExplorerUrls: ['https://scan.pulsechain.com'],
+            chainName:         CX_CONFIG ? CX_CONFIG.chain.name : 'PulseChain',
+            nativeCurrency:    CX_CONFIG ? CX_CONFIG.chain.nativeCurrency : { name: 'Pulse', symbol: 'PLS', decimals: 18 },
+            rpcUrls:           [CX_CONFIG ? CX_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com'],
+            blockExplorerUrls: [CX_CONFIG ? CX_CONFIG.chain.explorerBaseUrl : 'https://scan.pulsechain.com'],
           }],
         });
       } catch (addErr) {
@@ -1355,6 +1357,18 @@ function shortHash(hash) {
   return hash.slice(0, 6) + '…' + hash.slice(-4);
 }
 
+function explorerAddressLink(address) {
+  return window.CashX && window.CashX.contracts
+    ? window.CashX.contracts.buildExplorerAddressLink(address)
+    : 'https://scan.pulsechain.com/address/' + address;
+}
+
+function explorerTxLink(txHash) {
+  return window.CashX && window.CashX.contracts
+    ? window.CashX.contracts.buildExplorerTxLink(txHash)
+    : 'https://scan.pulsechain.com/tx/' + txHash;
+}
+
 function addressButton(address) {
   return '<button class="address-link" type="button" onclick="showAddressPopover(event, \'' +
     address + '\')">' + shortAddress(address) + '</button>';
@@ -1395,7 +1409,7 @@ function showAddressPopover(event, address) {
   card.id = 'addressPopover';
   card.innerHTML =
     '<div class="address-popover-short">' + shortAddress(address) + '</div>' +
-    '<a class="address-popover-action" href="https://scan.pulsechain.com/address/' + address + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
+    '<a class="address-popover-action" href="' + explorerAddressLink(address) + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
     '<button class="address-popover-action copy" type="button" onclick="copyPopoverValue(event, \'' + address + '\')">Copy Address</button>';
 
   document.body.appendChild(card);
@@ -1413,7 +1427,7 @@ function showTxPopover(event, txHash, verifyMode) {
   card.id = 'addressPopover';
   card.innerHTML =
     '<div class="address-popover-short">' + shortHash(txHash) + '</div>' +
-    '<a class="address-popover-action" href="https://scan.pulsechain.com/tx/' + txHash + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
+    '<a class="address-popover-action" href="' + explorerTxLink(txHash) + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
     '<a class="address-popover-action" href="verifier.html?mode=' + (verifyMode || 'multi') + '&tx=' + txHash + '">✅ Verify Result</a>' +
     '<button class="address-popover-action copy" type="button" onclick="copyPopoverValue(event, \'' + txHash + '\')">Copy TX Hash</button>';
 
@@ -1463,6 +1477,7 @@ async function waitForBlockAfter(targetBlock) {
 }
 
 async function waitForTx(tx) {
+  if (CX_TX) return CX_TX.waitForConfirmation(tx);
   try {
     return await tx.wait();
   } catch (err) {

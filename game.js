@@ -1,11 +1,13 @@
 'use strict';
 
+const CX_CONFIG = window.CashX && window.CashX.config;
+const CX_TX = window.CashX && window.CashX.transactions;
 
-const DICE_GAME_ADDRESS = '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
+const DICE_GAME_ADDRESS = CX_CONFIG ? CX_CONFIG.contracts.diceGame : '0x15A8C0D554D3e6971A46D696F69e8cBB8CF07977';
 
-const CASHX_ADDRESS     = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
-const PULSECHAIN_ID     = 369;
-const PULSECHAIN_HEX    = '0x171';
+const CASHX_ADDRESS     = CX_CONFIG ? CX_CONFIG.addresses.cashxToken : '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
+const PULSECHAIN_ID     = CX_CONFIG ? CX_CONFIG.chain.id : 369;
+const PULSECHAIN_HEX    = CX_CONFIG ? CX_CONFIG.chain.hexId : '0x171';
 
 // ABIs
 // Human-readable ABI format — ethers.js v5 understands this directly.
@@ -35,6 +37,7 @@ let playerAddress = null;
 let minBet = ethers.BigNumber.from('500').mul(ethers.BigNumber.from('10').pow(18));
 let maxBet = ethers.BigNumber.from('5000').mul(ethers.BigNumber.from('10').pow(18));
 let rolling = false;
+let latestCashxBalanceText = '0 CASHX';
 
 // WALLET
 async function connectWallet() {
@@ -67,10 +70,10 @@ async function switchToPulseChain() {
           method: 'wallet_addEthereumChain',
           params: [{
             chainId:         PULSECHAIN_HEX,
-            chainName:       'PulseChain',
-            nativeCurrency:  { name: 'Pulse', symbol: 'PLS', decimals: 18 },
-            rpcUrls:         ['https://rpc.pulsechain.com'],
-            blockExplorerUrls: ['https://scan.pulsechain.com'],
+            chainName:       CX_CONFIG ? CX_CONFIG.chain.name : 'PulseChain',
+            nativeCurrency:  CX_CONFIG ? CX_CONFIG.chain.nativeCurrency : { name: 'Pulse', symbol: 'PLS', decimals: 18 },
+            rpcUrls:         [CX_CONFIG ? CX_CONFIG.chain.rpcUrl : 'https://rpc.pulsechain.com'],
+            blockExplorerUrls: [CX_CONFIG ? CX_CONFIG.chain.explorerBaseUrl : 'https://scan.pulsechain.com'],
           }],
         });
       } catch (addErr) {
@@ -103,15 +106,7 @@ async function initContracts() {
   diceContract  = new ethers.Contract(DICE_GAME_ADDRESS, DICE_ABI,  signer);
   cashxContract = new ethers.Contract(CASHX_ADDRESS,     CASHX_ABI, signer);
 
-  // Show truncated address, disable connect button
-  document.getElementById('addressDisplay').textContent =
-    playerAddress.slice(0, 6) + '…' + playerAddress.slice(-4);
-
-  const btn = document.getElementById('connectBtn');
-  btn.textContent = 'CONNECTED';
-  btn.classList.add('connected');
-  btn.style.position = 'relative';
-  btn.onclick = () => showWalletMenu(playerAddress);
+  updateConnectedWalletUi();
 
   // Fetch live bet limits from contract and update UI
   try {
@@ -150,12 +145,48 @@ async function refreshStats() {
       diceContract.totalBurned(),
     ]);
     document.getElementById('playerBalance').textContent = fmtCashx(bal)    + ' CASHX';
+    updateCashxWalletBalance(bal);
     const burnedText = fmtCashx(burned) + ' CASHX';
     document.getElementById('totalBurnedStat').textContent = burnedText;
     document.getElementById('totalBurned').textContent     = burnedText;
   } catch (_) {
     // Keep the previous values if the RPC request fails.
   }
+}
+
+function updateConnectedWalletUi() {
+  const shortAddress = playerAddress ? playerAddress.slice(0, 6) + '...' + playerAddress.slice(-4) : '';
+  const addressDisplay = document.getElementById('addressDisplay');
+  if (addressDisplay) {
+    addressDisplay.textContent = '';
+    addressDisplay.style.display = 'none';
+  }
+
+  const connectBtn = document.getElementById('connectBtn');
+  if (connectBtn) connectBtn.style.display = 'none';
+
+  const hub = document.getElementById('walletHub');
+  if (hub) hub.classList.add('visible');
+
+  const accountHub = document.getElementById('walletAccountHub');
+  if (accountHub) accountHub.classList.add('visible');
+
+  const menuAddress = document.getElementById('walletMenuAddress');
+  if (menuAddress) menuAddress.textContent = shortAddress;
+
+  const avatar = document.getElementById('walletAvatarBtn');
+  if (avatar && playerAddress) avatar.title = 'Wallet ' + shortAddress;
+}
+
+function updateCashxWalletBalance(balance) {
+  latestCashxBalanceText = fmtCashx(balance) + ' CASHX';
+  [
+    'topCashxBalance',
+    'walletMenuBalance',
+  ].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = latestCashxBalanceText;
+  });
 }
 
 // BET FLOW
@@ -272,15 +303,9 @@ async function placeBet(betOver) {
   } catch (err) {
     stopRollAnimation();
     resetDice();
-
-    if (err.code === 4001 || err.code === 'ACTION_REJECTED') {
-      setStatus('Transaction rejected.', 'error');
-    } else if (err.code === 'TRANSACTION_REPLACED' && err.cancelled) {
-      setStatus('Transaction cancelled.', 'error');
-    } else {
-      const msg = err.reason || err.data?.message || err.message || 'Unknown error';
-      setStatus('Error: ' + msg, 'error');
-    }
+    const msg = CX_TX ? CX_TX.formatTransactionError(err) :
+      (err.reason || err.data?.message || err.message || 'Unknown error');
+    setStatus('Error: ' + msg, 'error');
   }
 
   rolling = false;
@@ -339,6 +364,7 @@ async function waitForBlockAfter(targetBlock) {
 }
 
 async function waitForTx(tx) {
+  if (CX_TX) return CX_TX.waitForConfirmation(tx);
   try {
     return await tx.wait();
   } catch (err) {
@@ -484,7 +510,7 @@ function setStatus(msg, type) {
 }
 
 function updateWalletFlowFromStatus(msg, type) {
-  const steps = ['approve', 'fund', 'join', 'claim'];
+  const steps = ['approve', 'bet', 'reveal', 'payout'];
   const stepEls = [...document.querySelectorAll('[data-tx-step]')];
   const note = document.getElementById('txProgressNote');
   if (!stepEls.length || !note) return;
@@ -494,12 +520,16 @@ function updateWalletFlowFromStatus(msg, type) {
   let doneThrough = -1;
 
   if (/approve/.test(text)) active = 'approve';
-  else if (/confirm|bet placed|locking|place/.test(text)) active = 'fund';
-  else if (/reveal|roll/.test(text)) active = 'claim';
+  else if (/confirm your .* bet|bet placed|block confirmation|place/.test(text)) active = 'bet';
+  else if (/waiting for the reveal block|reveal|revealing roll/.test(text)) active = 'reveal';
+  else if (/you win|you lose|transaction confirmed|result/.test(text) || type === 'win' || type === 'loss') active = 'payout';
 
   if (/approval confirmed/.test(text)) doneThrough = 0;
-  if (/transaction confirmed|check pulsescan|revealing roll|result|won|lost/.test(text) || type === 'win' || type === 'loss') {
-    doneThrough = active ? steps.indexOf(active) : 3;
+  if (active) {
+    doneThrough = Math.max(doneThrough, steps.indexOf(active) - 1);
+  }
+  if (/transaction confirmed|check pulsescan|result|you win|you lose|won|lost/.test(text) || type === 'win' || type === 'loss') {
+    doneThrough = 3;
   }
 
   stepEls.forEach(step => {
@@ -645,6 +675,18 @@ function txButton(txHash) {
     txHash + '\')">' + shortHash(txHash) + '</button>';
 }
 
+function explorerAddressLink(address) {
+  return window.CashX && window.CashX.contracts
+    ? window.CashX.contracts.buildExplorerAddressLink(address)
+    : 'https://scan.pulsechain.com/address/' + address;
+}
+
+function explorerTxLink(txHash) {
+  return window.CashX && window.CashX.contracts
+    ? window.CashX.contracts.buildExplorerTxLink(txHash)
+    : 'https://scan.pulsechain.com/tx/' + txHash;
+}
+
 function showAddressPopover(event, address) {
   event.preventDefault();
   event.stopPropagation();
@@ -655,7 +697,7 @@ function showAddressPopover(event, address) {
   card.id = 'addressPopover';
   card.innerHTML =
     '<div class="address-popover-short">' + shortAddress(address) + '</div>' +
-    '<a class="address-popover-action" href="https://scan.pulsechain.com/address/' + address + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
+    '<a class="address-popover-action" href="' + explorerAddressLink(address) + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
     '<button class="address-popover-action copy" type="button" onclick="copyPopoverAddress(event, \'' + address + '\')">Copy Address</button>';
 
   document.body.appendChild(card);
@@ -673,7 +715,7 @@ function showTxPopover(event, txHash) {
   card.id = 'addressPopover';
   card.innerHTML =
     '<div class="address-popover-short">' + shortHash(txHash) + '</div>' +
-    '<a class="address-popover-action" href="https://scan.pulsechain.com/tx/' + txHash + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
+    '<a class="address-popover-action" href="' + explorerTxLink(txHash) + '" target="_blank" rel="noopener">🔍 PulseScan</a>' +
     '<a class="address-popover-action" href="verifier.html?mode=dice&tx=' + txHash + '">✅ Verify Result</a>' +
     '<button class="address-popover-action copy" type="button" onclick="copyPopoverAddress(event, \'' + txHash + '\')">Copy TX Hash</button>';
 
@@ -745,8 +787,83 @@ function copyWalletAddress(address) {
 
 function disconnectWallet() {
   closeWalletMenu();
+  closeBalanceMenu();
+  closeAccountMenu();
   location.reload();
 }
+
+function toggleBalanceMenu(event) {
+  event.stopPropagation();
+  const menu = document.getElementById('walletBalanceMenu');
+  if (!menu) return;
+  const isOpen = menu.classList.toggle('open');
+  if (isOpen) {
+    setTimeout(() => document.addEventListener('click', _balanceMenuOutsideClick), 10);
+  } else {
+    document.removeEventListener('click', _balanceMenuOutsideClick);
+  }
+}
+
+function closeBalanceMenu() {
+  const menu = document.getElementById('walletBalanceMenu');
+  if (menu) menu.classList.remove('open');
+  document.removeEventListener('click', _balanceMenuOutsideClick);
+}
+
+function _balanceMenuOutsideClick(event) {
+  if (!event.target.closest('#walletHub')) closeBalanceMenu();
+}
+
+function toggleAccountMenu(event) {
+  event.stopPropagation();
+  closeBalanceMenu();
+  const menu = document.getElementById('walletAccountMenu');
+  if (!menu) return;
+  const isOpen = menu.classList.toggle('open');
+  if (isOpen) {
+    setTimeout(() => document.addEventListener('click', _accountMenuOutsideClick), 10);
+  } else {
+    document.removeEventListener('click', _accountMenuOutsideClick);
+  }
+}
+
+function closeAccountMenu() {
+  const menu = document.getElementById('walletAccountMenu');
+  if (menu) menu.classList.remove('open');
+  document.removeEventListener('click', _accountMenuOutsideClick);
+}
+
+function _accountMenuOutsideClick(event) {
+  if (!event.target.closest('#walletHub')) closeAccountMenu();
+}
+
+function openAccountFromMenu() {
+  closeAccountMenu();
+  const fakeEvent = { stopPropagation() {} };
+  toggleBalanceMenu(fakeEvent);
+}
+
+function openReferralsFromMenu() {
+  closeAccountMenu();
+  setStatus('Referrals are coming soon.', '');
+}
+
+function copyConnectedWallet() {
+  if (!playerAddress) return;
+  navigator.clipboard.writeText(playerAddress);
+  const copyBtn = document.querySelector('.wallet-menu-action:not(.danger)');
+  if (copyBtn) {
+    copyBtn.textContent = 'Copied';
+    setTimeout(() => { copyBtn.textContent = 'Copy'; }, 850);
+  }
+}
+
+document.addEventListener('keydown', event => {
+  if (event.key === 'Escape') {
+    closeBalanceMenu();
+    closeAccountMenu();
+  }
+});
 
 // Auto-connect on load (if MetaMask already has permission)
 (async () => {

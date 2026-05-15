@@ -1,0 +1,2173 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" href="favicon.ico" type="image/x-icon" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>8-Ball Wagers | CASHX Casino</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@500;600;700&family=Bebas+Neue&family=Michroma&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet" />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+  <script src="contracts/abis/erc20.js"></script>
+  <script src="contracts/abis/diceGame.js"></script>
+  <script src="contracts/abis/asyncGames.js"></script>
+  <script src="contracts/abis/minesGame.js"></script>
+  <script src="contracts/abis/pvpWager.js"></script>
+  <script src="lib/config.js"></script>
+  <script src="lib/contracts.js"></script>
+  <script src="lib/wallet.js"></script>
+  <script src="lib/transactions.js"></script>
+  <script src="utils/betting.js"></script>
+  <script src="utils/gameState.js"></script>
+  <script src="utils/gameHistory.js"></script>
+  <script src="utils/burn.js"></script>
+  <script src="wallet-modal.js"></script>
+  <script src="cashx-nav.js" data-asset-prefix=""></script>
+  <script>
+    window.CASHX_PVP_BACKEND_URL = 'http://localhost:8790';
+  </script>
+
+  <style>
+    :root {
+      --navy: #0d0a16;
+      --panel: rgba(8,4,18,.78);
+      --panel-solid: #130f1f;
+      --gold: #f5a623;
+      --purple: #c855f7;
+      --green: #3dffa0;
+      --red: #ff4455;
+      --felt: #123f32;
+      --felt-2: #0c2c24;
+      --text: #dce0f0;
+      --muted: #8b91ac;
+      --border: rgba(200,85,247,.24);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      min-height: 100vh;
+      font-family: 'Barlow', sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 48% 12%, rgba(245,166,35,.12), transparent 26%),
+        radial-gradient(circle at 52% 28%, rgba(200,85,247,.13), transparent 34%),
+        url('8ball-bg.png') center / cover fixed,
+        var(--navy);
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background: rgba(4,2,10,.76);
+      backdrop-filter: blur(2px);
+    }
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 9000;
+      opacity: .035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='256' height='256'%3E%3Cfilter id='g'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='256' height='256' filter='url(%23g)'/%3E%3C/svg%3E");
+      background-size: 256px 256px;
+    }
+
+    .topnav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 80px;
+      background: rgba(7,4,15,.62);
+      border-bottom: 1px solid rgba(245,166,35,.55);
+      box-shadow: 0 2px 18px rgba(200,85,247,.18);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      z-index: 600;
+      backdrop-filter: blur(10px);
+    }
+    .topnav-brand {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 2rem;
+      letter-spacing: 3px;
+      color: var(--gold);
+      text-decoration: none;
+      display: flex;
+      align-items: baseline;
+      gap: .5rem;
+      white-space: nowrap;
+    }
+    .topnav-brand span { color: #fff; }
+    .topnav-beta {
+      font-family: 'Michroma', sans-serif;
+      font-size: .45rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      border: 1px solid rgba(200,85,247,.45);
+      padding: .12rem .3rem;
+    }
+    .btn-connect, button, .btn {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: .95rem;
+      letter-spacing: 2px;
+      color: #fff;
+      background: linear-gradient(135deg, #ff4d6d, var(--gold));
+      border: none;
+      border-radius: 999px;
+      padding: .62rem 1.15rem;
+      cursor: pointer;
+      transition: transform .18s, box-shadow .2s, opacity .2s;
+    }
+    button:hover, .btn:hover { transform: translateY(-2px); box-shadow: 0 0 24px rgba(200,85,247,.28); }
+    button:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+    .btn-ghost {
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(200,85,247,.32);
+      color: var(--text);
+    }
+    .btn-purple { background: linear-gradient(135deg, #c855f7, #8b1fcc); }
+    .btn-danger { background: linear-gradient(135deg, #ff4455, #a3192b); }
+
+    .sidebar {
+      position: fixed;
+      left: 18px;
+      top: 50dvh;
+      z-index: 500;
+      width: 88px;
+      height: min(500px, calc(100dvh - 150px));
+      min-height: 330px;
+      transform: translateY(-50%);
+      background: rgba(110,30,180,.18);
+      border: 1px solid rgba(200,85,247,.72);
+      border-radius: 32px;
+      padding: 20px 13px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0,0,0,.35);
+    }
+    .nav-pill {
+      width: 62px;
+      height: 62px;
+      border-radius: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.55rem;
+      text-decoration: none;
+      color: rgba(220,224,240,.7);
+      background: rgba(255,255,255,.06);
+    }
+    .nav-pill.active-purple { background: linear-gradient(135deg, #c855f7, #8b1fcc); color: #fff; box-shadow: 0 4px 22px rgba(200,85,247,.5); }
+    .nav-pill-divider { height: 1px; width: 100%; background: linear-gradient(90deg, transparent, rgba(200,85,247,.45), transparent); margin-top: auto; margin-bottom: 6px; }
+
+    .main {
+      min-height: 100vh;
+      padding: 110px 2.4rem 48px 124px;
+    }
+    .page-head {
+      width: min(1180px, 100%);
+      margin: 0 auto 1.3rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 1rem;
+    }
+    .kicker {
+      font-family: 'Michroma', sans-serif;
+      font-size: .62rem;
+      letter-spacing: 4px;
+      color: var(--purple);
+      text-transform: uppercase;
+      margin-bottom: .4rem;
+    }
+    h1 {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: clamp(2.5rem, 5vw, 4.3rem);
+      letter-spacing: 3px;
+      line-height: .9;
+      color: #fff;
+      text-shadow: 0 0 34px rgba(200,85,247,.32);
+    }
+    .copy {
+      max-width: 650px;
+      margin-top: .45rem;
+      color: rgba(220,224,240,.78);
+      line-height: 1.45;
+      font-size: .94rem;
+    }
+    .status-pill {
+      display: inline-flex;
+      gap: .45rem;
+      align-items: center;
+      padding: .45rem .7rem;
+      border-radius: 999px;
+      border: 1px solid rgba(245,166,35,.28);
+      color: var(--gold);
+      background: rgba(245,166,35,.08);
+      font-family: 'Michroma', sans-serif;
+      font-size: .58rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--red);
+      box-shadow: 0 0 10px rgba(255,68,85,.65);
+    }
+    .status-pill.online .status-dot { background: var(--green); box-shadow: 0 0 10px rgba(61,255,160,.65); }
+
+    .game-shell {
+      width: min(1180px, 100%);
+      margin: 0 auto 1.5rem;
+      display: grid;
+      grid-template-columns: 320px minmax(0, 1fr);
+      border: 1px solid rgba(255,255,255,.16);
+      border-radius: 24px;
+      overflow: hidden;
+      background: rgba(8,4,18,.7);
+      box-shadow: 0 30px 90px rgba(0,0,0,.52);
+    }
+    .panel {
+      padding: 1.2rem;
+      border-right: 1px solid rgba(255,255,255,.1);
+      background: rgba(5,2,12,.72);
+    }
+    .panel-section { padding: 1rem 0; border-bottom: 1px solid rgba(255,255,255,.08); }
+    .panel-section:first-child { padding-top: 0; }
+    .panel-section:last-child { border-bottom: 0; padding-bottom: 0; }
+    .label {
+      font-family: 'Michroma', sans-serif;
+      font-size: .56rem;
+      letter-spacing: 2px;
+      color: var(--purple);
+      text-transform: uppercase;
+      margin-bottom: .55rem;
+    }
+    input, select {
+      width: 100%;
+      padding: .7rem .8rem;
+      border-radius: 12px;
+      border: 1px solid rgba(255,255,255,.12);
+      background: rgba(255,255,255,.05);
+      color: var(--text);
+      font: 700 .9rem 'Space Mono', monospace;
+      outline: none;
+    }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .stack { display: grid; gap: .65rem; }
+    .money-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
+    .money-card {
+      padding: .7rem;
+      border-radius: 14px;
+      border: 1px solid rgba(200,85,247,.18);
+      background: rgba(255,255,255,.04);
+    }
+    .money-card span {
+      display: block;
+      color: var(--muted);
+      font-size: .7rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .money-card b {
+      color: #fff;
+      font-family: 'Space Mono', monospace;
+      font-size: .9rem;
+    }
+    .seat {
+      display: grid;
+      gap: .35rem;
+      padding: .75rem;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,.1);
+      background: rgba(255,255,255,.04);
+    }
+    .seat.active { border-color: rgba(245,166,35,.45); box-shadow: inset 0 0 24px rgba(245,166,35,.08); }
+    .seat-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      color: #fff;
+      font-family: 'Barlow Condensed', sans-serif;
+      font-weight: 700;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .seat small { color: var(--muted); font-family: 'Space Mono', monospace; overflow: hidden; text-overflow: ellipsis; }
+    .badge {
+      padding: .12rem .42rem;
+      border-radius: 999px;
+      border: 1px solid rgba(200,85,247,.32);
+      color: var(--purple);
+      font-family: 'Michroma', sans-serif;
+      font-size: .5rem;
+      letter-spacing: 1px;
+      text-transform: uppercase;
+    }
+    .badge.ready { color: var(--green); border-color: rgba(61,255,160,.35); }
+    .room-link {
+      display: none;
+      gap: .45rem;
+      padding: .7rem;
+      border-radius: 14px;
+      background: rgba(200,85,247,.08);
+      border: 1px solid rgba(200,85,247,.22);
+      color: var(--muted);
+      font-size: .78rem;
+      overflow-wrap: anywhere;
+    }
+    .room-link.visible { display: grid; }
+
+    .arena {
+      padding: 1.2rem;
+      display: grid;
+      grid-template-rows: auto minmax(0, 1fr) auto;
+      gap: .9rem;
+      min-width: 0;
+    }
+    .table-header {
+      display: flex;
+      justify-content: space-between;
+      gap: 1rem;
+      align-items: center;
+    }
+    .round-title {
+      font-family: 'Bebas Neue', sans-serif;
+      color: #fff;
+      font-size: 2rem;
+      letter-spacing: 2px;
+      line-height: 1;
+    }
+    .round-copy { color: var(--muted); font-size: .9rem; margin-top: .25rem; }
+    .clock {
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      border: 1px solid rgba(245,166,35,.42);
+      background: rgba(245,166,35,.08);
+      color: var(--gold);
+      font-family: 'Space Mono', monospace;
+      font-weight: 700;
+      font-size: 1.25rem;
+      box-shadow: 0 0 24px rgba(245,166,35,.12);
+    }
+    .table-actions {
+      display: flex;
+      align-items: center;
+      gap: .65rem;
+    }
+    .table-actions .btn-ghost {
+      padding: .55rem .85rem;
+      border-radius: 14px;
+      font-size: .8rem;
+      white-space: nowrap;
+    }
+    .table-wrap {
+      position: relative;
+      min-height: 420px;
+      border-radius: 28px;
+      border: 8px solid #160a08;
+      background:
+        radial-gradient(circle at 50% 46%, rgba(61,255,160,.08), transparent 34%),
+        linear-gradient(135deg, var(--felt), var(--felt-2));
+      box-shadow:
+        inset 0 0 0 2px rgba(245,166,35,.22),
+        inset 0 0 90px rgba(0,0,0,.46),
+        0 32px 80px rgba(0,0,0,.5);
+      overflow: hidden;
+      touch-action: none;
+    }
+    .table-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 5px;
+      border-radius: 22px;
+      border: 1px solid rgba(255,255,255,.08);
+      box-shadow: inset 0 0 30px rgba(0,0,0,.38);
+      pointer-events: none;
+      z-index: 1;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      min-height: 420px;
+      cursor: crosshair;
+    }
+    .power-rail {
+      position: absolute;
+      right: 16px;
+      top: 50%;
+      z-index: 3;
+      transform: translateY(-50%);
+      width: 58px;
+      height: min(310px, 72%);
+      display: grid;
+      grid-template-columns: 20px 1fr;
+      grid-template-rows: auto 1fr auto;
+      justify-items: center;
+      gap: .45rem;
+      pointer-events: auto;
+      cursor: ns-resize;
+      touch-action: none;
+      --cue-pull: 0px;
+    }
+    .power-rail.disabled {
+      opacity: .45;
+      filter: grayscale(.35);
+      cursor: not-allowed;
+    }
+    .power-rail span {
+      display: none;
+      writing-mode: vertical-rl;
+      transform: rotate(180deg);
+      font-family: 'Michroma', sans-serif;
+      font-size: .48rem;
+      letter-spacing: 1.2px;
+      color: rgba(255,255,255,.6);
+      text-transform: uppercase;
+    }
+    .power-track {
+      position: relative;
+      width: 16px;
+      height: 100%;
+      grid-row: 1 / span 3;
+      grid-column: 1;
+      border-radius: 999px;
+      background: rgba(255,255,255,.12);
+      border: 1px solid rgba(255,255,255,.16);
+      overflow: hidden;
+      box-shadow: inset 0 0 14px rgba(0,0,0,.45);
+    }
+    .power-fill {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      height: 0%;
+      background: linear-gradient(to top, #3dffa0, #f5a623 58%, #ff4455);
+      box-shadow: 0 0 16px rgba(245,166,35,.38);
+      transition: height .08s linear;
+    }
+    .side-cue {
+      position: relative;
+      grid-row: 1 / span 3;
+      grid-column: 2;
+      width: 28px;
+      height: 100%;
+      pointer-events: none;
+    }
+    .side-cue-stick {
+      position: absolute;
+      left: 50%;
+      top: 4px;
+      width: 9px;
+      height: calc(100% - 8px);
+      border-radius: 999px;
+      transform: translate(-50%, var(--cue-pull));
+      background:
+        linear-gradient(to bottom, rgba(255,255,255,.9), rgba(255,255,255,.35) 5%, transparent 5%),
+        repeating-linear-gradient(to bottom, #eee0b7 0 22px, #3b1b0c 22px 25px, #d4a04b 25px 28px),
+        linear-gradient(to right, #5e2c10, #f6ddb0 48%, #6b3515);
+      border: 1px solid rgba(0,0,0,.72);
+      box-shadow: 0 0 0 1px rgba(255,255,255,.18), 0 10px 24px rgba(0,0,0,.42);
+      transition: transform .08s linear;
+    }
+    .power-rail.pulling .side-cue-stick { transition: none; }
+    .side-cue-tip {
+      position: absolute;
+      left: 50%;
+      top: -2px;
+      width: 15px;
+      height: 15px;
+      border-radius: 50%;
+      transform: translate(-50%, var(--cue-pull));
+      background: radial-gradient(circle at 36% 32%, #fff, #f4ead1 38%, #9d6930 70%, #2a1208);
+      border: 1px solid rgba(0,0,0,.7);
+      box-shadow: 0 2px 8px rgba(0,0,0,.45);
+      transition: transform .08s linear;
+    }
+    .power-rail.pulling .side-cue-tip { transition: none; }
+    .ball-rack {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .42rem;
+      padding: .75rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,.04);
+      border: 1px solid rgba(255,255,255,.09);
+    }
+    .mini-ball {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: grid;
+      place-items: center;
+      color: #101018;
+      font: 700 .68rem 'Space Mono', monospace;
+      box-shadow: inset -6px -7px 10px rgba(0,0,0,.28), inset 5px 4px 8px rgba(255,255,255,.42);
+    }
+    .mini-ball.pocketed { filter: grayscale(.85); opacity: .34; transform: scale(.88); }
+    .mini-ball.eight { color: #fff; background: #111; }
+
+    .ready-phase, .result-box, .shot-panel {
+      display: none;
+      gap: .7rem;
+      padding: .85rem;
+      border-radius: 16px;
+      border: 1px solid rgba(245,166,35,.22);
+      background: rgba(245,166,35,.07);
+    }
+    .ready-phase.visible, .result-box.visible, .shot-panel.visible { display: grid; }
+    .shot-panel {
+      border-color: rgba(200,85,247,.22);
+      background: rgba(200,85,247,.07);
+    }
+    .shot-panel.visible {
+      animation: slidePanel .22s ease both;
+    }
+    @keyframes slidePanel {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .shot-options { display: flex; align-items: center; flex-wrap: wrap; gap: .55rem; }
+    .shot-options label {
+      display: inline-flex;
+      align-items: center;
+      gap: .35rem;
+      color: rgba(220,224,240,.8);
+      font-size: .86rem;
+    }
+    .shot-options input[type="checkbox"] { width: auto; }
+    .feed, .lobbies {
+      display: grid;
+      gap: .55rem;
+      max-height: 240px;
+      overflow: auto;
+      padding-right: .2rem;
+    }
+    .feed-item, .lobby-card {
+      padding: .65rem .75rem;
+      border-radius: 14px;
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+    .feed-item b, .lobby-card b { color: #fff; display: block; font-family: 'Barlow Condensed', sans-serif; letter-spacing: 1px; text-transform: uppercase; }
+    .feed-item span, .lobby-card span { color: var(--muted); font-size: .82rem; }
+    .lobby-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: .7rem;
+    }
+    .mini-btn { padding: .45rem .7rem; font-size: .78rem; }
+
+    @media (max-width: 960px) {
+      .main { padding: 98px 1rem 2rem; }
+      .sidebar { display: none; }
+      .page-head { display: grid; }
+      .game-shell { grid-template-columns: 1fr; }
+      .panel { border-right: 0; border-bottom: 1px solid rgba(255,255,255,.1); }
+      .table-wrap, canvas { min-height: 340px; }
+      .power-rail { height: 190px; right: 10px; }
+    }
+  </style>
+</head>
+<body>
+  <nav class="topnav">
+    <a href="index.html" class="topnav-brand">$ <span>CASHX</span> CASINO <small class="topnav-beta">BETA</small></a>
+    <div style="position:relative"><button class="btn-connect" id="connectBtn" onclick="connectWallet()">Connect</button></div>
+  </nav>
+
+  <aside class="sidebar">
+    <a href="index.html" class="nav-pill" title="Home">⌂</a>
+    <a href="all-games.html" class="nav-pill active-purple" title="Games">▦</a>
+    <div class="nav-pill-divider"></div>
+    <a href="https://x.com/CASHXtoken" target="_blank" rel="noopener" class="nav-pill" title="X">𝕏</a>
+    <a href="https://t.me/+Ruw3dQPRTv00NDRl" target="_blank" rel="noopener" class="nav-pill" title="Telegram">◉</a>
+  </aside>
+
+  <main class="main">
+    <header class="page-head">
+      <div>
+        <div class="kicker">PvP Pool Room</div>
+        <h1>8-Ball Wagers</h1>
+        <p class="copy">Create a room, invite player two, ready up, then take turns shooting. Pocket your group, call the 8, and claim the pot after burn.</p>
+      </div>
+      <div class="status-pill" id="backendStatus"><span class="status-dot"></span><span>Checking server</span></div>
+    </header>
+
+    <section class="game-shell">
+      <aside class="panel">
+        <div class="panel-section stack">
+          <div class="label">Room Setup</div>
+          <input id="wagerInput" type="number" min="1" step="1" value="1000" aria-label="Wager" />
+          <div class="row">
+            <select id="clockInput" aria-label="Shot clock">
+              <option value="30">30 sec</option>
+              <option value="45">45 sec</option>
+              <option value="60">60 sec</option>
+              <option value="120">120 sec</option>
+              <option value="300">300 sec test</option>
+            </select>
+            <button id="newRoomBtn" class="btn-purple">Create</button>
+          </div>
+          <button id="joinRoomBtn" class="btn-ghost">Join Current Room</button>
+          <div class="room-link" id="roomLinkBox">
+            <b>Invite Link</b>
+            <span id="roomLinkText"></span>
+            <button class="mini-btn btn-ghost" id="copyRoomBtn">Copy Link</button>
+          </div>
+        </div>
+
+        <div class="panel-section">
+          <div class="label">Escrow Preview</div>
+          <div class="money-grid">
+            <div class="money-card"><span>Pot</span><b id="potValue">2,000</b></div>
+            <div class="money-card"><span>Burn</span><b id="burnValue">100</b></div>
+            <div class="money-card"><span>Payout</span><b id="payoutValue">1,900</b></div>
+            <div class="money-card"><span>Mode</span><b>Test</b></div>
+          </div>
+        </div>
+
+        <div class="panel-section stack">
+          <div class="label">Players</div>
+          <div class="seat" id="seatX">
+            <div class="seat-title">Player X <span class="badge" id="typeX">Open</span></div>
+            <small id="addrX">Waiting</small>
+          </div>
+          <div class="seat" id="seatO">
+            <div class="seat-title">Player O <span class="badge" id="typeO">Open</span></div>
+            <small id="addrO">Waiting</small>
+          </div>
+        </div>
+
+        <div class="panel-section stack">
+          <div class="label">Open Rooms</div>
+          <div class="lobbies" id="lobbies"><div class="feed-item"><span>Checking for waiting rooms...</span></div></div>
+        </div>
+      </aside>
+
+      <section class="arena">
+        <div class="table-header">
+          <div>
+            <div class="round-title" id="roundTitle">Create a room</div>
+            <div class="round-copy" id="roundCopy">Click the cue ball once, move your mouse to aim, then pull the side cue down and release.</div>
+          </div>
+          <div class="table-actions">
+            <button id="resetTableBtn" class="btn-ghost" type="button">Reset Table</button>
+          </div>
+        </div>
+
+        <div class="table-wrap" id="tableWrap">
+          <canvas id="poolCanvas"></canvas>
+          <div class="power-rail" id="powerRail">
+            <span>Power</span>
+            <div class="power-track"><div class="power-fill" id="powerFill"></div></div>
+            <span id="powerRailText">0</span>
+            <div class="side-cue" aria-hidden="true">
+              <div class="side-cue-stick" id="sideCueStick"></div>
+              <div class="side-cue-tip" id="sideCueTip"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="ball-rack" id="ballRack"></div>
+
+        <div class="ready-phase" id="readyPhase">
+          <b>Both players must ready up before the break.</b>
+          <div class="row">
+            <button id="readyBtn" class="btn-purple">Ready Up</button>
+            <button id="leaveBtn" class="btn-danger">Leave Room</button>
+          </div>
+        </div>
+
+        <div class="shot-panel" id="shotPanel">
+          <b>Shot Result</b>
+          <div class="shot-options" id="shotOptions"></div>
+          <div class="row">
+            <button id="submitShotBtn" class="btn-purple">Submit Shot</button>
+            <button id="missBtn" class="btn-ghost">No Pocket</button>
+          </div>
+        </div>
+
+        <div class="result-box" id="resultBox">
+          <b id="resultTitle">Match finished</b>
+          <span id="resultCopy">Winner can settle the room.</span>
+          <div class="row">
+            <button id="rematchBtn" class="btn-purple">Request Rematch</button>
+            <button id="newAfterBtn" class="btn-ghost">New Room</button>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <section style="width:min(1180px,100%);margin:0 auto">
+      <div class="label">Table Feed</div>
+      <div class="feed" id="feed"></div>
+    </section>
+  </main>
+
+  <script>
+    const PVP_API = (window.CASHX_PVP_BACKEND_URL || 'http://localhost:8790').replace(/\/$/, '');
+    const BURN_BPS = 500;
+    const BALL_COLORS = {
+      1:'#f7c843',2:'#274ecf',3:'#df3030',4:'#7d35c9',5:'#f07c25',6:'#269a5a',7:'#8d241e',8:'#111',
+      9:'#f7c843',10:'#274ecf',11:'#df3030',12:'#7d35c9',13:'#f07c25',14:'#269a5a',15:'#8d241e'
+    };
+    const SOLIDS = [1,2,3,4,5,6,7];
+    const STRIPES = [9,10,11,12,13,14,15];
+
+    let connectedAddress = localStorage.getItem('cashxWallet') || '';
+    let guestId = localStorage.getItem('cashx8ballGuest');
+    if (!guestId) {
+      guestId = 'guest-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+      localStorage.setItem('cashx8ballGuest', guestId);
+    }
+    let currentRoom = null;
+    let currentRoomId = new URLSearchParams(location.search).get('room') || '';
+    let balls = [];
+    let simRunning = false;
+    let aiming = false;
+    let aimStart = null;
+    let aimPoint = null;
+    let smoothAimPoint = null;
+    let aimVector = null;
+    let powerCueActive = false;
+    let powerCueStartY = 0;
+    let powerCuePull = 0;
+    let turnPocketed = [];
+    let turnScratch = false;
+    let pendingShotConfirmation = false;
+    let lastTick = 0;
+    let clockTimer = null;
+    let lobbyTimer = null;
+    let roomTimer = null;
+
+    const el = id => document.getElementById(id);
+    const canvas = el('poolCanvas');
+    const ctx = canvas.getContext('2d');
+    const MAX_POWER_PULL = 235;
+    const AIM_HANDLE_DISTANCE = 150;
+    const tableWrap = el('tableWrap');
+    const feed = el('feed');
+    const wagerInput = el('wagerInput');
+    const clockInput = el('clockInput');
+    const newRoomBtn = el('newRoomBtn');
+    const joinRoomBtn = el('joinRoomBtn');
+    const readyBtn = el('readyBtn');
+    const leaveBtn = el('leaveBtn');
+    const resetTableBtn = el('resetTableBtn');
+    const submitShotBtn = el('submitShotBtn');
+    const missBtn = el('missBtn');
+    const rematchBtn = el('rematchBtn');
+    const newAfterBtn = el('newAfterBtn');
+
+    init();
+
+    function init() {
+      updateConnectButton();
+      resizeCanvas();
+      resetBalls([]);
+      render();
+      refreshBackend();
+      refreshLobbies();
+      if (currentRoomId) loadRoom(currentRoomId);
+      newRoomBtn.addEventListener('click', createRoom);
+      joinRoomBtn.addEventListener('click', joinRoom);
+      readyBtn.addEventListener('click', readyUp);
+      leaveBtn.addEventListener('click', leaveRoom);
+      resetTableBtn.addEventListener('click', resetPracticeTable);
+      submitShotBtn.addEventListener('click', submitSelectedShot);
+      missBtn.addEventListener('click', () => submitShot([], false));
+      rematchBtn.addEventListener('click', requestRematch);
+      newAfterBtn.addEventListener('click', resetRoom);
+      el('copyRoomBtn').addEventListener('click', copyInvite);
+      wagerInput.addEventListener('input', updateMoneyPreview);
+      canvas.addEventListener('pointerdown', pointerDown);
+      canvas.addEventListener('pointermove', pointerMove);
+      window.addEventListener('pointerup', pointerUp);
+      el('powerRail')?.addEventListener('pointerdown', powerCueDown);
+      el('powerRail')?.addEventListener('pointermove', powerCueMove);
+      window.addEventListener('pointerup', powerCueUp);
+      window.addEventListener('resize', () => { resizeCanvas(); resetBalls(currentRoom?.board || []); renderPracticeRack(); render(); });
+      lobbyTimer = setInterval(refreshLobbies, 6000);
+      roomTimer = setInterval(() => {
+        if (currentRoomId && !pendingShotConfirmation && !simRunning) loadRoom(currentRoomId, true);
+      }, 3500);
+      clockTimer = setInterval(updateClock, 400);
+      updateMoneyPreview();
+      enterPracticeMode();
+      addFeed('Practice table ready', 'Click the cue ball once, move your mouse to aim, then pull the side cue down to shoot.');
+      requestAnimationFrame(loop);
+    }
+
+    window.connectWallet = async function connectWallet() {
+      if (window.ethereum) {
+        try {
+          const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' });
+          connectedAddress = (accounts && accounts[0] || '').toLowerCase();
+          if (connectedAddress) localStorage.setItem('cashxWallet', connectedAddress);
+        } catch (_) {}
+      }
+      if (!connectedAddress) {
+        connectedAddress = prompt('Paste wallet address or nickname for prototype play:', '') || '';
+        connectedAddress = connectedAddress.trim().toLowerCase();
+        if (connectedAddress) localStorage.setItem('cashxWallet', connectedAddress);
+      }
+      updateConnectButton();
+      syncRoom(currentRoom);
+    };
+
+    function playerId() {
+      return (connectedAddress || guestId).toLowerCase();
+    }
+
+    function updateConnectButton() {
+      const btn = el('connectBtn');
+      btn.textContent = connectedAddress ? short(connectedAddress) : 'Connect';
+      btn.classList.toggle('connected', Boolean(connectedAddress));
+    }
+
+    async function refreshBackend() {
+      const pill = el('backendStatus');
+      try {
+        const data = await fetchJson('/api/pvp/health');
+        pill.classList.toggle('online', Boolean(data.ok));
+        pill.querySelector('span:last-child').textContent = data.ok ? 'Server online' : 'Server offline';
+      } catch (err) {
+        pill.classList.remove('online');
+        pill.querySelector('span:last-child').textContent = 'Server offline';
+      }
+    }
+
+    async function createRoom() {
+      try {
+        newRoomBtn.disabled = true;
+        const room = await api('/api/pvp/rooms', {
+          game: '8ball',
+          creator: playerId(),
+          wager: String(Math.max(1, Math.floor(Number(wagerInput.value || 1)))),
+          clockSeconds: Number(clockInput.value || 30)
+        });
+        syncRoom(room);
+        updateUrl(room.id);
+        addFeed('Room created', 'Send the invite link to player two.');
+      } catch (err) {
+        addFeed('Create failed', err.message || String(err));
+      } finally {
+        newRoomBtn.disabled = false;
+      }
+    }
+
+    async function joinRoom() {
+      try {
+        if (!currentRoomId) throw new Error('Open or create a room first.');
+        joinRoomBtn.disabled = true;
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoomId) + '/join', {
+          player: playerId()
+        });
+        syncRoom(room);
+        addFeed('Room joined', 'Both players can ready up.');
+      } catch (err) {
+        addFeed('Join failed', err.message || String(err));
+      } finally {
+        joinRoomBtn.disabled = false;
+      }
+    }
+
+    async function readyUp() {
+      try {
+        if (!currentRoom) throw new Error('No room loaded.');
+        readyBtn.disabled = true;
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/ready', {
+          player: playerId()
+        });
+        syncRoom(room);
+        addFeed('Ready', room.status === 'active' ? 'Break is live.' : 'Waiting for the other player.');
+      } catch (err) {
+        addFeed('Ready failed', err.message || String(err));
+      } finally {
+        readyBtn.disabled = false;
+      }
+    }
+
+    async function leaveRoom() {
+      try {
+        if (!currentRoom) return;
+        const result = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/forfeit', {
+          player: playerId(),
+          chainCancelled: true
+        });
+        if (result.room) syncRoom(result.room);
+        else resetRoom();
+        addFeed('Left room', 'Room updated.');
+      } catch (err) {
+        addFeed('Leave failed', err.message || String(err));
+      }
+    }
+
+    async function loadRoom(roomId, quiet = false) {
+      try {
+        const room = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(roomId));
+        syncRoom(room);
+      } catch (err) {
+        if (!quiet) addFeed('Load failed', err.message || String(err));
+      }
+    }
+
+    function syncRoom(room) {
+      if (!room) return;
+      currentRoom = room;
+      currentRoomId = room.id;
+      wagerInput.value = room.wager || wagerInput.value;
+      updateUrl(room.id);
+      updateMoneyFromRoom(room);
+      if (!pendingShotConfirmation && !simRunning) {
+        resetBalls(room.board || []);
+      }
+      renderBallRack(room.board || []);
+      renderSeats(room);
+      renderRoomLink();
+      updateRoundState(room);
+      updateShotOptions();
+      render();
+    }
+
+    function renderSeats(room) {
+      const x = room.players?.find(p => p.mark === 'X');
+      const o = room.players?.find(p => p.mark === 'O');
+      el('addrX').textContent = x ? short(x.address) : 'Waiting';
+      el('addrO').textContent = o ? short(o.address) : 'Waiting';
+      el('seatX').classList.toggle('active', room.turn === 'X');
+      el('seatO').classList.toggle('active', room.turn === 'O');
+      const bx = el('typeX');
+      const bo = el('typeO');
+      bx.textContent = groupLabel(room.board?.[16]);
+      bo.textContent = groupLabel(room.board?.[17]);
+      bx.classList.toggle('ready', (room.readyPlayers || []).some(p => same(p, x?.address)));
+      bo.classList.toggle('ready', (room.readyPlayers || []).some(p => same(p, o?.address)));
+    }
+
+    function updateRoundState(room) {
+      const mySeat = room.players?.find(p => same(p.address, playerId()));
+      const iAmTurn = mySeat && room.status === 'active' && mySeat.mark === room.turn;
+      el('readyPhase').classList.toggle('visible', room.status === 'ready-check');
+      el('resultBox').classList.toggle('visible', room.status === 'settled');
+      if (!pendingShotConfirmation) {
+        el('shotPanel').classList.toggle('visible', false);
+      }
+      joinRoomBtn.disabled = room.status !== 'waiting' || room.players?.some(p => same(p.address, playerId()));
+      leaveBtn.disabled = !mySeat || room.status === 'settled';
+
+      if (room.status === 'waiting') {
+        el('roundTitle').textContent = 'Waiting for player two';
+        el('roundCopy').textContent = 'Share the invite link or wait for someone to join from the lobby.';
+      } else if (room.status === 'ready-check') {
+        const ready = (room.readyPlayers || []).some(p => same(p, playerId()));
+        el('roundTitle').textContent = 'Ready check';
+        el('roundCopy').textContent = ready ? 'You are ready. Waiting on the other player.' : 'Click Ready Up when you are set.';
+        readyBtn.disabled = !mySeat || ready;
+        readyBtn.textContent = ready ? 'Waiting...' : 'Ready Up';
+      } else if (room.status === 'active') {
+        el('roundTitle').textContent = iAmTurn ? 'Your shot' : 'Player ' + room.turn + ' shoots';
+        el('roundCopy').textContent = iAmTurn ? 'Click the cue ball once, move your mouse to aim, pull the side cue down, then confirm pocketed balls.' : 'Waiting for the other player to shoot.';
+      } else if (room.status === 'settled') {
+        const iWon = room.winner && same(room.winner, playerId());
+        el('roundTitle').textContent = iWon ? 'You won' : 'Match finished';
+        el('roundCopy').textContent = room.winner ? short(room.winner) + ' wins the 8-ball table.' : 'Match ended.';
+        el('resultTitle').textContent = iWon ? 'Winner' : 'Table settled';
+        el('resultCopy').textContent = room.winReason === 'forfeit' ? 'Won by forfeit.' : '8-ball result recorded by the backend.';
+      }
+      updateClock();
+    }
+
+    function enterPracticeMode() {
+      if (currentRoom) return;
+      pendingShotConfirmation = false;
+      el('roundTitle').textContent = 'Practice table';
+      el('roundCopy').textContent = 'Click the cue ball once, move your mouse to aim, then pull the side cue down and release.';
+      if (el('clock')) el('clock').textContent = 'FREE';
+      el('readyPhase').classList.remove('visible');
+      el('shotPanel').classList.remove('visible');
+      el('resultBox').classList.remove('visible');
+      renderPracticeRack();
+    }
+
+    function updateMoneyPreview() {
+      const wager = Math.max(1, Math.floor(Number(wagerInput.value || 1)));
+      const pot = wager * 2;
+      const burn = Math.floor(pot * BURN_BPS / 10000);
+      el('potValue').textContent = format(pot);
+      el('burnValue').textContent = format(burn);
+      el('payoutValue').textContent = format(pot - burn);
+    }
+
+    function updateMoneyFromRoom(room) {
+      el('potValue').textContent = format(Number(room.pot || 0));
+      el('burnValue').textContent = format(Number(room.burn || 0));
+      el('payoutValue').textContent = format(Number(room.payout || 0));
+    }
+
+    function updateClock() {
+      if (!currentRoom || currentRoom.status !== 'active' || !currentRoom.moveExpiresAt) {
+        if (el('clock')) el('clock').textContent = currentRoom ? '--' : 'FREE';
+        return;
+      }
+      const left = Math.max(0, Math.ceil((Number(currentRoom.moveExpiresAt) - Date.now()) / 1000));
+      if (el('clock')) el('clock').textContent = String(left);
+    }
+
+    async function submitSelectedShot() {
+      const pocketed = [...document.querySelectorAll('[data-shot-ball]:checked')].map(input => Number(input.value));
+      const scratch = Boolean(el('scratchInput')?.checked);
+      await submitShot(pocketed, scratch);
+    }
+
+    async function submitShot(pocketed, scratch) {
+      try {
+        if (!currentRoom) throw new Error('No active room.');
+        pendingShotConfirmation = false;
+        el('shotPanel').classList.remove('visible');
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/move', {
+          player: playerId(),
+          pocketed,
+          scratch
+        });
+        const bits = [];
+        if (pocketed.length) bits.push('Pocketed ' + pocketed.join(', '));
+        if (scratch) bits.push('scratch');
+        addFeed('Shot submitted', bits.join(' + ') || 'No pocket.');
+        syncRoom(room);
+      } catch (err) {
+        addFeed('Shot rejected', err.message || String(err));
+        pendingShotConfirmation = true;
+        el('shotPanel').classList.add('visible');
+      }
+    }
+
+    function updateShotOptions() {
+      const panel = el('shotOptions');
+      const board = currentRoom?.board || [];
+      panel.innerHTML = '';
+      for (let i = 1; i <= 15; i++) {
+        if (board[i]) continue;
+        const label = document.createElement('label');
+        label.innerHTML = '<input type="checkbox" data-shot-ball value="' + i + '"> <span class="mini-ball ' + (i === 8 ? 'eight' : '') + '" style="background:' + BALL_COLORS[i] + '">' + i + '</span>';
+        panel.appendChild(label);
+      }
+      const scratch = document.createElement('label');
+      scratch.innerHTML = '<input type="checkbox" id="scratchInput"> Scratch';
+      panel.appendChild(scratch);
+    }
+
+    function renderBallRack(board) {
+      const rack = el('ballRack');
+      rack.innerHTML = '';
+      for (let i = 1; i <= 15; i++) {
+        const b = document.createElement('div');
+        b.className = 'mini-ball ' + (i === 8 ? 'eight ' : '') + (board[i] ? 'pocketed' : '');
+        b.style.background = BALL_COLORS[i];
+        b.textContent = i;
+        b.title = board[i] ? 'Pocketed by Player ' + board[i] : 'On table';
+        rack.appendChild(b);
+      }
+    }
+
+    function renderPracticeRack() {
+      if (currentRoom) return;
+      const rack = el('ballRack');
+      rack.innerHTML = '';
+      const pocketed = new Set(balls.filter(ball => ball.n > 0 && ball.pocketed).map(ball => ball.n));
+      for (let i = 1; i <= 15; i++) {
+        const b = document.createElement('div');
+        b.className = 'mini-ball ' + (i === 8 ? 'eight ' : '') + (pocketed.has(i) ? 'pocketed' : '');
+        b.style.background = BALL_COLORS[i];
+        b.textContent = i;
+        b.title = pocketed.has(i) ? 'Pocketed' : 'On table';
+        rack.appendChild(b);
+      }
+    }
+
+    async function refreshLobbies() {
+      try {
+        const data = await fetchJson('/api/pvp/rooms?game=8ball&status=waiting&limit=12');
+        const rooms = data.rooms || [];
+        const box = el('lobbies');
+        if (!rooms.length) {
+          box.innerHTML = '<div class="feed-item"><span>No open 8-ball rooms yet.</span></div>';
+          return;
+        }
+        box.innerHTML = '';
+        rooms.forEach(room => {
+          const card = document.createElement('div');
+          card.className = 'lobby-card';
+          card.innerHTML = '<div><b>' + escapeHtml(format(Number(room.wager)) + ' CASHX') + '</b><span>' + escapeHtml(short(room.players?.[0]?.address || 'open') + ' · ' + room.id.slice(0, 8)) + '</span></div><button class="mini-btn btn-purple">Join</button>';
+          card.querySelector('button').addEventListener('click', async () => {
+            currentRoomId = room.id;
+            updateUrl(room.id);
+            await loadRoom(room.id);
+            await joinRoom();
+          });
+          box.appendChild(card);
+        });
+      } catch (err) {
+        el('lobbies').innerHTML = '<div class="feed-item"><span>Lobby unavailable.</span></div>';
+      }
+    }
+
+    async function requestRematch() {
+      addFeed('Rematch', 'Use Create to start a fresh 8-ball room for now.');
+    }
+
+    function resetRoom() {
+      currentRoom = null;
+      currentRoomId = '';
+      history.replaceState(null, '', location.pathname);
+      clearAimState();
+      resetBalls([]);
+      renderBallRack([]);
+      renderRoomLink();
+      el('roundTitle').textContent = 'Create a room';
+      el('roundCopy').textContent = 'Click the cue ball once, move your mouse to aim, then pull the side cue down and release.';
+      el('readyPhase').classList.remove('visible');
+      el('shotPanel').classList.remove('visible');
+      el('resultBox').classList.remove('visible');
+      render();
+    }
+
+    function resetPracticeTable() {
+      if (currentRoom && currentRoom.status !== 'settled') {
+        const ok = confirm('Leave this PvP room and reset to practice mode?');
+        if (!ok) return;
+      }
+      pendingShotConfirmation = false;
+      simRunning = false;
+      clearAimState();
+      currentRoom = null;
+      currentRoomId = '';
+      history.replaceState(null, '', location.pathname);
+      resetBalls([]);
+      renderRoomLink();
+      renderPracticeRack();
+      updatePowerReadout(0);
+      if (el('lastShotText')) el('lastShotText').textContent = 'No shots yet';
+      enterPracticeMode();
+      addFeed('Table reset', 'Balls are racked for another practice shot.');
+      render();
+    }
+
+    function clearAimState() {
+      aiming = false;
+      aimStart = null;
+      aimPoint = null;
+      smoothAimPoint = null;
+      aimVector = null;
+      powerCueActive = false;
+      powerCuePull = 0;
+      tableWrap.classList.remove('aiming');
+      el('powerRail')?.classList.remove('pulling');
+      updatePowerReadout(0);
+    }
+
+    function renderRoomLink() {
+      const box = el('roomLinkBox');
+      if (!currentRoomId) {
+        box.classList.remove('visible');
+        return;
+      }
+      box.classList.add('visible');
+      el('roomLinkText').textContent = inviteLink();
+    }
+
+    function copyInvite() {
+      navigator.clipboard?.writeText(inviteLink()).catch(() => {});
+      addFeed('Invite copied', 'Room link copied to clipboard.');
+    }
+
+    function inviteLink() {
+      const url = new URL(location.href);
+      if (currentRoomId) url.searchParams.set('room', currentRoomId);
+      return url.toString();
+    }
+
+    function updateUrl(roomId) {
+      const url = new URL(location.href);
+      url.searchParams.set('room', roomId);
+      history.replaceState(null, '', url);
+    }
+
+    function resizeCanvas() {
+      const rect = tableWrap.getBoundingClientRect();
+      const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+      canvas.width = Math.floor(rect.width * dpr);
+      canvas.height = Math.floor(rect.height * dpr);
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function resetBalls(board) {
+      const rect = tableRect();
+      const r = Math.max(9, Math.min(rect.w, rect.h) * .026);
+      const pocketed = new Set();
+      for (let i = 1; i <= 15; i++) if (board && board[i]) pocketed.add(i);
+      balls = [];
+      balls.push(makeBall(0, rect.x + rect.w * .24, rect.y + rect.h * .5, r));
+      const startX = rect.x + rect.w * .67;
+      const startY = rect.y + rect.h * .5;
+      const order = [1,9,2,10,8,3,11,4,12,5,13,6,14,7,15];
+      let idx = 0;
+      for (let row = 0; row < 5; row++) {
+        for (let col = 0; col <= row; col++) {
+          const n = order[idx++];
+          if (pocketed.has(n)) continue;
+          balls.push(makeBall(n, startX + row * r * 1.88, startY + (col - row / 2) * r * 2.12, r));
+        }
+      }
+      turnPocketed = [];
+      turnScratch = false;
+    }
+
+    function makeBall(n, x, y, r) {
+      return { n, x, y, vx: 0, vy: 0, r, pocketed: false };
+    }
+
+    function tableRect() {
+      const w = tableWrap.clientWidth;
+      const h = tableWrap.clientHeight;
+      return { x: 26, y: 26, w: Math.max(100, w - 52), h: Math.max(100, h - 52) };
+    }
+
+    function pockets(rect) {
+      return [
+        [rect.x, rect.y, 'corner'], [rect.x + rect.w / 2, rect.y - 3, 'top'], [rect.x + rect.w, rect.y, 'corner'],
+        [rect.x, rect.y + rect.h, 'corner'], [rect.x + rect.w / 2, rect.y + rect.h + 3, 'bottom'], [rect.x + rect.w, rect.y + rect.h, 'corner']
+      ];
+    }
+
+    function pointerDown(ev) {
+      if (!canShoot()) return;
+      const cue = balls.find(b => b.n === 0 && !b.pocketed);
+      if (!cue) return;
+      const p = pointerPos(ev);
+      if (aiming) {
+        aimPoint = normalizedAimPoint(cue, p);
+        updateAimVector();
+        lockAim();
+        render();
+        return;
+      }
+      const dist = Math.hypot(p.x - cue.x, p.y - cue.y);
+      if (dist > cue.r * 2.3) return;
+      aiming = true;
+      tableWrap.classList.add('aiming');
+      aimStart = { x: cue.x, y: cue.y };
+      aimPoint = normalizedAimPoint(cue, p);
+      smoothAimPoint = { ...aimPoint };
+      updateAimVector();
+    }
+
+    function pointerMove(ev) {
+      if (!aiming) return;
+      const cue = balls.find(b => b.n === 0 && !b.pocketed);
+      if (!cue) return;
+      aimPoint = normalizedAimPoint(cue, pointerPos(ev));
+      updateAimVector();
+      render();
+    }
+
+    function pointerUp() {
+      if (aiming) updateAimVector();
+    }
+
+    function lockAim() {
+      aiming = false;
+      tableWrap.classList.remove('aiming');
+      if (aimPoint) smoothAimPoint = { ...aimPoint };
+    }
+
+    function pointerPos(ev) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+    }
+
+    function normalizedAimPoint(cue, point) {
+      const dx = point.x - cue.x;
+      const dy = point.y - cue.y;
+      const len = Math.hypot(dx, dy);
+      if (len < cue.r * 3) {
+        if (aimPoint) return aimPoint;
+        if (aimVector) {
+          return {
+            x: cue.x - aimVector.x * AIM_HANDLE_DISTANCE,
+            y: cue.y - aimVector.y * AIM_HANDLE_DISTANCE
+          };
+        }
+        return { x: cue.x - AIM_HANDLE_DISTANCE, y: cue.y };
+      }
+      return {
+        x: cue.x + dx / len * AIM_HANDLE_DISTANCE,
+        y: cue.y + dy / len * AIM_HANDLE_DISTANCE
+      };
+    }
+
+    function shotPower() {
+      return Math.min(1, powerCuePull / MAX_POWER_PULL);
+    }
+
+    function updateAimVector() {
+      if (!aimStart || !aimPoint) return;
+      const dx = aimStart.x - aimPoint.x;
+      const dy = aimStart.y - aimPoint.y;
+      const len = Math.hypot(dx, dy);
+      if (len < 4) return;
+      aimVector = { x: dx / len, y: dy / len };
+    }
+
+    function powerCueDown(ev) {
+      if (!canShoot()) return;
+      if (!aimVector) return;
+      powerCueActive = true;
+      powerCueStartY = ev.clientY;
+      powerCuePull = 0;
+      el('powerRail')?.classList.add('pulling');
+      el('powerRail')?.setPointerCapture?.(ev.pointerId);
+      updatePowerReadout(0);
+      ev.preventDefault();
+    }
+
+    function powerCueMove(ev) {
+      if (!powerCueActive) return;
+      powerCuePull = Math.max(0, Math.min(MAX_POWER_PULL, ev.clientY - powerCueStartY));
+      updatePowerReadout(shotPower());
+      render();
+    }
+
+    function powerCueUp() {
+      if (!powerCueActive) return;
+      powerCueActive = false;
+      el('powerRail')?.classList.remove('pulling');
+      const power = shotPower();
+      if (power > .03) shootCue(power);
+      powerCuePull = 0;
+      updatePowerReadout(0);
+      render();
+    }
+
+    function shootCue(power) {
+      const cue = balls.find(b => b.n === 0 && !b.pocketed);
+      if (!cue || !aimVector || !canShoot()) return;
+      cue.vx = aimVector.x * power * 26;
+      cue.vy = aimVector.y * power * 26;
+      simRunning = true;
+      aiming = false;
+      aimStart = null;
+      aimPoint = null;
+      smoothAimPoint = null;
+      aimVector = null;
+      turnPocketed = [];
+      turnScratch = false;
+      el('shotPanel').classList.remove('visible');
+      tableWrap.classList.remove('aiming');
+    }
+
+    function updatePowerReadout(power) {
+      const pct = Math.round(Math.max(0, Math.min(1, power)) * 100);
+      if (el('powerText')) el('powerText').textContent = pct + '%';
+      const fill = el('powerFill');
+      const railText = el('powerRailText');
+      const rail = el('powerRail');
+      if (fill) fill.style.height = pct + '%';
+      if (railText) railText.textContent = String(pct);
+      if (rail) rail.style.setProperty('--cue-pull', Math.round(Math.max(0, Math.min(MAX_POWER_PULL, powerCuePull))) + 'px');
+    }
+
+    function canShoot() {
+      if (!currentRoom) return !simRunning;
+      const seat = currentRoom?.players?.find(p => same(p.address, playerId()));
+      return !simRunning && currentRoom?.status === 'active' && seat && seat.mark === currentRoom.turn;
+    }
+
+    function loop(ts) {
+      const dt = Math.min(32, ts - (lastTick || ts)) / 16.67;
+      lastTick = ts;
+      if (simRunning) stepPhysics(dt);
+      render();
+      requestAnimationFrame(loop);
+    }
+
+    function stepPhysics(dt) {
+      const rect = tableRect();
+      const ps = pockets(rect);
+      let moving = false;
+      for (const b of balls) {
+        if (b.pocketed) continue;
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.vx *= .985;
+        b.vy *= .985;
+        if (Math.hypot(b.vx, b.vy) > .04) moving = true;
+        else { b.vx = 0; b.vy = 0; }
+
+        if (b.x - b.r < rect.x) { b.x = rect.x + b.r; b.vx = Math.abs(b.vx) * .82; }
+        if (b.x + b.r > rect.x + rect.w) { b.x = rect.x + rect.w - b.r; b.vx = -Math.abs(b.vx) * .82; }
+        if (b.y - b.r < rect.y) { b.y = rect.y + b.r; b.vy = Math.abs(b.vy) * .82; }
+        if (b.y + b.r > rect.y + rect.h) { b.y = rect.y + rect.h - b.r; b.vy = -Math.abs(b.vy) * .82; }
+
+        for (const [px, py] of ps) {
+          if (Math.hypot(b.x - px, b.y - py) < b.r * 1.85) {
+            b.pocketed = true;
+            b.vx = b.vy = 0;
+            if (b.n === 0) turnScratch = true;
+            else if (!turnPocketed.includes(b.n)) turnPocketed.push(b.n);
+          }
+        }
+      }
+
+      for (let i = 0; i < balls.length; i++) {
+        for (let j = i + 1; j < balls.length; j++) {
+          collide(balls[i], balls[j]);
+        }
+      }
+
+      if (!moving) {
+      simRunning = false;
+        const cue = balls.find(b => b.n === 0);
+        if (cue && cue.pocketed) {
+          const rect2 = tableRect();
+          Object.assign(cue, { x: rect2.x + rect2.w * .24, y: rect2.y + rect2.h * .5, vx: 0, vy: 0, pocketed: false });
+        }
+        finishLocalShot();
+      }
+    }
+
+    function collide(a, b) {
+      if (a.pocketed || b.pocketed) return;
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const dist = Math.hypot(dx, dy);
+      const min = a.r + b.r;
+      if (!dist || dist >= min) return;
+      const nx = dx / dist;
+      const ny = dy / dist;
+      const overlap = (min - dist) / 2;
+      a.x -= nx * overlap; a.y -= ny * overlap;
+      b.x += nx * overlap; b.y += ny * overlap;
+      const tx = -ny, ty = nx;
+      const dpTanA = a.vx * tx + a.vy * ty;
+      const dpTanB = b.vx * tx + b.vy * ty;
+      const dpNormA = a.vx * nx + a.vy * ny;
+      const dpNormB = b.vx * nx + b.vy * ny;
+      a.vx = tx * dpTanA + nx * dpNormB;
+      a.vy = ty * dpTanA + ny * dpNormB;
+      b.vx = tx * dpTanB + nx * dpNormA;
+      b.vy = ty * dpTanB + ny * dpNormA;
+    }
+
+    function finishLocalShot() {
+      const label = turnPocketed.length
+        ? 'Pocketed ' + turnPocketed.join(', ') + (turnScratch ? ' + scratch' : '')
+        : turnScratch ? 'Scratch' : 'No pocket';
+      if (el('lastShotText')) el('lastShotText').textContent = label;
+      if (!currentRoom) {
+        renderPracticeRack();
+        addFeed('Practice shot', label + '. Keep shooting or reset the table.');
+        return;
+      }
+      updateShotOptions();
+      pendingShotConfirmation = true;
+      el('shotPanel').classList.add('visible');
+      if (turnPocketed.length || turnScratch) {
+        [...document.querySelectorAll('[data-shot-ball]')].forEach(input => {
+          input.checked = turnPocketed.includes(Number(input.value));
+        });
+        const scratchInput = el('scratchInput');
+        if (scratchInput) scratchInput.checked = turnScratch;
+      }
+    }
+
+    function render() {
+      const w = canvas.clientWidth;
+      const h = canvas.clientHeight;
+      ctx.clearRect(0, 0, w, h);
+      const rect = tableRect();
+      drawTableSurface(rect, w, h);
+      updatePowerCueAvailability();
+
+      if ((aiming && aimStart && aimPoint) || aimVector) {
+        if (!smoothAimPoint && aimPoint) smoothAimPoint = { ...aimPoint };
+        if (aiming && aimPoint) {
+          smoothAimPoint.x += (aimPoint.x - smoothAimPoint.x) * .22;
+          smoothAimPoint.y += (aimPoint.y - smoothAimPoint.y) * .22;
+        }
+        drawAimGuide();
+      }
+
+      balls.forEach(drawBall);
+    }
+
+    function updatePowerCueAvailability() {
+      const rail = el('powerRail');
+      if (!rail) return;
+      rail.classList.toggle('disabled', !canShoot() || !aimVector);
+    }
+
+    function drawTableSurface(rect, w, h) {
+      ctx.save();
+      const rail = 26;
+      const outer = { x: rect.x - rail, y: rect.y - rail, w: rect.w + rail * 2, h: rect.h + rail * 2 };
+
+      roundRect(outer.x, outer.y, outer.w, outer.h, 26);
+      ctx.fillStyle = '#0b1712';
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(245,166,35,.24)';
+      ctx.lineWidth = 2.5;
+      ctx.stroke();
+
+      const felt = ctx.createRadialGradient(rect.x + rect.w * .52, rect.y + rect.h * .42, 20, rect.x + rect.w * .5, rect.y + rect.h * .5, rect.w * .72);
+      felt.addColorStop(0, '#25c7d1');
+      felt.addColorStop(.46, '#1093a3');
+      felt.addColorStop(1, '#075765');
+      ctx.fillStyle = felt;
+      ctx.fillRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.fillStyle = 'rgba(255,255,255,.06)';
+      ctx.fillRect(rect.x, rect.y + rect.h / 2 - 1, rect.w, 2);
+      ctx.fillStyle = 'rgba(255,255,255,.12)';
+      ctx.fillRect(rect.x + rect.w * .24, rect.y, 1.5, rect.h);
+
+      drawCleanRails(rect, rail);
+      drawCleanCushions(rect);
+      drawFeltLip(rect);
+      drawRailSights(rect);
+      for (const [px, py, kind] of pockets(rect)) drawPocket(px, py, kind, rect);
+      ctx.restore();
+    }
+
+    function drawCleanRails(rect, rail) {
+      drawRailSegment(rect.x + 28, rect.y - rail + 6, rect.w / 2 - 58, rail - 8, 'horizontal');
+      drawRailSegment(rect.x + rect.w / 2 + 30, rect.y - rail + 6, rect.w / 2 - 58, rail - 8, 'horizontal');
+      drawRailSegment(rect.x + 28, rect.y + rect.h + 2, rect.w / 2 - 58, rail - 8, 'horizontal');
+      drawRailSegment(rect.x + rect.w / 2 + 30, rect.y + rect.h + 2, rect.w / 2 - 58, rail - 8, 'horizontal');
+      drawRailSegment(rect.x - rail + 6, rect.y + 28, rail - 8, rect.h - 56, 'vertical');
+      drawRailSegment(rect.x + rect.w + 2, rect.y + 28, rail - 8, rect.h - 56, 'vertical');
+    }
+
+    function drawRailSegment(x, y, w, h, dir) {
+      const g = dir === 'horizontal' ? ctx.createLinearGradient(0, y, 0, y + h) : ctx.createLinearGradient(x, 0, x + w, 0);
+      g.addColorStop(0, '#260807');
+      g.addColorStop(.2, '#d15a4c');
+      g.addColorStop(.5, '#752018');
+      g.addColorStop(.82, '#b64034');
+      g.addColorStop(1, '#190504');
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,238,220,.42)';
+      if (dir === 'horizontal') ctx.fillRect(x + 10, y + 4, Math.max(0, w - 20), 2);
+      else ctx.fillRect(x + 4, y + 10, 2, Math.max(0, h - 20));
+      ctx.fillStyle = 'rgba(0,0,0,.42)';
+      if (dir === 'horizontal') ctx.fillRect(x, y + h - 2, w, 2);
+      else ctx.fillRect(x + w - 2, y, 2, h);
+    }
+
+    function drawCleanCushions(rect) {
+      const midX = rect.x + rect.w / 2;
+      const midY = rect.y + rect.h / 2;
+      const gap = 30;
+      const inset = 34;
+      drawCushionFace(rect.x + inset, midX - gap, rect.y - 3, rect.y + 15, 'top');
+      drawCushionFace(midX + gap, rect.x + rect.w - inset, rect.y - 3, rect.y + 15, 'top');
+      drawCushionFace(rect.x + inset, midX - gap, rect.y + rect.h + 3, rect.y + rect.h - 15, 'bottom');
+      drawCushionFace(midX + gap, rect.x + rect.w - inset, rect.y + rect.h + 3, rect.y + rect.h - 15, 'bottom');
+      drawSideCushionFace(rect.x - 3, rect.x + 15, rect.y + inset, midY - gap, 'left');
+      drawSideCushionFace(rect.x - 3, rect.x + 15, midY + gap, rect.y + rect.h - inset, 'left');
+      drawSideCushionFace(rect.x + rect.w + 3, rect.x + rect.w - 15, rect.y + inset, midY - gap, 'right');
+      drawSideCushionFace(rect.x + rect.w + 3, rect.x + rect.w - 15, midY + gap, rect.y + rect.h - inset, 'right');
+    }
+
+    function drawCushionFace(x1, x2, railY, feltY, side) {
+      const slant = 11;
+      ctx.fillStyle = cushionGradient(0, Math.min(railY, feltY), 0, Math.max(railY, feltY));
+      ctx.beginPath();
+      if (side === 'top') {
+        ctx.moveTo(x1, railY);
+        ctx.lineTo(x2, railY);
+        ctx.lineTo(x2 - slant, feltY);
+        ctx.lineTo(x1 + slant, feltY);
+      } else {
+        ctx.moveTo(x1 + slant, feltY);
+        ctx.lineTo(x2 - slant, feltY);
+        ctx.lineTo(x2, railY);
+        ctx.lineTo(x1, railY);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawSideCushionFace(railX, feltX, y1, y2) {
+      const slant = 11;
+      ctx.fillStyle = cushionGradient(Math.min(railX, feltX), 0, Math.max(railX, feltX), 0);
+      ctx.beginPath();
+      ctx.moveTo(railX, y1);
+      ctx.lineTo(feltX, y1 + slant);
+      ctx.lineTo(feltX, y2 - slant);
+      ctx.lineTo(railX, y2);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawFeltLip(rect) {
+      ctx.strokeStyle = 'rgba(0,0,0,.52)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = 'rgba(255,255,255,.18)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rect.x + 7, rect.y + 7, rect.w - 14, rect.h - 14);
+    }
+
+    function drawRailBand(x, y, w, h, side) {
+      const horizontal = side === 'top' || side === 'bottom';
+      const rail = horizontal ? ctx.createLinearGradient(0, y, 0, y + h) : ctx.createLinearGradient(x, 0, x + w, 0);
+      rail.addColorStop(0, '#260908');
+      rail.addColorStop(.22, '#c34f43');
+      rail.addColorStop(.5, '#6d1b16');
+      rail.addColorStop(.78, '#c85b4b');
+      rail.addColorStop(1, '#210707');
+      ctx.fillStyle = rail;
+      ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,230,210,.45)';
+      if (horizontal) ctx.fillRect(x + 34, y + 4, w - 68, 2);
+      else ctx.fillRect(x + 4, y + 34, 2, h - 68);
+      ctx.fillStyle = 'rgba(0,0,0,.58)';
+      if (horizontal) ctx.fillRect(x, side === 'top' ? y + h - 1 : y, w, 2);
+      else ctx.fillRect(side === 'left' ? x + w - 1 : x, y, 2, h);
+    }
+
+    function drawCushionLip(rect) {
+      const midX = rect.x + rect.w / 2;
+      const midY = rect.y + rect.h / 2;
+      const gap = 30;
+      const inset = 38;
+      drawHorizontalLip(rect.x + inset, midX - gap, rect.y - 4, rect.y + 16, 'top');
+      drawHorizontalLip(midX + gap, rect.x + rect.w - inset, rect.y - 4, rect.y + 16, 'top');
+      drawHorizontalLip(rect.x + inset, midX - gap, rect.y + rect.h + 4, rect.y + rect.h - 16, 'bottom');
+      drawHorizontalLip(midX + gap, rect.x + rect.w - inset, rect.y + rect.h + 4, rect.y + rect.h - 16, 'bottom');
+      drawVerticalLip(rect.x - 4, rect.x + 16, rect.y + inset, midY - gap, 'left');
+      drawVerticalLip(rect.x - 4, rect.x + 16, midY + gap, rect.y + rect.h - inset, 'left');
+      drawVerticalLip(rect.x + rect.w + 4, rect.x + rect.w - 16, rect.y + inset, midY - gap, 'right');
+      drawVerticalLip(rect.x + rect.w + 4, rect.x + rect.w - 16, midY + gap, rect.y + rect.h - inset, 'right');
+    }
+
+    function cushionGradient(x1, y1, x2, y2) {
+      const bevel = ctx.createLinearGradient(x1, y1, x2, y2);
+      bevel.addColorStop(0, '#071a21');
+      bevel.addColorStop(.4, '#45cbed');
+      bevel.addColorStop(.76, '#0e7386');
+      bevel.addColorStop(1, '#051015');
+      return bevel;
+    }
+
+    function drawHorizontalLip(x1, x2, railY, feltY, side) {
+      const slant = 12;
+      ctx.fillStyle = cushionGradient(0, Math.min(railY, feltY), 0, Math.max(railY, feltY));
+      ctx.beginPath();
+      if (side === 'top') {
+        ctx.moveTo(x1, railY);
+        ctx.lineTo(x2, railY);
+        ctx.lineTo(x2 - slant, feltY);
+        ctx.lineTo(x1 + slant, feltY);
+      } else {
+        ctx.moveTo(x1 + slant, feltY);
+        ctx.lineTo(x2 - slant, feltY);
+        ctx.lineTo(x2, railY);
+        ctx.lineTo(x1, railY);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawVerticalLip(railX, feltX, y1, y2, side) {
+      const slant = 12;
+      ctx.fillStyle = cushionGradient(Math.min(railX, feltX), 0, Math.max(railX, feltX), 0);
+      ctx.beginPath();
+      if (side === 'left') {
+        ctx.moveTo(railX, y1);
+        ctx.lineTo(feltX, y1 + slant);
+        ctx.lineTo(feltX, y2 - slant);
+        ctx.lineTo(railX, y2);
+      } else {
+        ctx.moveTo(railX, y1);
+        ctx.lineTo(feltX, y1 + slant);
+        ctx.lineTo(feltX, y2 - slant);
+        ctx.lineTo(railX, y2);
+      }
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function drawInnerWall(rect) {
+      const top = ctx.createLinearGradient(0, rect.y - 1, 0, rect.y + 11);
+      top.addColorStop(0, 'rgba(0,0,0,.85)');
+      top.addColorStop(.28, 'rgba(0,0,0,.46)');
+      top.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = top;
+      ctx.fillRect(rect.x, rect.y, rect.w, 11);
+
+      const bottom = ctx.createLinearGradient(0, rect.y + rect.h + 1, 0, rect.y + rect.h - 11);
+      bottom.addColorStop(0, 'rgba(0,0,0,.85)');
+      bottom.addColorStop(.28, 'rgba(0,0,0,.46)');
+      bottom.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = bottom;
+      ctx.fillRect(rect.x, rect.y + rect.h - 11, rect.w, 11);
+
+      const left = ctx.createLinearGradient(rect.x - 1, 0, rect.x + 11, 0);
+      left.addColorStop(0, 'rgba(0,0,0,.85)');
+      left.addColorStop(.28, 'rgba(0,0,0,.46)');
+      left.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = left;
+      ctx.fillRect(rect.x, rect.y, 11, rect.h);
+
+      const right = ctx.createLinearGradient(rect.x + rect.w + 1, 0, rect.x + rect.w - 11, 0);
+      right.addColorStop(0, 'rgba(0,0,0,.85)');
+      right.addColorStop(.28, 'rgba(0,0,0,.46)');
+      right.addColorStop(1, 'rgba(0,0,0,0)');
+      ctx.fillStyle = right;
+      ctx.fillRect(rect.x + rect.w - 11, rect.y, 11, rect.h);
+
+      ctx.strokeStyle = 'rgba(255,255,255,.28)';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(rect.x + 7, rect.y + 7, rect.w - 14, rect.h - 14);
+    }
+
+    function drawPocket(x, y, kind, rect) {
+      const isMiddle = kind === 'top' || kind === 'bottom';
+      const radius = isMiddle ? 17 : 21;
+      const vx = x;
+      const vy = kind === 'top' ? y - 2 : kind === 'bottom' ? y + 2 : y;
+      const rim = ctx.createRadialGradient(vx - radius * .25, vy - radius * .25, 2, vx, vy, radius * 1.1);
+      rim.addColorStop(0, '#751710');
+      rim.addColorStop(.42, '#180304');
+      rim.addColorStop(.75, '#030101');
+      rim.addColorStop(1, '#000');
+
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.72)';
+      ctx.shadowBlur = 9;
+      ctx.shadowOffsetY = 2;
+      ctx.fillStyle = rim;
+      ctx.beginPath();
+      ctx.arc(vx, vy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      const hole = ctx.createRadialGradient(vx - radius * .2, vy - radius * .22, 1, vx, vy, radius * .88);
+      hole.addColorStop(0, '#210506');
+      hole.addColorStop(.34, '#030101');
+      hole.addColorStop(1, '#000');
+      ctx.fillStyle = hole;
+      ctx.beginPath();
+      ctx.arc(vx, vy, radius * .8, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(0,0,0,.86)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(vx, vy, radius + 1, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.16)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(vx - radius * .1, vy - radius * .1, radius * .7, Math.PI * 1.08, Math.PI * 1.7);
+      ctx.stroke();
+    }
+
+    function drawPocketWell(vx, vy, radius, depth) {
+      ctx.save();
+      ctx.shadowColor = 'rgba(0,0,0,.7)';
+      ctx.shadowBlur = 8 * depth;
+      ctx.shadowOffsetY = 2 * depth;
+      ctx.fillStyle = '#010000';
+      ctx.beginPath();
+      ctx.arc(vx, vy, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      const hole = ctx.createRadialGradient(vx - radius * .22, vy - radius * .24, 1, vx, vy, radius * .9);
+      hole.addColorStop(0, '#1c0505');
+      hole.addColorStop(.28, '#050101');
+      hole.addColorStop(1, '#000');
+      ctx.fillStyle = hole;
+      ctx.beginPath();
+      ctx.arc(vx, vy, radius * .86, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.strokeStyle = 'rgba(0,0,0,.95)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.arc(vx, vy, radius + 1.2, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.12)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.arc(vx - radius * .08, vy - radius * .08, radius * .7, Math.PI * 1.05, Math.PI * 1.72);
+      ctx.stroke();
+    }
+
+    function drawRailSights(rect) {
+      const topY = rect.y - 13;
+      const bottomY = rect.y + rect.h + 13;
+      const leftX = rect.x - 13;
+      const rightX = rect.x + rect.w + 13;
+      const topXs = [rect.x + rect.w * .18, rect.x + rect.w * .36, rect.x + rect.w * .64, rect.x + rect.w * .82];
+      const sideYs = [rect.y + rect.h * .28, rect.y + rect.h * .5, rect.y + rect.h * .72];
+      topXs.forEach(x => {
+        drawRailSight(x, topY);
+        drawRailSight(x, bottomY);
+      });
+      sideYs.forEach(y => {
+        drawRailSight(leftX, y);
+        drawRailSight(rightX, y);
+      });
+    }
+
+    function drawRailSight(x, y) {
+      const g = ctx.createRadialGradient(x - 1.5, y - 1.5, 1, x, y, 4.5);
+      g.addColorStop(0, '#fff7df');
+      g.addColorStop(.48, '#b9b5d0');
+      g.addColorStop(1, '#2b2639');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(x, y, 4, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = 'rgba(0,0,0,.48)';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    function roundRect(x, y, w, h, r) {
+      const rr = Math.min(r, w / 2, h / 2);
+      ctx.beginPath();
+      ctx.moveTo(x + rr, y);
+      ctx.lineTo(x + w - rr, y);
+      ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
+      ctx.lineTo(x + w, y + h - rr);
+      ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
+      ctx.lineTo(x + rr, y + h);
+      ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
+      ctx.lineTo(x, y + rr);
+      ctx.quadraticCurveTo(x, y, x + rr, y);
+      ctx.closePath();
+    }
+
+    function drawAimGuide() {
+      const cue = balls.find(b => b.n === 0 && !b.pocketed);
+      if (!cue || (!aimPoint && !aimVector)) return;
+      const visualAim = smoothAimPoint || aimPoint || {
+        x: cue.x - aimVector.x * 90,
+        y: cue.y - aimVector.y * 90
+      };
+      const pullX = visualAim.x - cue.x;
+      const pullY = visualAim.y - cue.y;
+      const pullLen = Math.hypot(pullX, pullY);
+      if (pullLen < 2) return;
+
+      const shotX = -pullX / pullLen;
+      const shotY = -pullY / pullLen;
+      const pathHit = firstAimTarget(cue, shotX, shotY);
+      const targetX = pathHit.x;
+      const targetY = pathHit.y;
+
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
+      // Cue stick behind the cue ball, pulled back with the pointer.
+      const power = shotPower();
+      const stickGap = cue.r * .45 + power * 34;
+      const stickStart = {
+        x: cue.x - shotX * (cue.r + stickGap),
+        y: cue.y - shotY * (cue.r + stickGap)
+      };
+      const stickEnd = {
+        x: cue.x - shotX * (cue.r + stickGap + 330),
+        y: cue.y - shotY * (cue.r + stickGap + 330)
+      };
+      const stickGrad = ctx.createLinearGradient(stickStart.x, stickStart.y, stickEnd.x, stickEnd.y);
+      stickGrad.addColorStop(0, '#f8fdff');
+      stickGrad.addColorStop(.12, '#59d9ff');
+      stickGrad.addColorStop(.24, '#f6e3a4');
+      stickGrad.addColorStop(.62, '#dca454');
+      stickGrad.addColorStop(1, '#5a2b0e');
+      ctx.strokeStyle = 'rgba(0,0,0,.72)';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.moveTo(stickStart.x, stickStart.y);
+      ctx.lineTo(stickEnd.x, stickEnd.y);
+      ctx.stroke();
+      ctx.strokeStyle = stickGrad;
+      ctx.lineWidth = 4.5;
+      ctx.beginPath();
+      ctx.moveTo(stickStart.x, stickStart.y);
+      ctx.lineTo(stickEnd.x, stickEnd.y);
+      ctx.stroke();
+      ctx.strokeStyle = 'rgba(255,255,255,.78)';
+      ctx.lineWidth = 1.2;
+      ctx.beginPath();
+      ctx.moveTo(stickEnd.x, stickEnd.y);
+      ctx.lineTo(stickStart.x, stickStart.y);
+      ctx.stroke();
+
+      drawGuideSegment(
+        cue.x,
+        cue.y,
+        targetX,
+        targetY,
+        'rgba(248,253,255,.96)',
+        2.45,
+        'rgba(0,0,0,.62)'
+      );
+
+      drawGhostRing(targetX, targetY, cue.r * .9, 'rgba(248,253,255,.96)', 'rgba(255,255,255,.015)', 3.4);
+      drawGhostRing(cue.x, cue.y, cue.r * .8, 'rgba(236,249,255,.68)', 'rgba(255,255,255,.02)');
+
+      if (pathHit.ball) {
+        drawContactMarker(targetX, targetY, shotX, shotY, cue.r, pathHit.ball);
+      } else {
+        const reflected = reflectedDirection(pathHit.edge, shotX, shotY);
+        const bounceStart = {
+          x: targetX + reflected.x * cue.r * .35,
+          y: targetY + reflected.y * cue.r * .35,
+          r: cue.r
+        };
+        const bounceEnd = firstCushionHit(bounceStart, reflected.x, reflected.y);
+        const bounceLen = Math.min(170, Math.hypot(bounceEnd.x - targetX, bounceEnd.y - targetY));
+        drawGuideSegment(
+          targetX,
+          targetY,
+          targetX + reflected.x * bounceLen,
+          targetY + reflected.y * bounceLen,
+          'rgba(220,240,255,.36)',
+          1.55,
+          'rgba(0,0,0,.22)'
+        );
+      }
+
+      ctx.restore();
+    }
+
+    function drawContactMarker(x, y, dx, dy, radius, objectBall) {
+      const objectDxRaw = objectBall.x - x;
+      const objectDyRaw = objectBall.y - y;
+      const objectLen = Math.hypot(objectDxRaw, objectDyRaw) || 1;
+      const objectDx = objectDxRaw / objectLen;
+      const objectDy = objectDyRaw / objectLen;
+      let tx = -objectDy;
+      let ty = objectDx;
+      if (ty < 0) {
+        tx *= -1;
+        ty *= -1;
+      }
+
+      const objectPath = Math.min(radius * 3.4, 46);
+      drawGuideSegment(
+        objectBall.x,
+        objectBall.y,
+        objectBall.x + objectDx * objectPath,
+        objectBall.y + objectDy * objectPath,
+        'rgba(248,253,255,.98)',
+        3.1,
+        'rgba(0,0,0,.88)'
+      );
+
+      drawGuideSegment(
+        x + tx * radius * .55,
+        y + ty * radius * .55,
+        x + tx * radius * 2.35,
+        y + ty * radius * 2.35,
+        'rgba(248,253,255,.98)',
+        3.1,
+        'rgba(0,0,0,.88)'
+      );
+    }
+
+    function drawGuideSegment(x1, y1, x2, y2, color, width, shadow) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.strokeStyle = shadow;
+      ctx.lineWidth = width + 2.6;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawGhostRing(x, y, radius, stroke, fill = 'rgba(255,255,255,.08)', width = 2.2) {
+      ctx.save();
+      ctx.fillStyle = fill;
+      ctx.strokeStyle = 'rgba(0,0,0,.85)';
+      ctx.lineWidth = width + 3.4;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = stroke;
+      ctx.lineWidth = width;
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function firstCushionHit(cue, dx, dy) {
+      const rect = tableRect();
+      const left = rect.x + cue.r;
+      const right = rect.x + rect.w - cue.r;
+      const top = rect.y + cue.r;
+      const bottom = rect.y + rect.h - cue.r;
+      const candidates = [];
+      if (dx > 0) candidates.push({ t: (right - cue.x) / dx, edge: 'right' });
+      if (dx < 0) candidates.push({ t: (left - cue.x) / dx, edge: 'left' });
+      if (dy > 0) candidates.push({ t: (bottom - cue.y) / dy, edge: 'bottom' });
+      if (dy < 0) candidates.push({ t: (top - cue.y) / dy, edge: 'top' });
+      const hit = candidates
+        .filter(c => Number.isFinite(c.t) && c.t > 0)
+        .sort((a, b) => a.t - b.t)[0] || { t: Math.max(rect.w, rect.h), edge: 'right' };
+      return {
+        distance: hit.t,
+        edge: hit.edge,
+        x: cue.x + dx * hit.t,
+        y: cue.y + dy * hit.t
+      };
+    }
+
+    function reflectedDirection(edge, dx, dy) {
+      if (edge === 'left' || edge === 'right') return { x: -dx, y: dy };
+      return { x: dx, y: -dy };
+    }
+
+    function firstAimTarget(cue, dx, dy) {
+      const cushion = firstCushionHit(cue, dx, dy);
+      let best = { ...cushion, ball: null };
+      for (const ball of balls) {
+        if (ball.n === 0 || ball.pocketed) continue;
+        const relX = ball.x - cue.x;
+        const relY = ball.y - cue.y;
+        const along = relX * dx + relY * dy;
+        if (along <= cue.r) continue;
+        const perp = Math.abs(relX * dy - relY * dx);
+        const hitRadius = cue.r + ball.r;
+        if (perp > hitRadius) continue;
+        const offset = Math.sqrt(Math.max(0, hitRadius * hitRadius - perp * perp));
+        const t = along - offset;
+        if (t > cue.r && t < best.distance) {
+          best = {
+            distance: t,
+            x: cue.x + dx * t,
+            y: cue.y + dy * t,
+            ball
+          };
+        }
+      }
+      return best;
+    }
+
+
+    function drawBall(b) {
+      if (b.pocketed) return;
+      ctx.save();
+      const g = ctx.createRadialGradient(b.x - b.r * .3, b.y - b.r * .35, b.r * .2, b.x, b.y, b.r);
+      if (b.n === 0) {
+        g.addColorStop(0, '#fff');
+        g.addColorStop(1, '#cfd2dc');
+      } else {
+        g.addColorStop(0, '#fff7d8');
+        g.addColorStop(.28, BALL_COLORS[b.n]);
+        g.addColorStop(1, '#07070b');
+      }
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+      ctx.fill();
+      if (STRIPES.includes(b.n)) {
+        ctx.fillStyle = 'rgba(255,255,255,.82)';
+        ctx.fillRect(b.x - b.r * .9, b.y - b.r * .28, b.r * 1.8, b.r * .56);
+      }
+      if (b.n > 0) {
+        ctx.fillStyle = '#fff';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, b.r * .43, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#111';
+        ctx.font = '700 ' + (b.r * .65) + 'px Space Mono';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(String(b.n), b.x, b.y + .5);
+      }
+      ctx.restore();
+    }
+
+    async function api(path, body) {
+      const response = await fetch(PVP_API + path, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body || {})
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || 'Request failed');
+      return data.room || data;
+    }
+
+    async function fetchJson(path) {
+      const response = await fetch(PVP_API + path);
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.ok === false) throw new Error(data.error || 'Request failed');
+      return data;
+    }
+
+    function addFeed(title, text) {
+      const item = document.createElement('div');
+      item.className = 'feed-item';
+      item.innerHTML = '<b>' + escapeHtml(title) + '</b><span>' + escapeHtml(text || '') + '</span>';
+      feed.prepend(item);
+      while (feed.children.length > 14) feed.lastChild.remove();
+    }
+
+    function groupLabel(value) {
+      if (value === 'solid') return 'Solids';
+      if (value === 'stripe') return 'Stripes';
+      return 'Open';
+    }
+    function format(n) { return Math.round(Number(n || 0)).toLocaleString('en-US'); }
+    function short(value) {
+      const s = String(value || '');
+      if (!s) return 'Waiting';
+      if (s.startsWith('guest-')) return s.slice(0, 10);
+      return s.length > 14 ? s.slice(0, 6) + '...' + s.slice(-4) : s;
+    }
+    function same(a, b) { return String(a || '').toLowerCase() === String(b || '').toLowerCase(); }
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, ch => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[ch]));
+    }
+  </script>
+</body>
+</html>
+
