@@ -1253,6 +1253,8 @@
         <div class="wallet-dropdown-sep"></div>
         <div class="wallet-dropdown-item" id="copyAddressBtn">📋 Copy Address</div>
         <div class="wallet-dropdown-sep"></div>
+        <div class="wallet-dropdown-item" id="switchWalletBtn">⇄ Switch Wallet</div>
+        <div class="wallet-dropdown-sep"></div>
         <div class="wallet-dropdown-item danger" id="disconnectWalletBtn">⏏ Disconnect</div>
       </div>
     </div>
@@ -2777,6 +2779,8 @@
       addFeed('Game message', message);
       // Also show in the tx note area so polling doesn't overwrite it before the user reads it
       if (txProgressNote) txProgressNote.textContent = '⚠ ' + message;
+      hideTxStatus();
+      txStepEls.forEach(step => step.classList.remove('active'));
       checkBackendHealth();
     }
 
@@ -3071,6 +3075,9 @@
         throw new Error('This room is not open for joining on-chain anymore. Refresh the lobby and choose another room.');
       }
 
+      roundTitle.textContent = 'Checking wallet';
+      roundCopy.textContent = 'Checking CASHX balance and approval for this room.';
+      setTxStage('join', 'Checking wallet balance and CASHX approval...');
       await ensureWagerBalance(wagerWei);
       await approveIfNeeded(wagerWei);
 
@@ -3470,6 +3477,7 @@
       const dropdown = document.getElementById('walletDropdown');
       const dropdownAddr = document.getElementById('walletDropdownAddr');
       const copyAddressBtn = document.getElementById('copyAddressBtn');
+      const switchWalletBtn = document.getElementById('switchWalletBtn');
       const disconnectWalletBtn = document.getElementById('disconnectWalletBtn');
 
       connectBtn.addEventListener('click', async () => {
@@ -3501,6 +3509,15 @@
           copyAddressBtn.textContent = '✓ Copied!';
           setTimeout(() => { copyAddressBtn.textContent = '📋 Copy Address'; }, 1500);
         } catch (_) {}
+      });
+
+      switchWalletBtn.addEventListener('click', async () => {
+        dropdown.hidden = true;
+        if (window.CashXNav && window.CashXNav.switchWallet) {
+          await window.CashXNav.switchWallet();
+        } else if (window.switchWallet) {
+          await window.switchWallet();
+        }
       });
 
       disconnectWalletBtn.addEventListener('click', () => {

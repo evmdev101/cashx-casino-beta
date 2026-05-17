@@ -1299,6 +1299,7 @@
 
   function disconnectWallet() {
     try { localStorage.removeItem('cashx:walletConnected'); } catch (_) {}
+    try { localStorage.removeItem('cashx:selectedWallet'); } catch (_) {}
     try { localStorage.removeItem('cashxWallet'); } catch (_) {}
     if (window.CashX && window.CashX.wallet && window.CashX.wallet.selectProvider) {
       window.CashX.wallet.selectProvider(null);
@@ -1385,6 +1386,7 @@
   if (!window.openAccountFromMenu) window.openAccountFromMenu = openAccountFromMenu;
   if (!window.copyWalletAddress) window.copyWalletAddress = copyAddressFromMenu;
   if (!window.disconnectWallet) window.disconnectWallet = disconnectWallet;
+  if (!window.switchWallet) window.switchWallet = switchWallet;
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();

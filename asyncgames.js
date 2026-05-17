@@ -1738,6 +1738,10 @@ function showWalletMenu(address) {
       'Copy Address' +
     '</div>' +
     '<div class="wallet-dropdown-sep"></div>' +
+    '<div class="wallet-dropdown-item" onclick="event.stopPropagation();switchWallet()">' +
+      'Switch Wallet' +
+    '</div>' +
+    '<div class="wallet-dropdown-sep"></div>' +
     '<div class="wallet-dropdown-item danger" onclick="event.stopPropagation();disconnectWallet()">' +
       '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17 7l-1.41 1.41L18.17 11H8v2h10.17l-2.58 2.58L17 17l5-5zM4 5h8V3H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8v-2H4V5z"/></svg>' +
       'Disconnect' +

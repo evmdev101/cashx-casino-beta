@@ -155,7 +155,6 @@ function showWalletModal() {
       const icon = entry && entry.info && entry.info.icon;
       if (icon) return '<img src="' + icon.replace(/"/g, '&quot;') + '" alt="" />';
       const name = entry && entry.info && entry.info.name ? entry.info.name : '';
-      if (/rabby/i.test(name)) return 'R';
       if (/internet/i.test(name)) return 'IM';
       if (/meta/i.test(name)) return '🦊';
       return '◆';
@@ -166,10 +165,10 @@ function showWalletModal() {
       const info = entry && entry.info ? entry.info : {};
       const name = String(info.name || '').toLowerCase();
       const rdns = String(info.rdns || '').toLowerCase();
-      if (/phantom|coinbase|uniswap/.test(name) || /phantom|coinbase|uniswap/.test(rdns)) return false;
-      if (/rabby|internet money|metamask/.test(name) || /rabby|internetmoney|metamask/.test(rdns)) return true;
-      if (provider && (provider.isRabby || provider.isInternetMoney || provider.isIMWallet || provider.isInternetMoneyWallet || provider.isMetaMask)) return true;
-      return name === 'browser wallet' || !name;
+      if (/phantom|coinbase|uniswap|rabby/.test(name) || /phantom|coinbase|uniswap|rabby/.test(rdns)) return false;
+      if (/internet money|metamask/.test(name) || /internetmoney|metamask/.test(rdns)) return true;
+      if (provider && (provider.isInternetMoney || provider.isIMWallet || provider.isInternetMoneyWallet || provider.isMetaMask)) return true;
+      return false;
     }
 
     function renderWalletOptions(entries) {
@@ -225,6 +224,14 @@ function showWalletModal() {
           overlay.remove();
           resolve(result);
           return;
+        }
+        try {
+          await injectedProvider.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }],
+          });
+        } catch (permErr) {
+          if (permErr && permErr.code === 4001) throw permErr;
         }
         await injectedProvider.request({ method: 'eth_requestAccounts' });
         let p = new ethers.providers.Web3Provider(injectedProvider);
