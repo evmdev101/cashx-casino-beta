@@ -2009,14 +2009,26 @@
       const isInRoom = Boolean(myMark);
       if (isInRoom && (room.status === 'waiting' || room.status === 'ready-check' || room.status === 'active')) {
         forfeitZone.hidden = false;
+        forfeitBtn.disabled = false;
         if (room.status === 'waiting') {
-          forfeitBtn.textContent = '✕ Cancel Room';
+          if (forfeitBtn.dataset.chainJoinWarned === room.id) {
+            forfeitBtn.disabled = true;
+            forfeitBtn.textContent = 'Join Confirmed On-Chain';
+          } else {
+            forfeitBtn.textContent = '✕ Cancel Room';
+          }
+          if (room.chain && room.chain.matchId) {
+            refreshWaitingChainJoin(room).catch(() => {});
+          }
         } else if (room.status === 'ready-check') {
+          delete forfeitBtn.dataset.chainJoinWarned;
           forfeitBtn.textContent = '✕ Leave Room';
         } else {
+          delete forfeitBtn.dataset.chainJoinWarned;
           forfeitBtn.textContent = '⚑ Forfeit Match';
         }
       } else {
+        delete forfeitBtn.dataset.chainJoinWarned;
         forfeitZone.hidden = true;
       }
 
@@ -2977,17 +2989,8 @@
 
       // Check if this wallet already joined this match on-chain (handles the case where
       // the chain tx confirmed but the backend /join call failed, leaving the room desynced).
-      let alreadyJoined = false;
-      if (pvpContractRO) {
-        try {
-          const currentBlock = await roProvider.getBlockNumber();
-          const fromBlock = Math.max(0, currentBlock - 2000000);
-          const joinEvents = await pvpContractRO.queryFilter(
-            pvpContractRO.filters.MatchJoined(matchId), fromBlock, currentBlock
-          );
-          alreadyJoined = joinEvents.some(ev => samePlayer(ev.args.player2, connectedAddress));
-        } catch (_) {}
-      }
+      const confirmedJoin = await getConfirmedJoin(matchId);
+      const alreadyJoined = confirmedJoin && samePlayer(confirmedJoin.player2, connectedAddress);
 
       if (alreadyJoined) {
         // Chain join already confirmed — just sync the backend, no wallet needed
@@ -3007,6 +3010,40 @@
       const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
       await waitForTx(tx);
       completeTxStage('join', 'Joined on chain. Both players can start the match.');
+    }
+
+    async function getConfirmedJoin(matchId) {
+      if (!pvpContractRO || !matchId) return null;
+      try {
+        const currentBlock = await roProvider.getBlockNumber();
+        const fromBlock = Math.max(0, currentBlock - 2000000);
+        const joinEvents = await pvpContractRO.queryFilter(
+          pvpContractRO.filters.MatchJoined(matchId), fromBlock, currentBlock
+        );
+        if (!joinEvents.length) return null;
+        const event = joinEvents[joinEvents.length - 1];
+        return {
+          player2: event.args.player2,
+          txHash: event.transactionHash,
+        };
+      } catch (_) {
+        return null;
+      }
+    }
+
+    async function refreshWaitingChainJoin(room) {
+      if (!room || !room.chain || !room.chain.matchId) return;
+      const roomId = room.id;
+      const confirmedJoin = await getConfirmedJoin(room.chain.matchId);
+      if (!confirmedJoin || !currentRoom || currentRoom.id !== roomId || currentRoom.status !== 'waiting') return;
+
+      forfeitBtn.disabled = true;
+      forfeitBtn.textContent = 'Join Confirmed On-Chain';
+      roundCopy.textContent = 'A Join Match transaction is confirmed on-chain. Waiting for the room to sync before cancellation options change.';
+      if (forfeitBtn.dataset.chainJoinWarned !== roomId) {
+        forfeitBtn.dataset.chainJoinWarned = roomId;
+        addFeed('Chain sync needed', 'Join Match is confirmed on-chain, so this room can no longer be cancelled as an open lobby.');
+      }
     }
 
     // ── Mutual Cancel ───────────────────────────────────────────────────────────
@@ -3122,6 +3159,10 @@
       const creator = room.chain.player1 || (room.players[0] && room.players[0].address);
       if (!samePlayer(connectedAddress, creator)) {
         throw new Error('Only the wallet that created this funded room can cancel it.');
+      }
+      const confirmedJoin = await getConfirmedJoin(room.chain.matchId);
+      if (confirmedJoin) {
+        throw new Error('This funded match already has a confirmed Join Match on-chain, so it cannot be cancelled as an open lobby. Refresh the room and use mutual cancel if both players want a refund, or finish the game.');
       }
 
       roundTitle.textContent = 'Cancel funded room';
