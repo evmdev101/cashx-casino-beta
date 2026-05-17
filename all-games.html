@@ -1079,6 +1079,12 @@ function readCachedConnect4Lobbies() {
   }
 }
 
+function writeCachedConnect4Lobbies(rooms) {
+  try {
+    localStorage.setItem(CONNECT4_LOBBY_CACHE_KEY, JSON.stringify((rooms || []).slice(0, 20)));
+  } catch (_) {}
+}
+
 function mergeConnect4Lobbies(primaryRooms) {
   const map = new Map();
   [...(primaryRooms || []), ...readCachedConnect4Lobbies()]
@@ -1121,13 +1127,14 @@ async function fetchCardWarRows() {
 }
 
 async function fetchConnect4Rows() {
-  let backendRooms = [];
+  let rooms = [];
   try {
-    backendRooms = await fetchPvpLobbies();
+    rooms = (await fetchPvpLobbies()).filter(room => room && room.status === 'waiting');
+    writeCachedConnect4Lobbies(rooms.map(room => ({ ...room, cachedAt: Date.now() })));
   } catch (err) {
     console.warn('Connect Four backend lobbies:', err);
+    rooms = mergeConnect4Lobbies([]);
   }
-  const rooms = mergeConnect4Lobbies(backendRooms);
   const badge = document.getElementById('connect4LobbyBadge');
   if (badge) badge.textContent = rooms.length ? rooms.length + ' Open Lobby' + (rooms.length === 1 ? '' : 'ies') : 'Live PvP';
 

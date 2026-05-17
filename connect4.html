@@ -1733,6 +1733,16 @@
         refreshGameHistory();
         startPolling();
       } catch (err) {
+        if (/room not found/i.test(err && err.message ? err.message : String(err))) {
+          removeCachedLobby(roomId);
+          if (currentRoomId === roomId) {
+            currentRoomId = '';
+            currentRoom = null;
+            updateRoomUrl('');
+            resetToFreshRoom();
+          }
+          refreshOpenLobbies();
+        }
         showBackendError(err);
       }
     }
@@ -2324,6 +2334,11 @@
       } catch (_) {}
     }
 
+    function removeCachedLobby(roomId) {
+      if (!roomId) return;
+      writeCachedLobbies(readCachedLobbies().filter(room => room.id !== roomId));
+    }
+
     function cacheOpenLobby(room) {
       if (!room || !room.id) return;
       const rooms = readCachedLobbies().filter(saved => saved.id !== room.id);
@@ -2344,8 +2359,10 @@
       clearTimeout(_lobbiesRetryHandle);
       try {
         const data = await fetchJson('/api/pvp/rooms?game=connect4&status=waiting&limit=12');
+        const serverRooms = (data.rooms || []).filter(room => room && room.status === 'waiting');
         _lobbiesServerOk = true;
-        renderOpenLobbies(mergeLobbies(data.rooms || []));
+        writeCachedLobbies(serverRooms.map(room => ({ ...room, cachedAt: Date.now() })));
+        renderOpenLobbies(serverRooms);
       } catch (err) {
         // Server may be waking up — show hint and retry in 4 s
         const cached = mergeLobbies([]);
@@ -2934,11 +2951,8 @@
     }
 
     function getStoredApprovalPreset() {
-      try {
-        return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
-      } catch (_) {
-        return 'bet';
-      }
+      try { localStorage.removeItem('cashx:approvalPreset'); } catch (_) {}
+      return 'bet';
     }
 
     function normalizeApprovalPreset(value) {

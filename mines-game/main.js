@@ -553,11 +553,8 @@ function selectApproval(value) {
 }
 
 function getStoredApprovalPreset() {
-  try {
-    return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
-  } catch (_) {
-    return 'bet';
-  }
+  try { localStorage.removeItem('cashx:approvalPreset'); } catch (_) {}
+  return 'bet';
 }
 
 function normalizeApprovalPreset(value) {

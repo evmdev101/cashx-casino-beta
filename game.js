@@ -625,7 +625,7 @@ function formatPreviewAmount(value) {
 
 function useThisBetApproval() {
   selectedApproval = 'bet';
-  try { localStorage.setItem('cashx:approvalPreset', 'bet'); } catch (_) {}
+  try { localStorage.removeItem('cashx:approvalPreset'); } catch (_) {}
   window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: 'bet' } }));
 }
 
@@ -634,11 +634,8 @@ function selectApproval(value) {
 }
 
 function getStoredApprovalPreset() {
-  try {
-    return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
-  } catch (_) {
-    return 'bet';
-  }
+  try { localStorage.removeItem('cashx:approvalPreset'); } catch (_) {}
+  return 'bet';
 }
 
 function approvalAmountWei(requiredWei) {
@@ -914,6 +911,8 @@ function openCashier(event) {
   const backdrop = document.getElementById('cashierBackdrop');
   if (backdrop && backdrop.parentElement !== document.body) document.body.appendChild(backdrop);
   if (menu.parentElement !== document.body) document.body.appendChild(menu);
+  selectedApproval = 'bet';
+  try { localStorage.removeItem('cashx:approvalPreset'); } catch (_) {}
   syncApprovalButtons();
   menu.classList.add('open');
   if (backdrop) backdrop.classList.add('open');
@@ -928,7 +927,6 @@ function bindApprovalButtons() {
       event.preventDefault();
       event.stopPropagation();
       selectApproval(btn.dataset.approval);
-      try { localStorage.setItem('cashx:approvalPreset', selectedApproval); } catch (_) {}
       syncApprovalButtons(true);
       window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: selectedApproval } }));
     });
@@ -941,7 +939,6 @@ function bindApprovalButtons() {
       event.preventDefault();
       event.stopPropagation();
       selectApproval(customInput ? customInput.value : 'bet');
-      try { localStorage.setItem('cashx:approvalPreset', selectedApproval); } catch (_) {}
       syncApprovalButtons(true);
       window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: selectedApproval } }));
     });
@@ -953,7 +950,6 @@ function bindApprovalButtons() {
       if (event.key === 'Enter') {
         event.preventDefault();
         selectApproval(customInput.value);
-        try { localStorage.setItem('cashx:approvalPreset', selectedApproval); } catch (_) {}
         syncApprovalButtons(true);
         window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: selectedApproval } }));
       }

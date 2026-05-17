@@ -12,6 +12,7 @@
     provider: null,
     signer: null,
     approvalTarget: null,
+    approvalPreset: 'bet',
   };
   const loadedScripts = new Map();
 
@@ -1009,7 +1010,7 @@
     const backdrop = byId('cashierBackdrop');
     if (backdrop && backdrop.parentElement !== document.body) document.body.appendChild(backdrop);
     if (menu.parentElement !== document.body) document.body.appendChild(menu);
-    syncApprovalButtons();
+    selectApprovalPreset('bet', false);
     refreshApprovalAllowance();
     menu.classList.add('open');
     if (backdrop) backdrop.classList.add('open');
@@ -1049,16 +1050,12 @@
   }
 
   function getApprovalPreset() {
-    try {
-      return localStorage.getItem('cashx:approvalPreset') || 'bet';
-    } catch (_) {
-      return 'bet';
-    }
+    return state.approvalPreset || 'bet';
   }
 
   function selectApprovalPreset(value, showFeedback) {
     const next = normalizeApprovalPreset(value);
-    try { localStorage.setItem('cashx:approvalPreset', next); } catch (_) {}
+    state.approvalPreset = next;
     syncApprovalButtons(next, showFeedback);
     window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: next } }));
   }
@@ -1337,6 +1334,7 @@
     observeBalanceText();
     hideConnectedAddressButton();
     syncApprovalButtons();
+    try { localStorage.removeItem('cashx:approvalPreset'); } catch (_) {}
     setInterval(hideConnectedAddressButton, 700);
     setTimeout(refreshFromWallet, 250);
     setTimeout(refreshFromWallet, 1800);
