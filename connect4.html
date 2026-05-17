@@ -1527,6 +1527,7 @@
     const LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
     const PAID_CACHE_KEY = 'cashxConnect4PaidRooms';
     const GAS_BUFFER_BPS = 13000;
+    const GAS_PRICE_BOOST_BPS = 25000;
     const TX_STEPS = ['approve', 'fund', 'join', 'claim'];
     const CASHX_ABI = [
       'function approve(address spender, uint256 amount) returns (bool)',
@@ -3220,7 +3221,7 @@
         ]);
         return {
           gasLimit: estimate.mul(GAS_BUFFER_BPS).div(10000),
-          gasPrice: gasPrice.mul(150).div(100), // 1.5× boost for fast inclusion
+          gasPrice: gasPrice.mul(GAS_PRICE_BOOST_BPS).div(10000),
         };
       } catch (err) {
         throw friendlyChainError(err);
