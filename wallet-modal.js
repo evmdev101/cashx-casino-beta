@@ -82,7 +82,9 @@ const WM_EXPLORER_URL = WM_CONFIG ? WM_CONFIG.chain.explorerBaseUrl : 'https://s
       display: flex; align-items: center; justify-content: center;
       font-size: 1.5rem;
       flex-shrink: 0;
+      overflow: hidden;
     }
+    .wm-icon img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .wm-info { flex: 1; }
     .wm-name {
       font-family: 'Bebas Neue', 'Barlow Condensed', sans-serif;
@@ -125,16 +127,7 @@ function showWalletModal() {
           <div class="wm-title">SELECT <em>WALLET</em></div>
           <button class="wm-x">✕</button>
         </div>
-        <div class="wm-opts">
-          <button class="wm-btn" id="wmBrowser">
-            <div class="wm-icon">🦊</div>
-            <div class="wm-info">
-              <div class="wm-name">Browser Wallet</div>
-              <div class="wm-sub">MetaMask, Internet Money, Rabby &amp; any extension wallet</div>
-            </div>
-            <div class="wm-arrow">›</div>
-          </button>
-        </div>
+        <div class="wm-opts" id="wmOptions"></div>
         <div class="wm-msg" id="wmMsg"></div>
         <div class="wm-footer">Connecting to PulseChain (Chain ID ${WM_CHAIN_ID})</div>
       </div>
@@ -155,33 +148,85 @@ function showWalletModal() {
     overlay.querySelector('.wm-x').onclick = dismiss;
     overlay.addEventListener('click', e => { if (e.target === overlay) dismiss(); });
 
-    // Browser Wallet
-    document.getElementById('wmBrowser').onclick = async () => {
-      if (!window.ethereum) {
-        setMsg('No wallet detected. Please install MetaMask or Internet Money Wallet.', 'err');
+    const optionsEl = document.getElementById('wmOptions');
+    const walletEntries = [];
+
+    function iconMarkup(entry) {
+      const icon = entry && entry.info && entry.info.icon;
+      if (icon) return '<img src="' + icon.replace(/"/g, '&quot;') + '" alt="" />';
+      const name = entry && entry.info && entry.info.name ? entry.info.name : '';
+      if (/rabby/i.test(name)) return 'R';
+      if (/internet/i.test(name)) return 'IM';
+      if (/meta/i.test(name)) return '🦊';
+      return '◆';
+    }
+
+    function renderWalletOptions(entries) {
+      walletEntries.length = 0;
+      walletEntries.push(...entries);
+      if (!walletEntries.length) {
+        optionsEl.innerHTML = `
+          <button class="wm-btn" id="wmNoWallet" type="button">
+            <div class="wm-icon">◆</div>
+            <div class="wm-info">
+              <div class="wm-name">No Wallet Detected</div>
+              <div class="wm-sub">Install MetaMask, Rabby, or Internet Money Wallet, then refresh.</div>
+            </div>
+            <div class="wm-arrow">›</div>
+          </button>
+        `;
+        document.getElementById('wmNoWallet').onclick = () => {
+          setMsg('No wallet detected. Install an EVM wallet extension, then refresh this page.', 'err');
+        };
+        return;
+      }
+
+      optionsEl.innerHTML = walletEntries.map((entry, index) => {
+        const name = entry.info && entry.info.name ? entry.info.name : 'Browser Wallet';
+        return `
+          <button class="wm-btn" type="button" data-wallet-index="${index}">
+            <div class="wm-icon">${iconMarkup(entry)}</div>
+            <div class="wm-info">
+              <div class="wm-name">${name.replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]))}</div>
+              <div class="wm-sub">Connect this wallet on PulseChain</div>
+            </div>
+            <div class="wm-arrow">›</div>
+          </button>
+        `;
+      }).join('');
+
+      optionsEl.querySelectorAll('[data-wallet-index]').forEach(btn => {
+        btn.onclick = () => connectEntry(walletEntries[Number(btn.dataset.walletIndex)]);
+      });
+    }
+
+    async function connectEntry(entry) {
+      const injectedProvider = entry && entry.provider ? entry.provider : window.ethereum;
+      if (!injectedProvider) {
+        setMsg('No wallet detected. Please install MetaMask, Rabby, or Internet Money Wallet.', 'err');
         return;
       }
       setMsg('Connecting…', 'info');
       try {
         if (window.CashX && window.CashX.wallet && window.CashX.contracts) {
-          const result = await window.CashX.wallet.connectWallet();
+          const result = await window.CashX.wallet.connectWallet(injectedProvider);
           overlay.remove();
           resolve(result);
           return;
         }
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        let p = new ethers.providers.Web3Provider(window.ethereum);
+        await injectedProvider.request({ method: 'eth_requestAccounts' });
+        let p = new ethers.providers.Web3Provider(injectedProvider);
         const net = await p.getNetwork();
         if (net.chainId !== WM_CHAIN_ID) {
           setMsg('Switching to PulseChain…', 'info');
           try {
-            await window.ethereum.request({
+            await injectedProvider.request({
               method: 'wallet_switchEthereumChain',
               params: [{ chainId: WM_CHAIN_HEX }],
             });
           } catch (sw) {
             if (sw.code === 4902) {
-              await window.ethereum.request({
+              await injectedProvider.request({
                 method: 'wallet_addEthereumChain',
                 params: [{
                   chainId: WM_CHAIN_HEX, chainName: WM_CHAIN_NAME,
@@ -192,7 +237,7 @@ function showWalletModal() {
               });
             } else throw sw;
           }
-          p = new ethers.providers.Web3Provider(window.ethereum);
+          p = new ethers.providers.Web3Provider(injectedProvider);
         }
         const signer  = p.getSigner();
         const address = await signer.getAddress();
@@ -203,7 +248,13 @@ function showWalletModal() {
           ? 'Rejected — please approve in your wallet.'
           : 'Error: ' + (err.message || 'Unknown error'), 'err');
       }
-    };
+    }
+
+    if (window.CashX && window.CashX.wallet && window.CashX.wallet.listWalletProviders) {
+      window.CashX.wallet.listWalletProviders(350).then(renderWalletOptions);
+    } else {
+      renderWalletOptions(window.ethereum ? [{ provider: window.ethereum, info: { name: 'Browser Wallet' } }] : []);
+    }
 
   });
 }

@@ -1861,9 +1861,11 @@
       } catch (err) {
         showBackendError(err);
         // Only re-enable the button on error so the player can retry
-        if (joinBtn) { joinBtn.disabled = false; joinBtn.textContent = 'Join Room'; }
+        joiningRoom = false;
+        if (currentRoom) updateJoinButton(currentRoom);
       } finally {
         joiningRoom = false;
+        if (currentRoom) updateJoinButton(currentRoom);
       }
     }
 
@@ -1949,6 +1951,7 @@
       updateRematchNotice(room);
       updateChainStatus();
       syncTxProgressFromRoom(room);
+      updateJoinButton(room);
 
       if (room.status === 'waiting') {
         stopCountdown();
@@ -2057,6 +2060,17 @@
         && connectedAddress;
       cancelZone.hidden = !showCancelZone;
       if (showCancelZone) refreshCancelState(room).catch(() => {});
+    }
+
+    function updateJoinButton(room) {
+      const joinBtn = document.getElementById('joinMatchBtn');
+      if (!joinBtn) return;
+      const alreadyInRoom = Boolean(myMark);
+      const roomIsOpen = room && room.status === 'waiting' && (room.players || []).length < 2;
+      const chainAlreadyJoined = room && chainJoinedRooms.has(room.id);
+      const canJoin = roomIsOpen && !alreadyInRoom && !chainAlreadyJoined;
+      joinBtn.disabled = joiningRoom || !canJoin;
+      joinBtn.textContent = joiningRoom ? 'Joining...' : 'Join Room';
     }
     function paidRoomIds() {
       try {

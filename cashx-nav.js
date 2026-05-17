@@ -679,6 +679,7 @@
           <button class="wallet-account-item" type="button" onclick="CashXNav.openAccountFromMenu()">Account</button>
           <div class="wallet-account-sep"></div>
           <button class="wallet-account-item" type="button" onclick="CashXNav.copyAddressFromMenu()">Copy Address</button>
+          <button class="wallet-account-item" type="button" onclick="CashXNav.switchWallet()">Switch Wallet</button>
           <button class="wallet-account-item danger" type="button" onclick="CashXNav.disconnectWallet()">Disconnect</button>
         </div>
       </div>`;
@@ -803,16 +804,19 @@
   }
 
   async function fallbackConnect() {
-    if (!window.ethereum) throw new Error('No wallet detected.');
-    await window.ethereum.request({ method: 'eth_requestAccounts' });
+    const injectedProvider = window.CashX && window.CashX.wallet && window.CashX.wallet.getEthereum
+      ? window.CashX.wallet.getEthereum()
+      : window.ethereum;
+    if (!injectedProvider) throw new Error('No wallet detected.');
+    await injectedProvider.request({ method: 'eth_requestAccounts' });
     if (window.ethers) {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const provider = new ethers.providers.Web3Provider(injectedProvider);
       const signer = provider.getSigner();
       const address = await signer.getAddress();
       try { localStorage.setItem('cashx:walletConnected', '1'); } catch (_) {}
       return { provider, signer, address };
     }
-    const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+    const accounts = await injectedProvider.request({ method: 'eth_accounts' });
     const address = accounts && accounts[0];
     try { localStorage.setItem('cashx:walletConnected', '1'); } catch (_) {}
     return { address };
@@ -854,6 +858,9 @@
 
   async function refreshFromWallet() {
     try {
+      let shouldReconnect = false;
+      try { shouldReconnect = localStorage.getItem('cashx:walletConnected') === '1'; } catch (_) {}
+      if (!shouldReconnect) return;
       let result = null;
       if (window.CashX && window.CashX.wallet && window.CashX.wallet.getConnectedAccount) {
         const address = await window.CashX.wallet.getConnectedAccount();
@@ -1191,8 +1198,11 @@
 
   async function getSigner() {
     if (state.signer) return state.signer;
-    if (!window.ethereum) throw new Error('No wallet detected.');
-    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const injectedProvider = window.CashX && window.CashX.wallet && window.CashX.wallet.getEthereum
+      ? window.CashX.wallet.getEthereum()
+      : window.ethereum;
+    if (!injectedProvider) throw new Error('No wallet detected.');
+    const provider = new ethers.providers.Web3Provider(injectedProvider);
     state.provider = provider;
     state.signer = provider.getSigner();
     state.address = await state.signer.getAddress();
@@ -1290,7 +1300,12 @@
   function disconnectWallet() {
     try { localStorage.removeItem('cashx:walletConnected'); } catch (_) {}
     try { localStorage.removeItem('cashxWallet'); } catch (_) {}
+    if (window.CashX && window.CashX.wallet && window.CashX.wallet.selectProvider) {
+      window.CashX.wallet.selectProvider(null);
+    }
     state.address = null;
+    state.provider = null;
+    state.signer = null;
     closeBalanceMenu();
     closeAccountMenu();
     const nav = document.querySelector('.topnav');
@@ -1306,6 +1321,12 @@
       connectBtn.disabled = false;
       connectBtn.innerHTML = walletSvg + ' Connect';
     }
+  }
+
+  async function switchWallet() {
+    closeAccountMenu();
+    disconnectWallet();
+    await connectWallet();
   }
 
   function bindWalletEvents() {
@@ -1350,6 +1371,7 @@
     copyAddressFromMenu,
     openAccountFromMenu,
     disconnectWallet,
+    switchWallet,
     updateCashxWalletBalance,
     refreshCashxBalance,
     refreshApprovalAllowance,
