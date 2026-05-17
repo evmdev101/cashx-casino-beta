@@ -1652,6 +1652,7 @@
     let _dropTargetIdx = -1;
     const chainJoinedRooms = new Set();
     const chainJoinChecks = new Set();
+    const chainJoinSyncs = new Set();
 
     init();
 
@@ -1965,7 +1966,9 @@
         readyUpBtn.disabled = iAmReady || !myMark;
         readyUpBtn.textContent = iAmReady ? 'Waiting for opponent…' : 'Ready Up';
         roundTitle.textContent = iAmReady ? 'Waiting for opponent' : 'Ready up to start';
-        roundCopy.textContent = myMark
+        roundCopy.textContent = room.chain
+          ? 'Both escrows are funded on-chain. Use mutual cancel below for a refund, or ready up to play.'
+          : myMark
           ? (iAmReady ? 'The other player still needs to ready up.' : 'Click Ready Up when you\'re set to play.')
           : 'Both players must ready up before the game begins.';
       } else if (room.status === 'active') {
@@ -2026,7 +2029,7 @@
           }
         } else if (room.status === 'ready-check') {
           delete forfeitBtn.dataset.chainJoinWarned;
-          forfeitBtn.textContent = '✕ Leave Room';
+          forfeitBtn.textContent = room.chain ? '⚑ Forfeit Match' : '✕ Leave Room';
         } else {
           delete forfeitBtn.dataset.chainJoinWarned;
           forfeitBtn.textContent = '⚑ Forfeit Match';
@@ -2036,9 +2039,9 @@
         forfeitZone.hidden = true;
       }
 
-      // Show mutual cancel zone only for active funded matches
+      // Show mutual cancel once both escrows are funded on-chain.
       const showCancelZone = isInRoom
-        && room.status === 'active'
+        && (room.status === 'ready-check' || room.status === 'active')
         && room.chain && room.chain.matchId
         && connectedAddress;
       cancelZone.hidden = !showCancelZone;
@@ -3055,6 +3058,27 @@
       if (forfeitBtn.dataset.chainJoinWarned !== roomId) {
         forfeitBtn.dataset.chainJoinWarned = roomId;
         addFeed('Chain sync needed', 'Join Match is confirmed on-chain, so this room can no longer be cancelled as an open lobby.');
+      }
+      syncConfirmedChainJoin(room, confirmedJoin).catch(() => {});
+    }
+
+    async function syncConfirmedChainJoin(room, confirmedJoin) {
+      if (!room || !confirmedJoin || !confirmedJoin.player2 || chainJoinSyncs.has(room.id)) return;
+      chainJoinSyncs.add(room.id);
+      try {
+        const syncedRoom = await api('/api/pvp/rooms/' + encodeURIComponent(room.id) + '/join', {
+          player: confirmedJoin.player2,
+          chainPlayer2: confirmedJoin.player2,
+        });
+        addFeed('Room synced', 'On-chain join found. Mutual cancel is available below if both players want a refund.');
+        syncRoom(syncedRoom);
+      } catch (err) {
+        try {
+          const latestRoom = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(room.id));
+          syncRoom(latestRoom);
+        } catch (_) {}
+      } finally {
+        chainJoinSyncs.delete(room.id);
       }
     }
 
