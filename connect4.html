@@ -1545,6 +1545,7 @@
       'function refundExpired(uint256 matchId)',
       'function cancelRequests(uint256 matchId, address player) view returns (bool)',
       'function cancelRequestedAt(uint256 matchId) view returns (uint256)',
+      'function matches(uint256 matchId) view returns (uint8 gameType, uint8 status, address player1, address player2, uint256 wager, uint256 createdAt, uint256 startedAt, address winner, uint256 settledAt)',
       'event MatchCreated(uint256 indexed matchId, uint8 indexed gameType, address indexed player1, uint256 wager)',
       'event MatchJoined(uint256 indexed matchId, address indexed player2)',
       'event MatchSettled(uint256 indexed matchId, address indexed winner, uint256 payout, uint256 burned, bytes32 resultHash)',
@@ -3020,6 +3021,21 @@
         return;
       }
 
+      const chainMatch = await getChainMatchState(matchId);
+      if (chainMatch && chainMatch.status === 2 && chainMatch.player2 && !/^0x0{40}$/i.test(chainMatch.player2)) {
+        chainJoinedRooms.add(currentRoomId);
+        await syncConfirmedChainJoin(currentRoom, { player2: chainMatch.player2 });
+        throw new Error('This room was already joined on-chain. The room is syncing now so it can show the correct player state.');
+      }
+      if (chainMatch && chainMatch.status >= 4) {
+        removeCachedLobby(currentRoomId);
+        refreshOpenLobbies();
+        throw new Error('This room is no longer open on-chain. Refresh the lobby and choose another room.');
+      }
+      if (chainMatch && chainMatch.status !== 1) {
+        throw new Error('This room is not open for joining on-chain anymore. Refresh the lobby and choose another room.');
+      }
+
       await ensureWagerBalance(wagerWei);
       await approveIfNeeded(wagerWei);
 
@@ -3031,6 +3047,21 @@
       const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
       await waitForTx(tx);
       completeTxStage('join', 'Joined on chain. Both players can start the match.');
+    }
+
+    async function getChainMatchState(matchId) {
+      if (!pvpContractRO || !matchId || !pvpContractRO.matches) return null;
+      try {
+        const match = await pvpContractRO.matches(matchId);
+        return {
+          status: Number(match.status),
+          player1: match.player1,
+          player2: match.player2,
+          winner: match.winner,
+        };
+      } catch (_) {
+        return null;
+      }
     }
 
     async function getConfirmedJoin(matchId) {
@@ -3315,7 +3346,7 @@
           gasPrice: gasPrice.mul(GAS_PRICE_BOOST_BPS).div(10000),
         };
       } catch (err) {
-        throw friendlyChainError(err);
+        throw friendlyChainError(err, method);
       }
     }
 
@@ -3323,11 +3354,11 @@
       try {
         await contract.callStatic[method](...args);
       } catch (err) {
-        throw friendlyChainError(err);
+        throw friendlyChainError(err, method);
       }
     }
 
-    function friendlyChainError(err) {
+    function friendlyChainError(err, method) {
       const raw = err && (err.reason || err.errorName || err.data?.message || err.error?.message || err.message) ? String(err.reason || err.errorName || err.data?.message || err.error?.message || err.message) : '';
       if (/insufficient funds|not enough funds/i.test(raw)) return new Error('This wallet needs a little PLS for gas before it can fund a match.');
       if (/Transfer failed|ERC20: transfer amount exceeds balance|balance/i.test(raw)) return new Error('The CASHX transfer failed. Lower the wager or add more CASHX to this wallet.');
@@ -3335,6 +3366,7 @@
       if (/Wager below minimum/i.test(raw)) return new Error('Minimum wager is 100 CASHX.');
       if (/Wager above maximum/i.test(raw)) return new Error('Maximum wager is 1,000,000 CASHX.');
       if (/Only creator before timeout/i.test(raw)) return new Error('Only the wallet that created this room can cancel it before the join timer expires.');
+      if (/Match not waiting/i.test(raw) && method === 'joinMatch') return new Error('This room is no longer open on-chain. Refresh the lobby and choose another room.');
       if (/Match not waiting/i.test(raw)) return new Error('This funded match is no longer waiting, so it cannot be cancelled from the lobby.');
       if (/paused/i.test(raw)) return new Error('The wager contract is paused right now.');
       return new Error(raw || 'Wallet could not prepare this transaction. Try a smaller wager, then try again.');
