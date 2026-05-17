@@ -314,7 +314,11 @@ async function startGame() {
       const approvalAmount = approvalAmountWei(betAmount);
       setWalletFlow('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
       updateBanner('Step 1 of 2: Approve up to ' + fmtCashx(approvalAmount) + ' CASHX in MetaMask...', 'pending');
-      const approveTx = await state.cashxContract.approve(MINES_LIVE_ADDRESS, approvalAmount);
+      const approveTx = await state.cashxContract.approve(
+        MINES_LIVE_ADDRESS,
+        approvalAmount,
+        await txOptions(state.cashxContract, 'approve', [MINES_LIVE_ADDRESS, approvalAmount])
+      );
       updateBanner('Step 1 of 2: Waiting for approval confirmation...', 'pending');
       await waitForTx(approveTx);
       if (window.CashXNav && window.CashXNav.refreshApprovalAllowance) {
@@ -331,7 +335,11 @@ async function startGame() {
     updateBanner(allowance.lt(betAmount)
       ? 'Step 2 of 2: Confirm game start in MetaMask...'
       : 'Step 1 of 1: Confirm game start in MetaMask...', 'pending');
-    const tx = await state.minesContract.startGame(betAmount, mineCount, session.serverSeedHash);
+    const startArgs = [betAmount, mineCount, session.serverSeedHash];
+    const tx = await state.minesContract.startGame(
+      ...startArgs,
+      await txOptions(state.minesContract, 'startGame', startArgs)
+    );
     updateBanner('Starting instant Mines... waiting for block confirmation.', 'pending');
     const receipt = await waitForTx(tx);
     if (window.CashXNav && window.CashXNav.refreshApprovalAllowance) {
@@ -449,12 +457,16 @@ async function settleResult(result) {
 
   setWalletFlow('payout', result.won ? 'Step 1 of 1: Confirm cash out payout in MetaMask...' : 'Step 1 of 1: Confirm final settlement in MetaMask...');
   updateBanner(result.won ? 'Confirm cash out payout' : 'Confirm final settlement');
-  const tx = await state.minesContract.settleGame(
+  const settleArgs = [
     state.activeGame.gameId,
     result.revealedMask,
     !!result.won,
     result.serverSeed,
     result.signature
+  ];
+  const tx = await state.minesContract.settleGame(
+    ...settleArgs,
+    await txOptions(state.minesContract, 'settleGame', settleArgs)
   );
   await waitForTx(tx);
   setWalletFlow('complete', 'Settlement complete. Payout and burn applied.');
@@ -556,6 +568,21 @@ async function api(path, payload) {
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || 'Backend request failed');
   return data;
+}
+
+async function txOptions(contract, method, args) {
+  try {
+    const [estimate, gasPrice] = await Promise.all([
+      contract.estimateGas[method](...args),
+      state.provider.getGasPrice(),
+    ]);
+    return {
+      gasLimit: estimate.mul(130).div(100),
+      gasPrice: gasPrice.mul(150).div(100),
+    };
+  } catch (_) {
+    return {};
+  }
 }
 
 function parseBetAmount() {
