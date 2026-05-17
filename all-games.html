@@ -1053,7 +1053,7 @@ const liveContract = new ethers.Contract(CX_CONFIG ? CX_CONFIG.contracts.asyncGa
 
 function fmtEntry(amount) {
   const n = parseFloat(ethers.utils.formatUnits(amount, 18));
-  return (n >= 1_000_000 ? (n / 1_000_000).toFixed(0) + 'M' : (n / 1_000).toFixed(0) + 'K') + ' CASHX';
+  return fmtPlainEntry(n);
 }
 
 function fmtPlainEntry(value) {
