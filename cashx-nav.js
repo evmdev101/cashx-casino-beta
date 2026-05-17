@@ -688,13 +688,13 @@
   function bindConnectButton(btn) {
     if (!btn || btn.__cashxNavBound) return;
     btn.__cashxNavBound = true;
-    const hasExistingHandler = !!btn.getAttribute('onclick');
-    if (!hasExistingHandler) {
-      btn.addEventListener('click', event => {
-        event.preventDefault();
-        connectWallet();
-      });
-    }
+    btn.removeAttribute('onclick');
+    btn.onclick = null;
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      connectWallet();
+    });
     btn.addEventListener('click', () => {
       setTimeout(refreshFromWallet, 1200);
       setTimeout(refreshFromWallet, 3200);

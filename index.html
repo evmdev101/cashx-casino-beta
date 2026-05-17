@@ -1783,6 +1783,9 @@ document.querySelectorAll('.fade-in').forEach(el => fadeObserver.observe(el));
 const WALLET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
 
 async function connectWallet() {
+  if (window.CashXNav && window.CashXNav.connectWallet) {
+    return window.CashXNav.connectWallet();
+  }
   const btn = document.getElementById('connectBtn');
   if (!window.showWalletModal) { alert('Wallet modal not loaded — please refresh.'); return; }
   btn.textContent = 'Connecting…';
@@ -1847,6 +1850,9 @@ function copyAddress(address) {
 }
 
 function disconnectWallet() {
+  if (window.CashXNav && window.CashXNav.disconnectWallet) {
+    return window.CashXNav.disconnectWallet();
+  }
   closeWalletMenu();
   const btn = document.getElementById('connectBtn');
   btn.innerHTML = WALLET_SVG + ' Connect';
@@ -1857,6 +1863,7 @@ function disconnectWallet() {
 
 // Re-connect automatically if already authorised
 (async () => {
+  if (window.CashXNav) return;
   if (!window.ethereum) return;
   const accounts = await window.ethereum.request({ method: 'eth_accounts' });
   if (accounts.length) {

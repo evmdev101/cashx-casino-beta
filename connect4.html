@@ -2906,34 +2906,55 @@
       return ethers.utils.isAddress(PVP_WAGER_ADDRESS);
     }
 
+    function selectedWalletProvider() {
+      return window.CashX && window.CashX.wallet && window.CashX.wallet.getEthereum
+        ? window.CashX.wallet.getEthereum()
+        : window.ethereum;
+    }
+
+    function applyWalletConnection(result) {
+      connectedAddress = result && result.address ? result.address : null;
+      walletProvider = result && result.provider ? result.provider : null;
+      walletSigner = result && result.signer ? result.signer : null;
+      if (!walletProvider && walletSigner && walletSigner.provider) walletProvider = walletSigner.provider;
+      if (isChainEnabled() && walletSigner) {
+        pvpContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, walletSigner);
+        cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
+      }
+      updateWalletButtonText();
+      updateChainStatus();
+      if (currentRoom) syncRoom(currentRoom);
+    }
+
+    function clearWalletConnection() {
+      connectedAddress = null;
+      walletProvider = null;
+      walletSigner = null;
+      pvpContract = null;
+      cashxContract = null;
+    }
+
     async function ensureWallet() {
       if (walletSigner && connectedAddress) return;
       if (!window.showWalletModal) throw new Error('Wallet unavailable');
       const result = await window.showWalletModal();
-      walletProvider = result.provider;
-      walletSigner = result.signer;
-      connectedAddress = result.address;
-      pvpContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, walletSigner);
-      cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
-      updateWalletButtonText();
-      updateChainStatus();
+      applyWalletConnection(result);
       refreshGameHistory();
     }
 
     async function restoreWalletSession() {
-      if (!window.ethereum || !window.ethers) return;
+      if (!window.ethers) return;
+      let shouldReconnect = false;
+      try { shouldReconnect = localStorage.getItem('cashx:walletConnected') === '1'; } catch (_) {}
+      if (!shouldReconnect) return;
+      const injectedProvider = selectedWalletProvider();
+      if (!injectedProvider) return;
       try {
-        const accounts = await window.ethereum.request({ method: 'eth_accounts' });
+        const accounts = await injectedProvider.request({ method: 'eth_accounts' });
         if (!accounts || !accounts.length) return;
-        walletProvider = new ethers.providers.Web3Provider(window.ethereum);
-        walletSigner = walletProvider.getSigner();
-        connectedAddress = await walletSigner.getAddress();
-        if (isChainEnabled()) {
-          pvpContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, walletSigner);
-          cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
-        }
-        updateWalletButtonText();
-        updateChainStatus();
+        const provider = new ethers.providers.Web3Provider(injectedProvider);
+        const signer = provider.getSigner();
+        applyWalletConnection({ provider, signer, address: await signer.getAddress() });
         refreshGameHistory();
         if (currentRoomId) loadRoom(currentRoomId);
       } catch (_) {}
@@ -3459,15 +3480,7 @@
         if (!window.showWalletModal) { connectBtn.textContent = 'Wallet unavailable'; return; }
         try {
           const result = await window.showWalletModal();
-          connectedAddress = result && result.address ? result.address : null;
-          walletProvider = result && result.provider ? result.provider : null;
-          walletSigner = result && result.signer ? result.signer : null;
-          if (isChainEnabled() && walletSigner) {
-            pvpContract = new ethers.Contract(PVP_WAGER_ADDRESS, PVP_WAGER_ABI, walletSigner);
-            cashxContract = new ethers.Contract(CASHX_ADDRESS, CASHX_ABI, walletSigner);
-          }
-          updateWalletButtonText();
-          updateChainStatus();
+          applyWalletConnection(result);
         } catch (err) {
           if (!err || err.message !== 'dismissed') connectBtn.textContent = 'Connect Wallet';
         }
@@ -3492,31 +3505,34 @@
 
       disconnectWalletBtn.addEventListener('click', () => {
         dropdown.hidden = true;
-        connectedAddress = null;
-        walletProvider = null;
-        walletSigner = null;
-        pvpContract = null;
-        cashxContract = null;
+        clearWalletConnection();
         updateWalletButtonText();
         updateChainStatus();
         refreshGameHistory();
         addFeed('Wallet disconnected', 'Connect a wallet to enable on-chain escrow.');
       });
 
-      if (window.ethereum && window.ethereum.on) {
-        window.ethereum.on('accountsChanged', () => {
-          connectedAddress = null;
-          walletProvider = null;
-          walletSigner = null;
-          pvpContract = null;
-          cashxContract = null;
-          dropdown.hidden = true;
+      window.addEventListener('cashx:wallet:connected', event => {
+        if (event.detail && event.detail.address) applyWalletConnection(event.detail);
+      });
+      window.addEventListener('cashx:wallet:accountsChanged', event => {
+        dropdown.hidden = true;
+        if (event.detail && event.detail.address) {
           restoreWalletSession().then(() => {
             updateWalletButtonText();
             if (currentRoom) syncRoom(currentRoom);
           });
-        });
-      }
+        } else {
+          clearWalletConnection();
+          updateWalletButtonText();
+        }
+      });
+      window.addEventListener('cashx:wallet:disconnected', () => {
+        dropdown.hidden = true;
+        clearWalletConnection();
+        updateWalletButtonText();
+        if (currentRoom) syncRoom(currentRoom);
+      });
 
       updateWalletButtonText();
     }

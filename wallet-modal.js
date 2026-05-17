@@ -161,9 +161,21 @@ function showWalletModal() {
       return '◆';
     }
 
+    function isAllowedPulseWallet(entry) {
+      const provider = entry && entry.provider;
+      const info = entry && entry.info ? entry.info : {};
+      const name = String(info.name || '').toLowerCase();
+      const rdns = String(info.rdns || '').toLowerCase();
+      if (/phantom|coinbase|uniswap/.test(name) || /phantom|coinbase|uniswap/.test(rdns)) return false;
+      if (/rabby|internet money|metamask/.test(name) || /rabby|internetmoney|metamask/.test(rdns)) return true;
+      if (provider && (provider.isRabby || provider.isInternetMoney || provider.isIMWallet || provider.isInternetMoneyWallet || provider.isMetaMask)) return true;
+      return name === 'browser wallet' || !name;
+    }
+
     function renderWalletOptions(entries) {
       walletEntries.length = 0;
-      walletEntries.push(...entries);
+      const filtered = (entries || []).filter(isAllowedPulseWallet);
+      walletEntries.push(...filtered);
       if (!walletEntries.length) {
         optionsEl.innerHTML = `
           <button class="wm-btn" id="wmNoWallet" type="button">
