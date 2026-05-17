@@ -1292,12 +1292,12 @@
           <div class="field">
             <label for="wagerInput">Player Wager</label>
             <div class="segmented wager-quick" style="margin-bottom:.45rem;">
-              <button data-wager="100000"  onclick="setWagerQuick(100000)">100K</button>
+              <button data-wager="100"     onclick="setWagerQuick(100)">100</button>
               <button data-wager="500000"  onclick="setWagerQuick(500000)">500K</button>
               <button data-wager="1000000" onclick="setWagerQuick(1000000)">1M</button>
             </div>
             <div class="input-row">
-              <input id="wagerInput" type="number" min="500" step="500" value="1000" />
+              <input id="wagerInput" type="number" min="100" step="100" value="1000" />
               <div class="unit">CASHX</div>
             </div>
           </div>
@@ -1647,6 +1647,7 @@
     let autoSettleRoomId = '';
     let settlingOnChain = false;
     let joiningRoom = false;
+    let selectedApproval = getStoredApprovalPreset();
     let _dropTargetIdx = -1;
 
     init();
@@ -1657,6 +1658,9 @@
       addFeed('Connect Four loaded', 'Create a room, open another tab, then join as player two.');
       document.getElementById('newMatchBtn').addEventListener('click', createRoom);
       document.getElementById('joinMatchBtn').addEventListener('click', joinRoom);
+      window.addEventListener('cashx:approvalPresetChanged', event => {
+        selectApproval(event.detail && event.detail.value);
+      });
       treasureBtn.addEventListener('click', () => settleOnChain({ fromBtn: true }));
       treasureChest.addEventListener('click', () => settleOnChain({ fromBtn: true }));
       rematchBtn.addEventListener('click', requestRematch);
@@ -1710,7 +1714,7 @@
         const room = await api('/api/pvp/rooms', {
           game: 'connect4',
           creator: playerId(),
-          wager: String(Math.max(1, Math.floor(Number(wagerInput.value || 0)))),
+          wager: String(Math.max(100, Math.floor(Number(wagerInput.value || 0)))),
           clockSeconds,
           chain,
         });
@@ -2831,6 +2835,21 @@
       return text.slice(0, 6) + '...' + text.slice(-4);
     }
 
+    function syncCashierNav() {
+      if (!window.CashXNav) return;
+      if (!connectedAddress) {
+        if (typeof window.CashXNav.disconnectWallet === 'function') window.CashXNav.disconnectWallet();
+        return;
+      }
+      if (typeof window.CashXNav.applyConnectedWallet === 'function') {
+        window.CashXNav.applyConnectedWallet({
+          address: connectedAddress,
+          provider: walletProvider,
+          signer: walletSigner,
+        });
+      }
+    }
+
     function isChainEnabled() {
       return ethers.utils.isAddress(PVP_WAGER_ADDRESS);
     }
@@ -2874,13 +2893,41 @@
         completeTxStage('approve', 'Approve already done. Next wallet step will fund or join.');
         return;
       }
+      const approvalWei = approvalAmountWei(wagerWei);
       setTxStage('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
       roundTitle.textContent = 'Approve CASHX';
-      roundCopy.textContent = 'Approve once so the contract can escrow this wager.';
-      addFeed('Wallet step', 'Approving CASHX for the wager contract.');
-      const tx = await cashxContract.approve(PVP_WAGER_ADDRESS, wagerWei, await txOptions(cashxContract, 'approve', [PVP_WAGER_ADDRESS, wagerWei]));
+      roundCopy.textContent = 'Approve up to ' + formatTokenAmount(approvalWei, 0) + ' CASHX. Funds only move when you create or join a match.';
+      addFeed('Wallet step', 'Approving CASHX allowance for the wager contract.');
+      const tx = await cashxContract.approve(PVP_WAGER_ADDRESS, approvalWei, await txOptions(cashxContract, 'approve', [PVP_WAGER_ADDRESS, approvalWei]));
       await waitForTx(tx);
       completeTxStage('approve', 'Approval confirmed. Next step: fund the match.');
+    }
+
+    function selectApproval(value) {
+      selectedApproval = normalizeApprovalPreset(value);
+    }
+
+    function approvalAmountWei(requiredWei) {
+      if (selectedApproval === 'bet') return requiredWei;
+      const presetWei = ethers.utils.parseUnits(String(selectedApproval), 18);
+      return presetWei.gt(requiredWei) ? presetWei : requiredWei;
+    }
+
+    function getStoredApprovalPreset() {
+      try {
+        return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
+      } catch (_) {
+        return 'bet';
+      }
+    }
+
+    function normalizeApprovalPreset(value) {
+      const raw = String(value || 'bet').trim().replace(/,/g, '');
+      if (raw === 'bet' || raw.toLowerCase() === 'this bet') return 'bet';
+      if (!/^\d+(\.\d)?\d*$/.test(raw)) return 'bet';
+      const amount = Math.max(100, Math.min(1000000, Math.floor(Number(raw))));
+      if (!Number.isFinite(amount)) return 'bet';
+      return String(amount);
     }
     async function ensureWagerBalance(wagerWei) {
       const balance = await cashxContract.balanceOf(connectedAddress);
@@ -2895,7 +2942,7 @@
     async function createChainMatch() {
       if (!isChainEnabled()) return null;
       await ensureWallet();
-      const wagerWei = ethers.utils.parseUnits(String(Math.max(500, Math.floor(Number(wagerInput.value || 0)))), 18);
+      const wagerWei = ethers.utils.parseUnits(String(Math.max(100, Math.floor(Number(wagerInput.value || 0)))), 18);
       await ensureWagerBalance(wagerWei);
       await approveIfNeeded(wagerWei);
 
@@ -3193,7 +3240,7 @@
       if (/insufficient funds|not enough funds/i.test(raw)) return new Error('This wallet needs a little PLS for gas before it can fund a match.');
       if (/Transfer failed|ERC20: transfer amount exceeds balance|balance/i.test(raw)) return new Error('The CASHX transfer failed. Lower the wager or add more CASHX to this wallet.');
       if (/allowance|insufficient allowance/i.test(raw)) return new Error('CASHX approval did not go through yet. Approve again, then create the room.');
-      if (/Wager below minimum/i.test(raw)) return new Error('Minimum wager is 500 CASHX.');
+      if (/Wager below minimum/i.test(raw)) return new Error('Minimum wager is 100 CASHX.');
       if (/Wager above maximum/i.test(raw)) return new Error('Maximum wager is 1,000,000 CASHX.');
       if (/Only creator before timeout/i.test(raw)) return new Error('Only the wallet that created this room can cancel it before the join timer expires.');
       if (/Match not waiting/i.test(raw)) return new Error('This funded match is no longer waiting, so it cannot be cancelled from the lobby.');
@@ -3444,12 +3491,14 @@
         connectBtn.innerHTML = WALLET_SVG + ' Connect Wallet';
         connectBtn.classList.remove('connected');
         if (dropdown) dropdown.hidden = true;
+        syncCashierNav();
         return;
       }
       const short = connectedAddress.slice(0, 6) + '...' + connectedAddress.slice(-4);
       connectBtn.textContent = short;
       connectBtn.classList.add('connected');
       if (dropdownAddr) dropdownAddr.textContent = connectedAddress.slice(0, 10) + '...' + connectedAddress.slice(-6);
+      syncCashierNav();
     }
   </script>
 </body>

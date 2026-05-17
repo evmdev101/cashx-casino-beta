@@ -37,7 +37,7 @@ const state = {
   minesContract: null,
   cashxContract: null,
   bet: 500,
-  minBet: ethers.utils.parseUnits('500', 18),
+  minBet: ethers.utils.parseUnits('1', 18),
   maxBet: ethers.utils.parseUnits('5000', 18),
   mines: 3,
   selected: [],
@@ -45,6 +45,7 @@ const state = {
   transacting: false,
   resultShown: false,
   latestBlock: 0,
+  selectedApproval: getStoredApprovalPreset(),
 };
 
 const els = {
@@ -60,6 +61,7 @@ const els = {
   multiplier: document.getElementById('multiplierOutput'),
   nextMultiplier: document.getElementById('nextMultiplierOutput'),
   profit: document.getElementById('profitOutput'),
+  betLimits: document.getElementById('betLimitsDisplay'),
   banner: document.getElementById('roundBanner'),
   totalBurned: document.getElementById('totalBurned'),
   recentGamesBody: document.getElementById('recentGamesBody'),
@@ -87,16 +89,15 @@ function bindEvents() {
     updateUi();
   });
 
-  document.getElementById('halveBetBtn').addEventListener('click', () => {
-    state.bet = clampBet(Math.floor(state.bet / 2));
-    els.betInput.value = state.bet;
-    updateUi();
-  });
-
-  document.getElementById('doubleBetBtn').addEventListener('click', () => {
-    state.bet = clampBet(state.bet * 2);
-    els.betInput.value = state.bet;
-    updateUi();
+  document.querySelectorAll('[data-quick-bet]').forEach(button => {
+    button.addEventListener('click', () => {
+      const quickBet = button.dataset.quickBet === 'max'
+        ? Number(ethers.utils.formatUnits(state.maxBet, 18))
+        : Number(button.dataset.quickBet);
+      state.bet = clampBet(quickBet);
+      els.betInput.value = state.bet;
+      updateUi();
+    });
   });
 
   els.mineSelect.addEventListener('change', () => {
@@ -181,6 +182,9 @@ async function refreshLimits() {
     state.maxBet = max;
     els.betInput.min = ethers.utils.formatUnits(min, 18);
     els.betInput.max = ethers.utils.formatUnits(max, 18);
+    if (els.betLimits) {
+      els.betLimits.textContent = 'Min ' + fmtCashx(min) + ' · Max ' + fmtCashx(max) + ' CASHX';
+    }
   } catch (_) {}
 }
 
@@ -258,9 +262,10 @@ async function lockBet() {
 
     const allowance = await state.cashxContract.allowance(state.player, MINES_GAME_ADDRESS);
     if (allowance.lt(betAmount)) {
+      const approvalAmount = approvalAmountWei(betAmount);
       setWalletFlow('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
-      updateBanner('Approve CASHX in your wallet');
-      const approveTx = await state.cashxContract.approve(MINES_GAME_ADDRESS, betAmount);
+      updateBanner('Approve up to ' + fmtCashx(approvalAmount) + ' CASHX in your wallet');
+      const approveTx = await state.cashxContract.approve(MINES_GAME_ADDRESS, approvalAmount);
       await approveTx.wait();
     }
 
@@ -543,6 +548,37 @@ function parseBetAmount() {
   }
 }
 
+function selectApproval(value) {
+  state.selectedApproval = normalizeApprovalPreset(value);
+}
+
+function getStoredApprovalPreset() {
+  try {
+    return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
+  } catch (_) {
+    return 'bet';
+  }
+}
+
+function normalizeApprovalPreset(value) {
+  const raw = String(value || 'bet').trim().replace(/,/g, '');
+  if (raw === 'bet' || raw.toLowerCase() === 'this bet') return 'bet';
+  if (!/^\d+(\.\d)?\d*$/.test(raw)) return 'bet';
+  const amount = Math.max(100, Math.min(1000000, Math.floor(Number(raw))));
+  if (!Number.isFinite(amount)) return 'bet';
+  return String(amount);
+}
+
+function approvalAmountWei(requiredWei) {
+  if (state.selectedApproval === 'bet') return requiredWei;
+  const presetWei = ethers.utils.parseUnits(String(state.selectedApproval), 18);
+  return presetWei.gt(requiredWei) ? presetWei : requiredWei;
+}
+
+window.addEventListener('cashx:approvalPresetChanged', event => {
+  selectApproval(event.detail && event.detail.value);
+});
+
 function calculateMultiplier(safePicks, mines) {
   if (!safePicks) return 1;
   let probability = 1;
@@ -580,7 +616,8 @@ function getTile(index) {
 }
 
 function updateUi() {
-  state.bet = clampBet(Number(els.betInput.value));
+  const rawBet = Number(els.betInput.value);
+  state.bet = Number.isFinite(rawBet) && rawBet > 0 ? clampBet(rawBet) : 0;
   state.mines = Number(els.mineSelect.value);
 
   const picks = state.pending ? state.pending.picks.length : state.selected.length;
@@ -600,8 +637,9 @@ function updateUi() {
 
   els.betInput.disabled = state.transacting || !!state.pending;
   els.mineSelect.disabled = state.transacting || !!state.pending;
-  document.getElementById('halveBetBtn').disabled = els.betInput.disabled;
-  document.getElementById('doubleBetBtn').disabled = els.betInput.disabled;
+  document.querySelectorAll('[data-quick-bet]').forEach(button => {
+    button.disabled = els.betInput.disabled;
+  });
   updateTiles();
 }
 

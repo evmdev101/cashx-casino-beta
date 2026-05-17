@@ -38,7 +38,7 @@ contract PvPWager {
 
     address public owner;
     address public gameSigner;
-    uint256 public minWager = 500 * 1e18;
+    uint256 public minWager = 100 * 1e18;
     uint256 public maxWager = 1_000_000 * 1e18;
     uint256 public joinTimeout = 1 days;
     uint256 public matchTimeout = 1 days;

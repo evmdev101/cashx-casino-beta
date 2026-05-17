@@ -34,10 +34,21 @@ const CASHX_ABI = [
 // STATE
 let provider, signer, diceContract, cashxContract;
 let playerAddress = null;
-let minBet = ethers.BigNumber.from('500').mul(ethers.BigNumber.from('10').pow(18));
+let minBet = ethers.BigNumber.from('1').mul(ethers.BigNumber.from('10').pow(18));
 let maxBet = ethers.BigNumber.from('5000').mul(ethers.BigNumber.from('10').pow(18));
 let rolling = false;
+let selectedApproval = getStoredApprovalPreset();
 let latestCashxBalanceText = '0 CASHX';
+const REVEAL_BLOCK_WAIT_MESSAGE = 'Waiting for the reveal block. If it feels slow, use Speed Up in your wallet.';
+const DICE_BURN_BPS = 300;
+const DICE_WIN_MULTIPLIER_BPS = 19500;
+
+function emitDiceGameActive(active) {
+  document.body.classList.toggle('cashx-dice-live', !!active);
+  window.dispatchEvent(new CustomEvent('cashx:dice-game-active', {
+    detail: { active: !!active },
+  }));
+}
 
 // WALLET
 async function connectWallet() {
@@ -144,10 +155,12 @@ async function refreshStats() {
       cashxContract.balanceOf(playerAddress),
       diceContract.totalBurned(),
     ]);
-    document.getElementById('playerBalance').textContent = fmtCashx(bal)    + ' CASHX';
+    const playerBalanceEl = document.getElementById('playerBalance');
+    if (playerBalanceEl) playerBalanceEl.textContent = fmtCashx(bal) + ' CASHX';
     updateCashxWalletBalance(bal);
     const burnedText = fmtCashx(burned) + ' CASHX';
-    document.getElementById('totalBurnedStat').textContent = burnedText;
+    const totalBurnedStatEl = document.getElementById('totalBurnedStat');
+    if (totalBurnedStatEl) totalBurnedStatEl.textContent = burnedText;
     document.getElementById('totalBurned').textContent     = burnedText;
   } catch (_) {
     // Keep the previous values if the RPC request fails.
@@ -222,6 +235,7 @@ async function placeBet(betOver) {
   }
 
   rolling = true;
+  emitDiceGameActive(true);
   disableButtons();
   resetDice();
 
@@ -229,10 +243,14 @@ async function placeBet(betOver) {
     // Step 1: Approve CASHX spend (only if allowance is insufficient)
     const allowance = await cashxContract.allowance(playerAddress, DICE_GAME_ADDRESS);
     if (allowance.lt(betAmount)) {
-      setStatus('Step 1 of 3: Approve CASHX spend in MetaMask…', 'pending');
-      const approveTx = await cashxContract.approve(DICE_GAME_ADDRESS, betAmount);
+      const approvalAmount = approvalAmountWei(betAmount);
+      setStatus('Step 1 of 3: Approve up to ' + fmtCashx(approvalAmount) + ' CASHX in MetaMask…', 'pending');
+      const approveTx = await cashxContract.approve(DICE_GAME_ADDRESS, approvalAmount);
       setStatus('Step 1 of 3: Waiting for approval confirmation…', 'pending');
       await waitForTx(approveTx);
+      if (window.CashXNav && window.CashXNav.refreshApprovalAllowance) {
+        window.CashXNav.refreshApprovalAllowance();
+      }
     }
 
     // Step 2: Place committed bet
@@ -272,8 +290,11 @@ async function placeBet(betOver) {
     if (!placed) {
       throw new Error('Bet placed, but BetPlaced event was not found');
     }
+    if (window.CashXNav && window.CashXNav.refreshApprovalAllowance) {
+      window.CashXNav.refreshApprovalAllowance();
+    }
 
-    setStatus('Waiting for the reveal block…', 'pending');
+    setStatus(REVEAL_BLOCK_WAIT_MESSAGE, 'pending');
     await waitForBlockAfter(placed.targetBlock.toNumber());
 
     setStatus('Step 3 of 3: Reveal your roll in MetaMask…', 'pending');
@@ -309,6 +330,7 @@ async function placeBet(betOver) {
   }
 
   rolling = false;
+  emitDiceGameActive(false);
   enableButtons();
   await refreshStats();
 }
@@ -498,10 +520,11 @@ function setStatus(msg, type) {
   const el = document.getElementById('statusBox');
   if (!el) return;
   const isStep = msg && msg.toLowerCase().includes('step');
-  if (isStep) {
+  const isRevealBlockWait = msg && msg.toLowerCase().includes('waiting for the reveal block');
+  if (isStep || isRevealBlockWait) {
     el.innerHTML =
-      '<div class="status-main">' + msg + '</div>' +
-      '<div class="status-tip">If the transaction is slow, use <strong>Speed Up</strong> in MetaMask.</div>';
+      '<div class="status-main">' + (isRevealBlockWait ? 'Waiting for the reveal block...' : msg) + '</div>' +
+      '<div class="status-tip">If it feels slow, use <strong>Speed Up</strong> in your wallet.</div>';
   } else {
     el.textContent = msg;
   }
@@ -538,7 +561,9 @@ function updateWalletFlowFromStatus(msg, type) {
     step.classList.toggle('done', idx > -1 && idx <= doneThrough);
   });
 
-  if (msg) note.textContent = msg;
+  if (msg) note.textContent = /waiting for the reveal block/.test(text)
+    ? REVEAL_BLOCK_WAIT_MESSAGE
+    : msg;
   if (type === 'error') note.textContent = 'Wallet step stopped. Check MetaMask, then try again.';
 }
 
@@ -553,7 +578,90 @@ function disableButtons() {
 }
 
 function setQuickBet(amount) {
-  document.getElementById('betAmount').value = amount;
+  setBetAmount(amount, true);
+}
+
+function setBetAmount(amount, confirmed) {
+  const input = document.getElementById('betAmount');
+  if (!input) return;
+  const next = Math.max(1, Math.min(5000, Math.floor(Number(amount))));
+  input.value = Number.isFinite(next) ? next : '';
+  useThisBetApproval();
+  updateBetPreview(!!confirmed);
+}
+
+function normalizeBetInput() {
+  const input = document.getElementById('betAmount');
+  if (!input) return 0;
+  const value = Number(String(input.value || '').trim());
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const next = Math.max(1, Math.min(5000, Math.floor(value)));
+  input.value = next;
+  return next;
+}
+
+function updateBetPreview(confirmed) {
+  const input = document.getElementById('betAmount');
+  const potEl = document.getElementById('previewTotalPot');
+  const burnEl = document.getElementById('previewBurn');
+  const winnerEl = document.getElementById('previewWinnerGets');
+  const amount = Number(input && input.value);
+  const valid = Number.isFinite(amount) && amount > 0;
+
+  if (potEl) potEl.textContent = valid ? formatPreviewAmount(amount * DICE_WIN_MULTIPLIER_BPS / 10000) + ' CASHX' : '—';
+  if (burnEl) burnEl.textContent = valid ? formatPreviewAmount(amount * DICE_BURN_BPS / 10000) + ' CASHX' : '—';
+  if (winnerEl) winnerEl.textContent = valid ? formatPreviewAmount(amount * DICE_WIN_MULTIPLIER_BPS / 10000) + ' CASHX' : '—';
+
+  document.querySelectorAll('.qb').forEach(btn => {
+    const quickAmount = Number((btn.textContent || '').replace(/[^0-9.]/g, '')) * (btn.textContent.includes('K') ? 1000 : 1);
+    const isMax = btn.textContent.trim().toUpperCase() === 'MAX' && amount === 5000;
+    btn.classList.toggle('active', valid && (quickAmount === amount || isMax));
+  });
+}
+
+function formatPreviewAmount(value) {
+  return Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 2 });
+}
+
+function useThisBetApproval() {
+  selectedApproval = 'bet';
+  try { localStorage.setItem('cashx:approvalPreset', 'bet'); } catch (_) {}
+  window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: 'bet' } }));
+}
+
+function selectApproval(value) {
+  selectedApproval = normalizeApprovalPreset(value);
+}
+
+function getStoredApprovalPreset() {
+  try {
+    return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
+  } catch (_) {
+    return 'bet';
+  }
+}
+
+function approvalAmountWei(requiredWei) {
+  if (selectedApproval === 'bet') return requiredWei;
+  const presetWei = ethers.utils.parseUnits(String(selectedApproval), 18);
+  return presetWei.gt(requiredWei) ? presetWei : requiredWei;
+}
+
+window.addEventListener('cashx:approvalPresetChanged', event => {
+  selectApproval(event.detail && event.detail.value);
+});
+
+const betAmountInput = document.getElementById('betAmount');
+if (betAmountInput) {
+  betAmountInput.addEventListener('input', () => {
+    useThisBetApproval();
+    updateBetPreview(false);
+  });
+  betAmountInput.addEventListener('change', () => {
+    normalizeBetInput();
+    updateBetPreview(false);
+  });
+  updateBetPreview(false);
 }
 
 // Format a BigNumber (18 decimals) as a readable string with commas
@@ -793,25 +901,122 @@ function disconnectWallet() {
 }
 
 function toggleBalanceMenu(event) {
-  event.stopPropagation();
+  if (event) event.stopPropagation();
+  const menu = document.getElementById('walletBalanceMenu');
+  if (menu && menu.classList.contains('open')) closeBalanceMenu();
+  else openCashier(event);
+}
+
+function openCashier(event) {
+  if (event) event.stopPropagation();
   const menu = document.getElementById('walletBalanceMenu');
   if (!menu) return;
-  const isOpen = menu.classList.toggle('open');
-  if (isOpen) {
-    setTimeout(() => document.addEventListener('click', _balanceMenuOutsideClick), 10);
-  } else {
-    document.removeEventListener('click', _balanceMenuOutsideClick);
+  const backdrop = document.getElementById('cashierBackdrop');
+  if (backdrop && backdrop.parentElement !== document.body) document.body.appendChild(backdrop);
+  if (menu.parentElement !== document.body) document.body.appendChild(menu);
+  syncApprovalButtons();
+  menu.classList.add('open');
+  if (backdrop) backdrop.classList.add('open');
+  setTimeout(() => document.addEventListener('click', _balanceMenuOutsideClick), 10);
+}
+
+function bindApprovalButtons() {
+  document.querySelectorAll('.wallet-approval-btn').forEach(btn => {
+    if (btn.__cashxApprovalBound) return;
+    btn.__cashxApprovalBound = true;
+    btn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectApproval(btn.dataset.approval);
+      try { localStorage.setItem('cashx:approvalPreset', selectedApproval); } catch (_) {}
+      syncApprovalButtons(true);
+      window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: selectedApproval } }));
+    });
+  });
+  const customInput = document.getElementById('walletApprovalCustom');
+  const applyBtn = document.getElementById('walletApprovalApply');
+  if (applyBtn && !applyBtn.__cashxApprovalBound) {
+    applyBtn.__cashxApprovalBound = true;
+    applyBtn.addEventListener('click', event => {
+      event.preventDefault();
+      event.stopPropagation();
+      selectApproval(customInput ? customInput.value : 'bet');
+      try { localStorage.setItem('cashx:approvalPreset', selectedApproval); } catch (_) {}
+      syncApprovalButtons(true);
+      window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: selectedApproval } }));
+    });
   }
+  if (customInput && !customInput.__cashxApprovalBound) {
+    customInput.__cashxApprovalBound = true;
+    customInput.addEventListener('click', event => event.stopPropagation());
+    customInput.addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        selectApproval(customInput.value);
+        try { localStorage.setItem('cashx:approvalPreset', selectedApproval); } catch (_) {}
+        syncApprovalButtons(true);
+        window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: selectedApproval } }));
+      }
+    });
+  }
+}
+
+function syncApprovalButtons(showFeedback) {
+  document.querySelectorAll('.wallet-approval-btn').forEach(btn => {
+    btn.classList.toggle('active', String(btn.dataset.approval) === selectedApproval);
+  });
+  const customInput = document.getElementById('walletApprovalCustom');
+  if (customInput) {
+    customInput.value = ['bet', '10000', '100000', '1000000'].includes(selectedApproval) ? '' : selectedApproval;
+  }
+  const summary = getApprovalSummary(selectedApproval);
+  const selectedEl = document.getElementById('walletApprovalSelected');
+  const descriptionEl = document.getElementById('walletApprovalDescription');
+  const feedbackEl = document.getElementById('walletApprovalFeedback');
+  if (selectedEl) selectedEl.textContent = summary.label;
+  if (descriptionEl) descriptionEl.textContent = summary.description;
+  if (feedbackEl) {
+    feedbackEl.textContent = showFeedback ? summary.feedback : 'Custom approval must be 100 to 1,000,000 CASHX.';
+    feedbackEl.classList.toggle('success', !!showFeedback);
+  }
+}
+
+function normalizeApprovalPreset(value) {
+  const raw = String(value || 'bet').trim().replace(/,/g, '');
+  if (raw === 'bet' || raw.toLowerCase() === 'this bet') return 'bet';
+  if (!/^\d+(\.\d+)?$/.test(raw)) return 'bet';
+  const amount = Math.max(100, Math.min(1000000, Math.floor(Number(raw))));
+  if (!Number.isFinite(amount)) return 'bet';
+  return String(amount);
+}
+
+function getApprovalSummary(value) {
+  if (value === 'bet') {
+    return {
+      label: 'This bet only',
+      description: 'You will only approve the amount needed for the next game you start or join.',
+      feedback: 'Approval limit set to this bet only.',
+    };
+  }
+  const amount = Number(value || 0);
+  const formatted = amount.toLocaleString();
+  return {
+    label: formatted + ' CASHX',
+    description: 'You can play multiple games until your approved allowance is used. Unused CASHX remains in your wallet.',
+    feedback: 'Approval limit set to ' + formatted + ' CASHX.',
+  };
 }
 
 function closeBalanceMenu() {
   const menu = document.getElementById('walletBalanceMenu');
   if (menu) menu.classList.remove('open');
+  const backdrop = document.getElementById('cashierBackdrop');
+  if (backdrop) backdrop.classList.remove('open');
   document.removeEventListener('click', _balanceMenuOutsideClick);
 }
 
 function _balanceMenuOutsideClick(event) {
-  if (!event.target.closest('#walletHub')) closeBalanceMenu();
+  if (!event.target.closest('#walletBalanceMenu') && !event.target.closest('#cashierBtn')) closeBalanceMenu();
 }
 
 function toggleAccountMenu(event) {
@@ -864,6 +1069,9 @@ document.addEventListener('keydown', event => {
     closeAccountMenu();
   }
 });
+
+bindApprovalButtons();
+syncApprovalButtons();
 
 // Auto-connect on load (if MetaMask already has permission)
 (async () => {

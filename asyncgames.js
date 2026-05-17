@@ -20,7 +20,7 @@ function friendlyChainError(err) {
   if (/transfer failed|ERC20|balance/i.test(raw))
     return new Error('CASHX transfer failed — check your CASHX balance and try again.');
   if (/entry out of range/i.test(raw))
-    return new Error('Entry amount is outside the allowed range (500 – 1,000,000 CASHX).');
+    return new Error('Entry amount is outside the allowed range (100 - 1,000,000 CASHX).');
   if (/game is full/i.test(raw))
     return new Error('This game just filled up — pick another table.');
   if (/already in/i.test(raw))
@@ -59,7 +59,7 @@ async function getTxOptions(contract, method, args) {
   }
 }
 
-const MIN_ENTRY_CASHX = 500;
+const MIN_ENTRY_CASHX = 100;
 const MAX_ENTRY_CASHX = 1_000_000;
 
 // ABIs
@@ -93,9 +93,11 @@ let asyncContractSigned, cashxContractSigned;
 let activeTab            = 0;
 let selectedTier         = 1;
 let selectedPlayers      = 2;
+let selectedApproval     = getStoredApprovalPreset();
 let transacting          = false;
 let currentView          = 'BC';
 let latestKnownBlock     = 0;
+let pendingInviteGameId  = null;
 
 // Burn totals per game type — populated by the burn IIFE, displayed on tab switch
 let asyncBurnByType = { 0: null, 1: null };
@@ -160,6 +162,7 @@ function showPlayView(gameType) {
   refreshFilteredActiveGames();
   refreshFilteredResults();
   if (playerAddress) refreshFilteredPlayerGames();
+  renderInvitePanel();
 }
 
 function updateBurnDisplay() {
@@ -430,6 +433,7 @@ async function refreshFilteredPlayerGames() {
     if (allIds.length === 0) {
       container.innerHTML = '<div class="empty-msg">You haven\'t played any ' +
         (activeTab === 0 ? 'Card War' : 'Dice Battle') + ' games yet.</div>';
+      syncInviteFromPlayerGames([]);
       return;
     }
 
@@ -445,8 +449,11 @@ async function refreshFilteredPlayerGames() {
     if (filtered.length === 0) {
       container.innerHTML = '<div class="empty-msg">No ' +
         (activeTab === 0 ? 'Card War' : 'Dice Battle') + ' games yet.</div>';
+      syncInviteFromPlayerGames([]);
       return;
     }
+
+    syncInviteFromPlayerGames(filtered);
 
     // Determine which games are newly resolved (for animation)
     const pendingAnimations = []; // { idStr, gameType }
@@ -546,7 +553,9 @@ function renderGameRow(g, gameId, isNewlyResolved) {
       badge      = 'WAITING';
       badgeClass = 'badge-waiting';
       if (n < Number(g.maxPlayers)) {
-        actions = '<button class="btn-action-sm btn-leave" onclick="leaveGame(' + idStr + ')">' + copy.leave + '</button>';
+        actions =
+          '<button class="btn-action-sm btn-join" onclick="showInviteForGame(' + idStr + ')">Invite</button>' +
+          '<button class="btn-action-sm btn-leave" onclick="leaveGame(' + idStr + ')">' + copy.leave + '</button>';
       }
     } else {
       badge      = 'LEFT';
@@ -911,26 +920,28 @@ async function createGame() {
     const entry = getEntryWei();
     const copy = gameCopy();
 
-    const allowance = await cashxContractRO.allowance(playerAddress, ASYNC_GAMES_ADDRESS);
-    if (allowance.lt(entry)) {
-      setStatus('Step 1/2: Approve CASHX spend in MetaMask…', 'pending');
-      const approveTx = await cashxContractSigned.approve(ASYNC_GAMES_ADDRESS, entry, await getTxOptions(cashxContractSigned, 'approve', [ASYNC_GAMES_ADDRESS, entry]));
-      setStatus('Step 1/2: Waiting for approval confirmation…', 'pending');
-      await waitForTx(approveTx);
-    }
+    await approveAsyncIfNeeded(entry);
 
     setStatus('Approval confirmed. Confirm ' + copy.createTitle.toLowerCase() + ' in MetaMask…', 'pending');
     await preflightCall(asyncContractSigned, 'createGame', [activeTab, selectedPlayers, entry]);
     const tx = await asyncContractSigned.createGame(activeTab, selectedPlayers, entry, await getTxOptions(asyncContractSigned, 'createGame', [activeTab, selectedPlayers, entry]));
     setStatus('Creating ' + (activeTab === 0 ? 'war table' : 'battle arena') + '… waiting for block confirmation…', 'pending');
+    let receipt = null;
     try {
-      await tx.wait();
+      receipt = await tx.wait();
     } catch (waitErr) {
       if (waitErr.code === 'TRANSACTION_REPLACED' && !waitErr.cancelled) {
         // Speed Up — replacement confirmed, continue normally
+        receipt = waitErr.receipt || null;
       } else {
         throw waitErr;
       }
+    }
+
+    const createdId = findCreatedGameId(receipt);
+    if (createdId) {
+      pendingInviteGameId = createdId;
+      renderInvitePanel(createdId);
     }
 
     setStatus((activeTab === 0 ? 'War table' : 'Battle arena') + ' created! Waiting for players.', 'success');
@@ -971,13 +982,7 @@ async function joinGame(gameId) {
     const entry = g.entryAmount;
     const copy  = gameCopy(Number(g.gameType));
 
-    const allowance = await cashxContractRO.allowance(playerAddress, ASYNC_GAMES_ADDRESS);
-    if (allowance.lt(entry)) {
-      setStatus('Step 1/2: Approve CASHX spend in MetaMask…', 'pending');
-      const approveTx = await cashxContractSigned.approve(ASYNC_GAMES_ADDRESS, entry, await getTxOptions(cashxContractSigned, 'approve', [ASYNC_GAMES_ADDRESS, entry]));
-      setStatus('Step 1/2: Waiting for approval confirmation…', 'pending');
-      await waitForTx(approveTx);
-    }
+    await approveAsyncIfNeeded(entry);
 
     setStatus('Approval confirmed. Confirm ' + copy.join.toLowerCase() + ' in MetaMask…', 'pending');
     await preflightCall(asyncContractSigned, 'joinGame', [gameId]);
@@ -1232,7 +1237,7 @@ async function requestCancelGame(gameId) {
 }
 
 // Selection
-const TIER_VALUES = { 1: 100000, 2: 500000, 3: 1000000 };
+const TIER_VALUES = { 1: 100, 2: 500000, 3: 1000000 };
 
 // Returns the entry amount as a BigNumber (wei), reading from the custom input.
 function getEntryWei() {
@@ -1300,6 +1305,51 @@ function selectPlayers(n) {
   });
   _updatePotEstimate();
   updateAsyncGamePreview();
+}
+
+function selectApproval(value) {
+  selectedApproval = normalizeApprovalPreset(value);
+}
+
+function approvalAmountWei(requiredWei) {
+  if (selectedApproval === 'bet') return requiredWei;
+  const presetWei = ethers.utils.parseUnits(String(selectedApproval), 18);
+  return presetWei.gt(requiredWei) ? presetWei : requiredWei;
+}
+
+function getStoredApprovalPreset() {
+  try {
+    return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
+  } catch (_) {
+    return 'bet';
+  }
+}
+
+function normalizeApprovalPreset(value) {
+  const raw = String(value || 'bet').trim().replace(/,/g, '');
+  if (raw === 'bet' || raw.toLowerCase() === 'this bet') return 'bet';
+  if (!/^\d+(\.\d)?\d*$/.test(raw)) return 'bet';
+  const amount = Math.max(100, Math.min(1000000, Math.floor(Number(raw))));
+  if (!Number.isFinite(amount)) return 'bet';
+  return String(amount);
+}
+
+async function approveAsyncIfNeeded(requiredWei) {
+  const allowance = await cashxContractRO.allowance(playerAddress, ASYNC_GAMES_ADDRESS);
+  if (allowance.gte(requiredWei)) {
+    setTxStage('approve', 'Approval already covers this table.');
+    return;
+  }
+
+  const approvalWei = approvalAmountWei(requiredWei);
+  setStatus('Step 1/2: Approve up to ' + fmtCashx(approvalWei) + ' CASHX in MetaMask…', 'pending');
+  const approveTx = await cashxContractSigned.approve(
+    ASYNC_GAMES_ADDRESS,
+    approvalWei,
+    await getTxOptions(cashxContractSigned, 'approve', [ASYNC_GAMES_ADDRESS, approvalWei])
+  );
+  setStatus('Step 1/2: Waiting for approval confirmation…', 'pending');
+  await waitForTx(approveTx);
 }
 
 function updateAsyncGamePreview() {
@@ -1458,6 +1508,110 @@ function copyPopoverValue(event, value) {
   closeAddressPopover();
 }
 
+function inviteLinkForGame(gameId) {
+  const url = new URL(window.location.href);
+  url.pathname = url.pathname.replace(/[^/]*$/, 'games.html');
+  url.search = '';
+  url.searchParams.set('game', '0');
+  url.searchParams.set('join', String(gameId));
+  url.hash = 'war-table-' + String(gameId);
+  return url.toString();
+}
+
+function renderInvitePanel(gameId) {
+  const panel = document.getElementById('invitePanel');
+  if (!panel) return;
+  const id = gameId || pendingInviteGameId;
+  if (!id) {
+    panel.classList.remove('visible', 'invite-join');
+    panel.innerHTML = '';
+    return;
+  }
+
+  const link = inviteLinkForGame(id);
+  const isJoinInvite = getInviteGameIdFromUrl() === String(id);
+  panel.classList.toggle('invite-join', isJoinInvite);
+  panel.classList.add('visible');
+  panel.innerHTML =
+    '<b>' + (isJoinInvite ? 'Invited Table' : 'Invite') + '</b>' +
+    '<span class="invite-link">' + escapeHtml(link) + '</span>' +
+    '<div class="invite-actions' + (isJoinInvite ? ' single' : '') + '">' +
+      (isJoinInvite
+        ? '<button class="invite-btn invite-primary" type="button" onclick="joinInvitedGame(' + String(id) + ')">Join War Table #' + String(id) + '</button>'
+        : '<button class="invite-btn" type="button" onclick="copyInviteLink(' + String(id) + ')">Copy Link</button>' +
+          '<button class="invite-btn" type="button" onclick="openInviteLink(' + String(id) + ')">Open Tab</button>') +
+    '</div>';
+}
+
+function syncInviteFromPlayerGames(games) {
+  if (getInviteGameIdFromUrl()) {
+    renderInvitePanel();
+    return;
+  }
+
+  const open = games.find(({ g }) => {
+    const playerIdx = Array.from(g.players).findIndex(
+      p => p.toLowerCase() === (playerAddress || '').toLowerCase()
+    );
+    return playerIdx >= 0 &&
+      !g.resolved &&
+      !g.cancelled &&
+      !g.readyToSettle &&
+      Number(g.playerCount) < Number(g.maxPlayers);
+  });
+
+  pendingInviteGameId = open ? open.id.toString() : null;
+  renderInvitePanel();
+}
+
+function showInviteForGame(gameId) {
+  pendingInviteGameId = String(gameId);
+  renderInvitePanel(gameId);
+  const panel = document.getElementById('invitePanel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+function copyInviteLink(gameId) {
+  navigator.clipboard.writeText(inviteLinkForGame(gameId)).catch(() => {});
+  setStatus('Invite link copied for war table #' + String(gameId) + '.', 'success');
+}
+
+function openInviteLink(gameId) {
+  window.open(inviteLinkForGame(gameId), '_blank', 'noopener');
+}
+
+function joinInvitedGame(gameId) {
+  joinGame(gameId);
+}
+
+function getInviteGameIdFromUrl() {
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('join') || params.get('table') || params.get('gameId');
+  return id && /^\d+$/.test(id) ? id : null;
+}
+
+function findCreatedGameId(receipt) {
+  if (!receipt || !Array.isArray(receipt.logs)) return null;
+  const iface = new ethers.utils.Interface(ASYNC_ABI);
+  for (const log of receipt.logs) {
+    try {
+      const parsed = iface.parseLog(log);
+      if (parsed.name === 'GameCreated') return parsed.args.gameId.toString();
+    } catch (_) {}
+  }
+  return null;
+}
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value).replace(/[&<>"']/g, ch => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;'
+  }[ch]));
+}
+
 function timeAgo(timestampSec) {
   const diff = Math.floor(Date.now() / 1000) - timestampSec;
   if (diff < 60)    return diff + 's ago';
@@ -1541,11 +1695,10 @@ function _updatePotEstimate() {
   const burned = pot.sub(winner);
   const el = document.getElementById('potEstimate');
   if (!el) return;
-  const copy = gameCopy();
   el.innerHTML =
-    '<span class="est-pot">' + copy.potHead + ': ' + fmtCashx(pot) + ' CASHX</span>' +
-    '<span class="est-detail">' + (activeTab === 0 ? '🏆 Top card: ~' : '🏆 Winner: ~') + fmtCashx(winner) + ' CASHX</span>' +
-    '<span class="est-detail">🔥 Burned: ~' + fmtCashx(burned) + ' CASHX</span>';
+    '<div class="estimate-row"><span>Total Pot</span><b>' + fmtCashx(pot) + ' CASHX</b></div>' +
+    '<div class="estimate-row"><span>Burn</span><b class="burn-value">' + fmtCashx(burned) + ' CASHX</b></div>' +
+    '<div class="estimate-row"><span>Winner Gets</span><b class="winner-value">' + fmtCashx(winner) + ' CASHX</b></div>';
 }
 
 function _updateCreateBtn() {
@@ -1623,7 +1776,14 @@ selectPlayers(2);
 
 // Multiplayer now opens Card War by default. Legacy Dice Battle links redirect here.
 (function() {
+  window.addEventListener('cashx:approvalPresetChanged', event => {
+    selectApproval(event.detail && event.detail.value);
+  });
+  pendingInviteGameId = getInviteGameIdFromUrl();
   showPlayView(0);
+  if (pendingInviteGameId) {
+    setStatus('Invite loaded for war table #' + pendingInviteGameId + '. Connect your wallet, then join the table.', 'show');
+  }
 })();
 
 // Polling

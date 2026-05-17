@@ -8,6 +8,7 @@ import { AbiCoder, Wallet, getAddress, getBytes, keccak256, toUtf8Bytes } from '
 
 const PORT = Number(process.env.PVP_PORT || 8790);
 const BURN_BPS = 500n;
+const MIN_WAGER = 100n;
 const BPS = 10000n;
 const MAX_MARKS_PER_PLAYER = 3;
 const CONNECT4_COLUMNS = 7;
@@ -643,7 +644,7 @@ function normalizePlayer(value) {
 function normalizeWager(value) {
   if (!/^\d+$/.test(String(value || ''))) throw new Error('Wager must be a whole number');
   const wager = BigInt(String(value || '0'));
-  if (wager <= 0n) throw new Error('Wager must be greater than zero');
+  if (wager < MIN_WAGER) throw new Error('Minimum wager is 100 CASHX');
   return wager;
 }
 

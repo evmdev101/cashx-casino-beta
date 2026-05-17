@@ -11,6 +11,7 @@
     balanceText: '0',
     provider: null,
     signer: null,
+    approvalTarget: null,
   };
   const loadedScripts = new Map();
 
@@ -44,33 +45,72 @@
     style.id = 'cashx-nav-css';
     style.textContent = `
       .topnav.cashx-enhanced-nav {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        right: 0 !important;
+        height: 84px !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: space-between !important;
         gap: 1rem;
+        padding: 0 1.9rem !important;
+        z-index: 600 !important;
         background: rgba(45,28,55,.82) !important;
-        border-bottom-color: rgba(236,75,198,.5) !important;
+        border-bottom: 1px solid rgba(236,75,198,.5) !important;
         box-shadow: 0 10px 34px rgba(12,6,18,.26) !important;
+        backdrop-filter: blur(10px) !important;
+        -webkit-backdrop-filter: blur(10px) !important;
       }
-      .topnav.cashx-enhanced-nav .topnav-brand { flex-shrink: 0; }
+      .topnav.cashx-enhanced-nav .topnav-brand {
+        flex-shrink: 0;
+        font-family: 'Bebas Neue', 'Barlow Condensed', sans-serif !important;
+        font-size: 2rem !important;
+        line-height: 1 !important;
+        letter-spacing: 3px !important;
+        color: var(--gold, #f5a623) !important;
+        text-decoration: none !important;
+        display: flex !important;
+        align-items: baseline !important;
+        gap: .5rem !important;
+      }
+      .topnav.cashx-enhanced-nav .topnav-brand span:not(.topnav-beta) { color: #fff !important; }
+      .topnav.cashx-enhanced-nav .topnav-beta {
+        font-family: 'Michroma', sans-serif !important;
+        font-size: .45rem !important;
+        line-height: 1 !important;
+        letter-spacing: 2px !important;
+        color: var(--purple, #ec4bc6) !important;
+        border: 1px solid rgba(236,75,198,.34) !important;
+        padding: .12rem .3rem !important;
+      }
+      .topnav.cashx-enhanced-nav .nav-links { display: none !important; }
       .topnav.cashx-enhanced-nav .topnav-center {
         position: absolute;
         left: 50%;
         top: 50%;
         transform: translate(-50%, -50%);
-        z-index: 1;
+        z-index: 2;
         display: flex;
-        align-items: center;
+        align-items: center !important;
         justify-content: center;
         pointer-events: none;
       }
       .topnav.cashx-enhanced-nav .topnav-center > * { pointer-events: auto; }
-      .topnav.cashx-enhanced-nav.cashx-wallet-connected .nav-links { display: none; }
+      .topnav.cashx-enhanced-nav.cashx-wallet-connected .nav-links { display: none !important; }
+      .topnav.cashx-enhanced-nav.cashx-wallet-connected #connectBtn,
+      .topnav.cashx-enhanced-nav.cashx-wallet-connected .btn-connect,
+      .topnav.cashx-enhanced-nav.cashx-wallet-connected .connect-btn {
+        display: none !important;
+      }
       .topnav.cashx-enhanced-nav .topnav-right {
         display: flex;
-        align-items: center;
+        align-items: center !important;
         justify-content: flex-end;
         gap: 1rem;
         margin-left: auto;
         position: relative;
-        z-index: 2;
+        z-index: 3;
       }
       #connectBtn.cashx-connect-btn,
       .cashx-enhanced-nav .btn-connect.cashx-connect-btn,
@@ -84,8 +124,8 @@
         padding: .45rem 1.3rem;
         cursor: pointer;
         border-radius: 50px;
-        display: inline-flex;
-        align-items: center;
+        display: inline-flex !important;
+        align-items: center !important;
         justify-content: center;
         gap: .4rem;
         transition: box-shadow .3s, transform .2s, opacity .2s;
@@ -102,7 +142,7 @@
       .wallet-hub {
         position: relative;
         display: none;
-        align-items: center;
+        align-items: center !important;
         padding: .42rem .5rem;
         border: 1px solid rgba(255,255,255,.12);
         border-radius: 999px;
@@ -118,29 +158,53 @@
         border-color: rgba(255,255,255,.2);
         box-shadow: inset 0 1px 0 rgba(255,255,255,.12), 0 16px 30px rgba(0,0,0,.24);
       }
+      .cashier-btn {
+        min-height: 46px;
+        border: 0;
+        border-radius: 999px;
+        padding: .35rem 1.08rem;
+        color: #130717;
+        background: linear-gradient(135deg, #ff4d6d, #f5a623);
+        cursor: pointer;
+        font-family: 'Orbitron', 'Michroma', sans-serif;
+        font-size: .72rem;
+        font-weight: 900;
+        letter-spacing: .6px;
+        text-transform: uppercase;
+        box-shadow: 0 10px 26px rgba(245,166,35,.24);
+        transition: transform .2s ease, box-shadow .2s ease;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 0;
+      }
+      .cashier-btn:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 12px 32px rgba(245,166,35,.34), 0 0 18px rgba(255,77,109,.22);
+      }
       .wallet-account-hub { position: relative; display: none; align-items: center; }
       .wallet-account-hub.visible { display: inline-flex; }
       .wallet-balance-pill,
       .wallet-avatar-btn {
-        cursor: pointer;
         font-family: 'Bebas Neue', 'Barlow Condensed', sans-serif;
         letter-spacing: 1.4px;
         white-space: nowrap;
       }
       .wallet-balance-pill {
-        display: inline-flex;
-        align-items: center;
+        display: inline-flex !important;
+        align-items: center !important;
         gap: .64rem;
-        min-height: 46px;
-        padding: .34rem .88rem .34rem .38rem;
+        min-height: 46px !important;
+        padding: .34rem .88rem .34rem .38rem !important;
         border-radius: 999px;
         color: #fff;
         background: rgba(255,255,255,.07);
         border: 1px solid rgba(255,255,255,.1);
       }
+      .wallet-balance-pill { cursor: default; }
       .wallet-token-mark {
-        width: 34px;
-        height: 34px;
+        width: 34px !important;
+        height: 34px !important;
         border-radius: 50%;
         display: grid;
         place-items: center;
@@ -152,47 +216,17 @@
           rgba(255,255,255,.1);
         box-shadow: 0 0 0 1px rgba(255,255,255,.16), 0 0 14px rgba(255,153,68,.26);
       }
-      .wallet-balance-main { display: flex; align-items: center; text-align: left; line-height: 1; }
+      .wallet-balance-main { display: flex !important; align-items: center !important; text-align: left !important; line-height: 1 !important; }
       .wallet-balance-main span {
-        color: #fff;
-        font-family: 'Barlow Condensed', 'Bebas Neue', sans-serif;
-        font-size: 1.1rem;
-        font-weight: 900;
-        letter-spacing: .8px;
+        color: #fff !important;
+        font-family: 'Barlow Condensed', 'Bebas Neue', sans-serif !important;
+        font-size: 1.1rem !important;
+        font-weight: 900 !important;
+        letter-spacing: .8px !important;
         text-shadow: 0 1px 10px rgba(255,255,255,.24);
       }
-      .wallet-chevron {
-        width: 16px;
-        height: 16px;
-        position: relative;
-        display: inline-block;
-        color: transparent;
-        transform: translateY(1px) rotate(0deg);
-        transition: transform 1s cubic-bezier(.16,1,.3,1);
-      }
-      .wallet-chevron::before {
-        content: '';
-        position: absolute;
-        left: 3px;
-        top: 3px;
-        width: 8px;
-        height: 8px;
-        border-right: 2px solid rgba(255,255,255,.82);
-        border-bottom: 2px solid rgba(255,255,255,.82);
-        border-radius: 1px;
-        transform: rotate(45deg);
-        transition: border-color 1s ease;
-      }
-      .wallet-hub.visible:hover .wallet-chevron,
-      .wallet-hub.menu-open .wallet-chevron,
-      .wallet-balance-pill:hover .wallet-chevron {
-        transform: translateY(-1px) rotate(180deg);
-      }
-      .wallet-hub.visible:hover .wallet-chevron::before,
-      .wallet-hub.menu-open .wallet-chevron::before,
-      .wallet-balance-pill:hover .wallet-chevron::before {
-        border-color: #ffd25a;
-      }
+      .wallet-balance-main span:not([id]) { display: none !important; }
+      .wallet-chevron { display: none; }
       .wallet-avatar-btn {
         width: 46px;
         height: 46px;
@@ -215,6 +249,7 @@
         transform: translateY(-1px);
         box-shadow: 0 0 0 3px rgba(255,31,154,.26), 0 0 24px rgba(200,85,247,.42);
       }
+      .cashier-backdrop,
       .wallet-account-menu,
       .wallet-balance-menu {
         position: absolute;
@@ -225,6 +260,16 @@
         box-shadow: 0 24px 70px rgba(0,0,0,.62);
         z-index: 920;
       }
+      .cashier-backdrop {
+        position: fixed;
+        inset: 0;
+        display: none;
+        background: rgba(8,3,13,.66);
+        backdrop-filter: blur(7px);
+        -webkit-backdrop-filter: blur(7px);
+        z-index: 880;
+      }
+      .cashier-backdrop.open { display: block; }
       .wallet-account-menu {
         width: 190px;
         padding: .48rem;
@@ -237,7 +282,7 @@
         min-height: 44px;
         padding: 0 .95rem;
         display: flex;
-        align-items: center;
+        align-items: center !important;
         border: 0;
         border-radius: 12px;
         color: #fff;
@@ -253,35 +298,252 @@
       .wallet-account-item.danger { color: #ff6b7d; }
       .wallet-account-sep { height: 1px; margin: .25rem 0; background: rgba(255,31,154,.18); }
       .wallet-balance-menu {
-        width: 278px;
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        right: auto;
+        width: min(430px, calc(100vw - 1.5rem));
+        max-height: min(760px, calc(100vh - 2rem));
+        overflow-y: auto;
         border: 1px solid rgba(200,85,247,.32);
         border-radius: 16px;
         padding: .75rem;
         background: rgba(14,7,24,.97);
+        transform: translate(-50%, -50%);
+        z-index: 900;
       }
-      .wallet-balance-menu.open { display: grid; gap: .7rem; animation: cashxNavDropIn .18s ease; }
+      .wallet-balance-menu.open { display: grid; gap: .7rem; animation: cashxNavModalIn .18s ease; }
       @keyframes cashxNavDropIn { from { opacity: 0; transform: translateY(-8px) scale(.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
+      @keyframes cashxNavModalIn { from { opacity: 0; transform: translate(-50%, -48%) scale(.98); } to { opacity: 1; transform: translate(-50%, -50%) scale(1); } }
       .wallet-menu-head { display: flex; align-items: center; justify-content: space-between; gap: .7rem; padding-bottom: .65rem; border-bottom: 1px solid rgba(255,255,255,.08); }
       .wallet-menu-head b { font-family: 'Bebas Neue', 'Barlow Condensed', sans-serif; font-size: 1.15rem; letter-spacing: 1.5px; color: #fff; }
       .wallet-menu-address { color: rgba(220,224,240,.58); font-family: 'Space Mono', monospace; font-size: .68rem; }
+      .cashier-close {
+        width: 34px;
+        height: 34px;
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 50%;
+        color: rgba(255,255,255,.78);
+        background: rgba(255,255,255,.06);
+        cursor: pointer;
+        font-size: 1.2rem;
+        line-height: 1;
+      }
+      .cashier-close:hover { color: #fff; border-color: rgba(255,77,109,.34); background: rgba(255,77,109,.12); }
       .wallet-menu-balance { padding: .85rem; border-radius: 12px; border: 1px solid rgba(245,166,35,.18); background: rgba(245,166,35,.06); }
       .wallet-menu-balance span { display: block; color: rgba(220,224,240,.62); font-family: 'Michroma', sans-serif; font-size: .48rem; letter-spacing: 1.6px; text-transform: uppercase; margin-bottom: .35rem; }
       .wallet-menu-balance strong { color: var(--amber, #f5a623); font-family: 'Orbitron', 'Space Mono', monospace; font-size: .95rem; }
+      .wallet-approval-remaining {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: .35rem .75rem;
+        padding: .78rem .85rem;
+        border-radius: 12px;
+        border: 1px solid rgba(137,255,189,.16);
+        background: rgba(137,255,189,.045);
+      }
+      .wallet-approval-remaining span {
+        color: rgba(220,224,240,.62);
+        font-family: 'Michroma', sans-serif;
+        font-size: .47rem;
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+      }
+      .wallet-approval-remaining strong {
+        color: rgba(137,255,189,.95);
+        font-family: 'Orbitron', 'Space Mono', monospace;
+        font-size: .84rem;
+        text-align: right;
+      }
+      .wallet-approval-remaining small {
+        grid-column: 1 / -1;
+        color: rgba(220,224,240,.62);
+        font-size: .68rem;
+        line-height: 1.3;
+      }
+      .wallet-revoke-btn {
+        grid-column: 1 / -1;
+        min-height: 32px;
+        margin-top: .25rem;
+        border: 1px solid rgba(255,68,85,.28);
+        border-radius: 9px;
+        color: rgba(255,117,133,.95);
+        background: rgba(255,68,85,.08);
+        cursor: pointer;
+        font-family: 'Rajdhani', 'Barlow Condensed', sans-serif;
+        font-weight: 800;
+        letter-spacing: .8px;
+      }
+      .wallet-revoke-btn:hover { color: #fff; border-color: rgba(255,68,85,.45); background: rgba(255,68,85,.14); }
+      .wallet-revoke-btn:disabled { opacity: .55; cursor: wait; }
+      .wallet-menu-section { padding: .2rem 0 .1rem; }
+      .wallet-menu-section-title {
+        color: rgba(220,224,240,.62);
+        font-family: 'Michroma', sans-serif;
+        font-size: .48rem;
+        letter-spacing: 1.6px;
+        text-transform: uppercase;
+        margin-bottom: .45rem;
+      }
+      .wallet-approval-intro {
+        display: grid;
+        gap: .45rem;
+        padding: .72rem;
+        margin-bottom: .58rem;
+        border: 1px solid rgba(200,85,247,.22);
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(200,85,247,.12), rgba(245,166,35,.06));
+      }
+      .wallet-approval-intro strong {
+        color: #fff;
+        font-family: 'Rajdhani', 'Barlow Condensed', sans-serif;
+        font-size: .94rem;
+        letter-spacing: .5px;
+      }
+      .wallet-approval-intro span {
+        color: rgba(220,224,240,.7);
+        font-size: .72rem;
+        line-height: 1.35;
+      }
+      .wallet-approval-summary {
+        display: grid;
+        grid-template-columns: 1fr auto;
+        gap: .4rem .75rem;
+        align-items: center;
+        padding: .68rem .72rem;
+        margin: .58rem 0;
+        border: 1px solid rgba(245,166,35,.22);
+        border-radius: 12px;
+        background: rgba(245,166,35,.07);
+      }
+      .wallet-approval-summary span {
+        color: rgba(220,224,240,.58);
+        font-family: 'Michroma', sans-serif;
+        font-size: .47rem;
+        letter-spacing: 1.3px;
+        text-transform: uppercase;
+      }
+      .wallet-approval-summary strong {
+        color: #ffbf3a;
+        font-family: 'Orbitron', 'Space Mono', monospace;
+        font-size: .82rem;
+        text-align: right;
+      }
+      .wallet-approval-summary p {
+        grid-column: 1 / -1;
+        margin: 0;
+        color: rgba(220,224,240,.68);
+        font-size: .7rem;
+        line-height: 1.35;
+      }
+      .wallet-approval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+      .wallet-approval-btn {
+        min-height: 34px;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 9px;
+        color: rgba(220,224,240,.86);
+        background: rgba(255,255,255,.05);
+        cursor: pointer;
+        font-family: 'Rajdhani', 'Barlow Condensed', sans-serif;
+        font-weight: 800;
+        letter-spacing: .8px;
+      }
+      .wallet-approval-btn:hover { color: #fff; border-color: rgba(245,166,35,.42); background: rgba(245,166,35,.1); }
+      .wallet-approval-btn.active {
+        color: #0b0612;
+        border-color: rgba(245,166,35,.82);
+        background: linear-gradient(135deg, #f5a623, #ffbf3a);
+      }
+      .wallet-approval-custom {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) auto;
+        gap: .45rem;
+        margin-top: .5rem;
+      }
+      .wallet-approval-custom input {
+        min-width: 0;
+        border: 1px solid rgba(255,255,255,.1);
+        border-radius: 9px;
+        color: #fff;
+        background: rgba(255,255,255,.05);
+        padding: .5rem .6rem;
+        font-family: 'Space Mono', monospace;
+        font-size: .78rem;
+        outline: none;
+      }
+      .wallet-approval-custom input:focus { border-color: rgba(245,166,35,.62); box-shadow: 0 0 0 2px rgba(245,166,35,.1); }
+      .wallet-approval-custom button {
+        min-height: 34px;
+        border: 1px solid rgba(245,166,35,.4);
+        border-radius: 9px;
+        color: #0b0612;
+        background: linear-gradient(135deg, #f5a623, #ffbf3a);
+        cursor: pointer;
+        font-family: 'Rajdhani', 'Barlow Condensed', sans-serif;
+        font-weight: 900;
+        letter-spacing: .8px;
+        padding: 0 .72rem;
+      }
+      .wallet-approval-confirm {
+        width: 100%;
+        min-height: 40px;
+        margin-top: .55rem;
+        border: 1px solid rgba(245,166,35,.48);
+        border-radius: 10px;
+        color: #120713;
+        background: linear-gradient(135deg, #f5a623, #ffbf3a);
+        cursor: pointer;
+        font-family: 'Rajdhani', 'Barlow Condensed', sans-serif;
+        font-weight: 900;
+        letter-spacing: .8px;
+      }
+      .wallet-approval-confirm:disabled { opacity: .55; cursor: wait; }
+      .wallet-approval-safety {
+        display: grid;
+        gap: .32rem;
+        margin: .6rem 0 .1rem;
+        padding: .62rem .68rem;
+        border: 1px solid rgba(255,255,255,.08);
+        border-radius: 12px;
+        background: rgba(255,255,255,.035);
+      }
+      .wallet-approval-safety span {
+        color: rgba(220,224,240,.68);
+        font-size: .69rem;
+        line-height: 1.3;
+      }
+      .wallet-approval-safety b { color: #fff; font-weight: 800; }
+      .wallet-menu-note { color: rgba(220,224,240,.54); font-size: .7rem; line-height: 1.35; margin-top: .45rem; }
+      .wallet-menu-note.success { color: rgba(137,255,189,.88); }
       .wallet-menu-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
       .wallet-menu-action { min-height: 36px; border: 1px solid rgba(255,255,255,.1); border-radius: 9px; color: rgba(220,224,240,.86); background: rgba(255,255,255,.05); cursor: pointer; font-family: 'Rajdhani', 'Barlow Condensed', sans-serif; font-weight: 700; letter-spacing: .8px; }
       .wallet-menu-action:hover { color: #fff; border-color: rgba(200,85,247,.38); background: rgba(200,85,247,.12); }
       .wallet-menu-action.danger:hover { color: var(--red, #ff4455); border-color: rgba(255,68,85,.34); background: rgba(255,68,85,.1); }
       @media (max-width: 820px) {
-        .topnav.cashx-enhanced-nav { padding-left: 1rem; padding-right: 1rem; }
+        .topnav.cashx-enhanced-nav {
+          height: auto !important;
+          min-height: 84px !important;
+          flex-wrap: wrap !important;
+          padding: .8rem 1rem !important;
+        }
         .topnav.cashx-enhanced-nav .topnav-brand { font-size: 1.45rem; letter-spacing: 2px; }
-        .topnav.cashx-enhanced-nav .topnav-center { position: static; transform: none; order: 3; width: 100%; margin-top: .5rem; }
+        .topnav.cashx-enhanced-nav .topnav-center {
+          position: static !important;
+          left: auto !important;
+          top: auto !important;
+          transform: none !important;
+          order: 3 !important;
+          flex: 0 0 100% !important;
+          width: 100% !important;
+          margin-top: .5rem;
+        }
         .topnav.cashx-enhanced-nav .topnav-right { gap: .5rem; }
         .wallet-hub { gap: .35rem; padding: .28rem; }
         .wallet-balance-pill { min-height: 40px; padding: .3rem .62rem .3rem .32rem; }
         .wallet-token-mark { width: 30px; height: 30px; }
         .wallet-balance-main span { font-size: .95rem; }
         .wallet-avatar-btn { width: 40px; height: 40px; }
-        .wallet-balance-menu { right: -.5rem; width: min(280px, calc(100vw - 1.5rem)); }
+        .cashier-btn { min-height: 40px; padding: .3rem .82rem .3rem .68rem; }
       }
     `;
     document.head.appendChild(style);
@@ -335,26 +597,69 @@
     }
 
     bindConnectButton(connectBtn);
+    bindApprovalButtons();
+    normalizeExistingWalletPill();
+    observeBalanceText();
+    hideConnectedAddressButton();
   }
 
   function walletHubMarkup() {
     return `
       <div class="wallet-hub" id="walletHub">
-        <button class="wallet-balance-pill" type="button" onclick="CashXNav.toggleBalanceMenu(event)" aria-label="Open wallet balance">
+        <div class="wallet-balance-pill" aria-label="CASHX balance">
           <span class="wallet-token-mark" aria-hidden="true">CASHX</span>
           <span class="wallet-balance-main">
             <span id="topCashxBalance">0</span>
           </span>
-          <span class="wallet-chevron" aria-hidden="true">⌄</span>
-        </button>
+        </div>
+        <button class="cashier-btn" id="cashierBtn" type="button" onclick="CashXNav.openCashier(event)">Cashier</button>
+        <div class="cashier-backdrop" id="cashierBackdrop" onclick="CashXNav.closeBalanceMenu()"></div>
         <div class="wallet-balance-menu" id="walletBalanceMenu">
           <div class="wallet-menu-head">
-            <b>CASHX Wallet</b>
-            <span class="wallet-menu-address" id="walletMenuAddress">--</span>
+            <div>
+              <b>Cashier</b>
+              <div class="wallet-menu-address" id="walletMenuAddress">--</div>
+            </div>
+            <button class="cashier-close" type="button" onclick="CashXNav.closeBalanceMenu()" aria-label="Close cashier">×</button>
           </div>
           <div class="wallet-menu-balance">
             <span>Available Balance</span>
             <strong id="walletMenuBalance">0</strong>
+          </div>
+          <div class="wallet-approval-remaining">
+            <span>Approved Remaining</span>
+            <strong id="walletApprovalRemaining">--</strong>
+            <small id="walletApprovalTarget">Open a game to view its approved allowance.</small>
+            <button class="wallet-revoke-btn" id="walletApprovalRevoke" type="button">Revoke Approval</button>
+          </div>
+          <div class="wallet-menu-section">
+            <div class="wallet-menu-section-title">Game Approval</div>
+            <div class="wallet-approval-intro">
+              <strong>Choose how much games may use</strong>
+              <span>This is a wallet allowance, not a deposit. Your CASHX stays in your wallet until you create or join a game.</span>
+            </div>
+            <div class="wallet-approval-grid">
+              <button class="wallet-approval-btn active" type="button" data-approval="bet">This Bet</button>
+              <button class="wallet-approval-btn" type="button" data-approval="10000">10K</button>
+              <button class="wallet-approval-btn" type="button" data-approval="100000">100K</button>
+              <button class="wallet-approval-btn" type="button" data-approval="1000000">1M</button>
+            </div>
+            <div class="wallet-approval-summary">
+              <span>Selected limit</span>
+              <strong id="walletApprovalSelected">This bet only</strong>
+              <p id="walletApprovalDescription">You will only approve the amount needed for the next game you start or join.</p>
+            </div>
+            <div class="wallet-approval-custom">
+              <input id="walletApprovalCustom" type="number" min="100" max="1000000" step="100" placeholder="Custom amount" />
+              <button type="button" id="walletApprovalApply">Set</button>
+            </div>
+            <button class="wallet-approval-confirm" id="walletApprovalConfirm" type="button">Approve Selected Limit</button>
+            <div class="wallet-approval-safety">
+              <span><b>What you approve:</b> the maximum CASHX the game contract may spend for future game entries.</span>
+              <span><b>What does not happen:</b> selecting a limit does not send CASHX or start a game.</span>
+              <span><b>When funds move:</b> only after you confirm a create or join transaction in your wallet.</span>
+            </div>
+            <div class="wallet-menu-note" id="walletApprovalFeedback">Custom approval must be 100 to 1,000,000 CASHX.</div>
           </div>
           <div class="wallet-menu-actions">
             <button class="wallet-menu-action" type="button" onclick="CashXNav.copyAddressFromMenu()">Copy</button>
@@ -391,6 +696,90 @@
       setTimeout(refreshFromWallet, 1200);
       setTimeout(refreshFromWallet, 3200);
     }, true);
+  }
+
+  function bindApprovalButtons() {
+    const menu = byId('walletBalanceMenu');
+    if (menu && !menu.__cashxApprovalDelegated) {
+      menu.__cashxApprovalDelegated = true;
+      menu.addEventListener('click', event => {
+        const presetBtn = event.target.closest('.wallet-approval-btn');
+        if (presetBtn && menu.contains(presetBtn)) {
+          event.preventDefault();
+          event.stopPropagation();
+          selectApprovalPreset(presetBtn.dataset.approval, true);
+          return;
+        }
+        const applyBtn = event.target.closest('#walletApprovalApply');
+        if (applyBtn && menu.contains(applyBtn)) {
+          event.preventDefault();
+          event.stopPropagation();
+          const customInput = byId('walletApprovalCustom');
+          selectApprovalPreset(customInput ? customInput.value : 'bet', true);
+          return;
+        }
+        const confirmBtn = event.target.closest('#walletApprovalConfirm');
+        if (confirmBtn && menu.contains(confirmBtn)) {
+          event.preventDefault();
+          event.stopPropagation();
+          approveSelectedLimit();
+          return;
+        }
+        const revokeBtn = event.target.closest('#walletApprovalRevoke');
+        if (revokeBtn && menu.contains(revokeBtn)) {
+          event.preventDefault();
+          event.stopPropagation();
+          revokeApproval();
+        }
+      });
+    }
+    document.querySelectorAll('.wallet-approval-btn').forEach(btn => {
+      if (btn.__cashxApprovalBound) return;
+      btn.__cashxApprovalBound = true;
+      btn.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectApprovalPreset(btn.dataset.approval, true);
+      });
+    });
+    const customInput = byId('walletApprovalCustom');
+    const applyBtn = byId('walletApprovalApply');
+    if (applyBtn && !applyBtn.__cashxApprovalBound) {
+      applyBtn.__cashxApprovalBound = true;
+      applyBtn.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        selectApprovalPreset(customInput ? customInput.value : 'bet', true);
+      });
+    }
+    const confirmBtn = byId('walletApprovalConfirm');
+    if (confirmBtn && !confirmBtn.__cashxApprovalBound) {
+      confirmBtn.__cashxApprovalBound = true;
+      confirmBtn.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        approveSelectedLimit();
+      });
+    }
+    const revokeBtn = byId('walletApprovalRevoke');
+    if (revokeBtn && !revokeBtn.__cashxApprovalBound) {
+      revokeBtn.__cashxApprovalBound = true;
+      revokeBtn.addEventListener('click', event => {
+        event.preventDefault();
+        event.stopPropagation();
+        revokeApproval();
+      });
+    }
+    if (customInput && !customInput.__cashxApprovalBound) {
+      customInput.__cashxApprovalBound = true;
+      customInput.addEventListener('click', event => event.stopPropagation());
+      customInput.addEventListener('keydown', event => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          selectApprovalPreset(customInput.value, true);
+        }
+      });
+    }
   }
 
   async function connectWallet() {
@@ -516,6 +905,7 @@
 
     try { localStorage.setItem('cashx:walletConnected', '1'); } catch (_) {}
     await refreshCashxBalance();
+    await refreshApprovalAllowance();
   }
 
   async function refreshCashxBalance() {
@@ -542,8 +932,45 @@
     return n.toLocaleString(undefined, { maximumFractionDigits });
   }
 
+  function hideConnectedAddressButton() {
+    const nav = document.querySelector('.topnav');
+    if (!nav || !nav.classList.contains('cashx-wallet-connected')) return;
+    const connectBtn = byId('connectBtn');
+    if (!connectBtn) return;
+    connectBtn.style.setProperty('display', 'none', 'important');
+    connectBtn.setAttribute('aria-hidden', 'true');
+    connectBtn.tabIndex = -1;
+  }
+  function cleanBalanceText(text) {
+    return String(text || '0')
+      .replace(/\s*CASHX\b/gi, '')
+      .trim() || '0';
+  }
+
+  function normalizeExistingWalletPill() {
+    document.querySelectorAll('.wallet-balance-main span:not([id])').forEach(el => {
+      el.style.display = 'none';
+    });
+    document.querySelectorAll('#topCashxBalance, #walletMenuBalance').forEach(el => {
+      const clean = cleanBalanceText(el.textContent);
+      if (el.textContent !== clean) el.textContent = clean;
+    });
+  }
+
+  function observeBalanceText() {
+    ['topCashxBalance', 'walletMenuBalance'].forEach(id => {
+      const el = byId(id);
+      if (!el || el.__cashxBalanceObserver) return;
+      el.__cashxBalanceObserver = true;
+      new MutationObserver(() => {
+        const clean = cleanBalanceText(el.textContent);
+        if (el.textContent !== clean) el.textContent = clean;
+      }).observe(el, { childList: true, characterData: true, subtree: true });
+    });
+  }
+
   function updateCashxWalletBalance(text) {
-    state.balanceText = text || '0';
+    state.balanceText = cleanBalanceText(text);
     ['topCashxBalance', 'walletMenuBalance'].forEach(id => {
       const el = byId(id);
       if (el) el.textContent = state.balanceText;
@@ -561,6 +988,8 @@
   function closeBalanceMenu() {
     const menu = byId('walletBalanceMenu');
     if (menu) menu.classList.remove('open');
+    const backdrop = byId('cashierBackdrop');
+    if (backdrop) backdrop.classList.remove('open');
     document.removeEventListener('click', balanceOutsideClick);
   }
 
@@ -570,14 +999,27 @@
     document.removeEventListener('click', accountOutsideClick);
   }
 
-  function toggleBalanceMenu(event) {
+  function openCashier(event) {
     if (event) event.stopPropagation();
     closeAccountMenu();
     const menu = byId('walletBalanceMenu');
     if (!menu) return;
-    const isOpen = menu.classList.toggle('open');
-    if (isOpen) setTimeout(() => document.addEventListener('click', balanceOutsideClick), 10);
-    else document.removeEventListener('click', balanceOutsideClick);
+    bindApprovalButtons();
+    const backdrop = byId('cashierBackdrop');
+    if (backdrop && backdrop.parentElement !== document.body) document.body.appendChild(backdrop);
+    if (menu.parentElement !== document.body) document.body.appendChild(menu);
+    syncApprovalButtons();
+    refreshApprovalAllowance();
+    menu.classList.add('open');
+    if (backdrop) backdrop.classList.add('open');
+    setTimeout(() => document.addEventListener('click', balanceOutsideClick), 10);
+  }
+
+  function toggleBalanceMenu(event) {
+    if (event) event.stopPropagation();
+    const menu = byId('walletBalanceMenu');
+    if (menu && menu.classList.contains('open')) closeBalanceMenu();
+    else openCashier(event);
   }
 
   function toggleAccountMenu(event) {
@@ -591,7 +1033,7 @@
   }
 
   function balanceOutsideClick(event) {
-    if (!event.target.closest('#walletHub')) closeBalanceMenu();
+    if (!event.target.closest('#walletBalanceMenu') && !event.target.closest('#cashierBtn')) closeBalanceMenu();
   }
 
   function accountOutsideClick(event) {
@@ -603,6 +1045,242 @@
     navigator.clipboard && navigator.clipboard.writeText(state.address);
     closeBalanceMenu();
     closeAccountMenu();
+  }
+
+  function getApprovalPreset() {
+    try {
+      return localStorage.getItem('cashx:approvalPreset') || 'bet';
+    } catch (_) {
+      return 'bet';
+    }
+  }
+
+  function selectApprovalPreset(value, showFeedback) {
+    const next = normalizeApprovalPreset(value);
+    try { localStorage.setItem('cashx:approvalPreset', next); } catch (_) {}
+    syncApprovalButtons(next, showFeedback);
+    window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: next } }));
+  }
+
+  async function approveSelectedLimit() {
+    const feedbackEl = byId('walletApprovalFeedback');
+    const confirmBtn = byId('walletApprovalConfirm');
+    try {
+      await ensureWalletTools();
+      if (!state.address) await connectWallet();
+      if (!state.address) throw new Error('Connect your wallet first.');
+
+      const target = getApprovalTarget();
+      if (!target || !target.address) throw new Error('Open a game to approve that game contract.');
+
+      const amountWei = getSelectedApprovalAmountWei();
+      if (!amountWei) throw new Error('Choose an approval amount first.');
+
+      if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.textContent = 'Approving...';
+      }
+      if (feedbackEl) {
+        feedbackEl.textContent = 'Confirm approval in your wallet for ' + target.label + '.';
+        feedbackEl.classList.remove('success');
+      }
+
+      const signer = await getSigner();
+      const cashx = new ethers.Contract(
+        window.CashX.config.addresses.cashxToken,
+        window.CashX.abis.ERC20,
+        signer
+      );
+      const tx = await cashx.approve(target.address, amountWei);
+      if (feedbackEl) feedbackEl.textContent = 'Waiting for approval confirmation...';
+      await tx.wait();
+      if (feedbackEl) {
+        feedbackEl.textContent = 'Approved ' + formatCashxBalance(amountWei) + ' CASHX for ' + target.label + '.';
+        feedbackEl.classList.add('success');
+      }
+      await refreshApprovalAllowance();
+    } catch (err) {
+      if (feedbackEl) {
+        feedbackEl.textContent = readableApprovalError(err);
+        feedbackEl.classList.remove('success');
+      }
+    } finally {
+      if (confirmBtn) {
+        confirmBtn.disabled = false;
+        confirmBtn.textContent = 'Approve Selected Limit';
+      }
+    }
+  }
+
+  async function revokeApproval() {
+    const feedbackEl = byId('walletApprovalFeedback');
+    const revokeBtn = byId('walletApprovalRevoke');
+    try {
+      await ensureWalletTools();
+      if (!state.address) await connectWallet();
+      if (!state.address) throw new Error('Connect your wallet first.');
+
+      const target = getApprovalTarget();
+      if (!target || !target.address) throw new Error('Open a game to revoke that game contract.');
+
+      if (revokeBtn) {
+        revokeBtn.disabled = true;
+        revokeBtn.textContent = 'Revoking...';
+      }
+      if (feedbackEl) {
+        feedbackEl.textContent = 'Confirm revoke approval in your wallet for ' + target.label + '.';
+        feedbackEl.classList.remove('success');
+      }
+
+      const signer = await getSigner();
+      const cashx = new ethers.Contract(
+        window.CashX.config.addresses.cashxToken,
+        window.CashX.abis.ERC20,
+        signer
+      );
+      const tx = await cashx.approve(target.address, 0);
+      if (feedbackEl) feedbackEl.textContent = 'Waiting for revoke confirmation...';
+      await tx.wait();
+      if (feedbackEl) {
+        feedbackEl.textContent = 'Approval revoked for ' + target.label + '.';
+        feedbackEl.classList.add('success');
+      }
+      await refreshApprovalAllowance();
+    } catch (err) {
+      if (feedbackEl) {
+        feedbackEl.textContent = readableApprovalError(err);
+        feedbackEl.classList.remove('success');
+      }
+    } finally {
+      if (revokeBtn) {
+        revokeBtn.disabled = false;
+        revokeBtn.textContent = 'Revoke Approval';
+      }
+    }
+  }
+
+  async function refreshApprovalAllowance() {
+    const remainingEl = byId('walletApprovalRemaining');
+    const targetEl = byId('walletApprovalTarget');
+    const target = getApprovalTarget();
+    state.approvalTarget = target;
+
+    if (targetEl) {
+      targetEl.textContent = target && target.address
+        ? 'Allowance for ' + target.label + ' only. Winnings pay back to your wallet.'
+        : 'Open a game to view that game allowance.';
+    }
+    if (!remainingEl) return;
+    if (!target || !target.address || !state.address) {
+      remainingEl.textContent = '--';
+      return;
+    }
+
+    try {
+      await ensureWalletTools();
+      const provider = state.provider || (window.CashX && window.CashX.contracts && window.CashX.contracts.getProvider && window.CashX.contracts.getProvider());
+      const cashx = new ethers.Contract(
+        window.CashX.config.addresses.cashxToken,
+        window.CashX.abis.ERC20,
+        provider
+      );
+      const allowance = await cashx.allowance(state.address, target.address);
+      remainingEl.textContent = formatCashxBalance(allowance) + ' CASHX';
+    } catch (_) {
+      remainingEl.textContent = 'Unavailable';
+    }
+  }
+
+  async function getSigner() {
+    if (state.signer) return state.signer;
+    if (!window.ethereum) throw new Error('No wallet detected.');
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    state.provider = provider;
+    state.signer = provider.getSigner();
+    state.address = await state.signer.getAddress();
+    return state.signer;
+  }
+
+  function getApprovalTarget() {
+    const cfg = window.CashX && window.CashX.config;
+    const path = window.location.pathname.toLowerCase();
+    if (!cfg || !cfg.contracts) return null;
+    if (path.endsWith('/dice.html') || path.includes('/dice.html')) {
+      return { label: 'CASHX Dice', address: cfg.contracts.diceGame };
+    }
+    if (path.includes('/mines-game/live.html')) {
+      return { label: 'Live Mines', address: cfg.contracts.liveMinesGame };
+    }
+    if (path.endsWith('/connect4.html') || path.includes('/connect4.html')) {
+      return { label: 'Connect Four', address: cfg.contracts.pvpWager };
+    }
+    return null;
+  }
+
+  function getSelectedApprovalAmountWei() {
+    const selected = getApprovalPreset();
+    if (selected === 'bet') {
+      const betInput = byId('betAmount') || byId('betInput') || byId('wagerInput');
+      const rawBet = String(betInput && betInput.value ? betInput.value : '0').trim().replace(/,/g, '');
+      if (!/^\d+(\.\d+)?$/.test(rawBet) || Number(rawBet) <= 0) return null;
+      return ethers.utils.parseUnits(rawBet, 18);
+    }
+    const normalized = normalizeApprovalPreset(selected);
+    if (normalized === 'bet') return null;
+    return ethers.utils.parseUnits(normalized, 18);
+  }
+
+  function readableApprovalError(err) {
+    const raw = err && (err.reason || (err.data && err.data.message) || err.message);
+    if (/user rejected|denied|cancel/i.test(raw || '')) return 'Approval cancelled in wallet.';
+    return raw || 'Approval failed. Try again.';
+  }
+
+  function syncApprovalButtons(value, showFeedback) {
+    const selected = value || getApprovalPreset();
+    document.querySelectorAll('.wallet-approval-btn').forEach(btn => {
+      btn.classList.toggle('active', String(btn.dataset.approval) === selected);
+    });
+    const customInput = byId('walletApprovalCustom');
+    if (customInput) {
+      customInput.value = ['bet', '10000', '100000', '1000000'].includes(selected) ? '' : selected;
+    }
+    const summary = getApprovalSummary(selected);
+    const selectedEl = byId('walletApprovalSelected');
+    const descriptionEl = byId('walletApprovalDescription');
+    const feedbackEl = byId('walletApprovalFeedback');
+    if (selectedEl) selectedEl.textContent = summary.label;
+    if (descriptionEl) descriptionEl.textContent = summary.description;
+    if (feedbackEl) {
+      feedbackEl.textContent = showFeedback ? summary.feedback : 'Custom approval must be 100 to 1,000,000 CASHX.';
+      feedbackEl.classList.toggle('success', !!showFeedback);
+    }
+  }
+
+  function normalizeApprovalPreset(value) {
+    const raw = String(value || 'bet').trim().replace(/,/g, '');
+    if (raw === 'bet' || raw.toLowerCase() === 'this bet') return 'bet';
+    if (!/^\d+(\.\d+)?$/.test(raw)) return 'bet';
+    const amount = Math.max(100, Math.min(1000000, Math.floor(Number(raw))));
+    if (!Number.isFinite(amount)) return 'bet';
+    return String(amount);
+  }
+
+  function getApprovalSummary(value) {
+    if (value === 'bet') {
+      return {
+        label: 'This bet only',
+        description: 'You will only approve the amount needed for the next game you start or join.',
+        feedback: 'Approval limit set to this bet only.',
+      };
+    }
+    const amount = Number(value || 0);
+    const formatted = amount.toLocaleString();
+    return {
+      label: formatted + ' CASHX',
+      description: 'You can play multiple games until your approved allowance is used. Unused CASHX remains in your wallet.',
+      feedback: 'Approval limit set to ' + formatted + ' CASHX.',
+    };
   }
 
   function openAccountFromMenu() {
@@ -654,6 +1332,11 @@
     injectStyles();
     ensureTopnav();
     bindWalletEvents();
+    normalizeExistingWalletPill();
+    observeBalanceText();
+    hideConnectedAddressButton();
+    syncApprovalButtons();
+    setInterval(hideConnectedAddressButton, 700);
     setTimeout(refreshFromWallet, 250);
     setTimeout(refreshFromWallet, 1800);
   }
@@ -661,6 +1344,7 @@
   window.CashXNav = {
     connectWallet,
     toggleBalanceMenu,
+    openCashier,
     toggleAccountMenu,
     closeBalanceMenu,
     closeAccountMenu,
@@ -669,7 +1353,10 @@
     disconnectWallet,
     updateCashxWalletBalance,
     refreshCashxBalance,
+    refreshApprovalAllowance,
     applyConnectedWallet,
+    selectApprovalPreset,
+    getApprovalPreset,
   };
 
   if (!window.toggleBalanceMenu) window.toggleBalanceMenu = toggleBalanceMenu;
@@ -681,6 +1368,13 @@
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
   else boot();
 }());
+
+
+
+
+
+
+
 
 
 

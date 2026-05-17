@@ -46,12 +46,21 @@
           <output id="balanceOutput">Connect wallet</output>
         </label>
 
-        <label class="field">
-          <span>Bet Amount</span>
-          <div class="stepper">
-            <button type="button" id="halveBetBtn">-</button>
-            <input id="betInput" type="number" min="500" max="1000" step="100" value="500" inputmode="numeric" />
-            <button type="button" id="doubleBetBtn">+</button>
+        <label class="field bet-field">
+          <span class="bet-head">
+            <span>Bet Amount</span>
+            <span class="bet-limit" id="betLimitsDisplay">Min 1 · Max 5,000 CASHX</span>
+          </span>
+          <input id="betInput" type="number" min="1" max="5000" step="1" value="" placeholder="Enter CASHX amount..." inputmode="decimal" />
+          <div class="quick-bets">
+            <button type="button" class="quick-bet" data-quick-bet="1000">1K</button>
+            <button type="button" class="quick-bet" data-quick-bet="2500">2.5K</button>
+            <button type="button" class="quick-bet" data-quick-bet="max">MAX</button>
+          </div>
+          <div class="bet-preview" id="betPreview">
+            <div class="bet-preview-row"><span>Total Pot</span><strong id="previewTotalPot">—</strong></div>
+            <div class="bet-preview-row"><span>Burn</span><strong class="burn-value" id="previewBurn">—</strong></div>
+            <div class="bet-preview-row"><span>Winner Gets</span><strong class="winner-value" id="previewWinnerGets">—</strong></div>
           </div>
         </label>
 
@@ -166,7 +175,7 @@
         <span class="section-title">YOUR MINES GAMES</span>
         <span class="live-tag">● Connected wallet</span>
       </div>
-      <div class="table-wrap">
+      <div class="table-wrap table-scroll">
         <table>
           <thead>
             <tr>

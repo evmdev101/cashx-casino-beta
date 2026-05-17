@@ -22,7 +22,7 @@ contract MinesGame {
     uint256 public constant REVEAL_DEADLINE_BLOCKS = 250;
 
     address public owner;
-    uint256 public minBet = 500 * 1e18;
+    uint256 public minBet = 1 * 1e18;
     uint256 public maxBet = 5_000 * 1e18;
     uint256 public maxPayout = 25_000 * 1e18;
     uint256 public minPoolReserve = 25_000 * 1e18;

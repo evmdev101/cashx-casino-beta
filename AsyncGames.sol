@@ -12,7 +12,7 @@ contract AsyncGames {
     IERC20 public constant CASHX = IERC20(0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665);
     address public constant BURN_ADDRESS = 0x000000000000000000000000000000000000dEaD;
 
-    uint256 public constant MIN_ENTRY =       500 * 1e18;
+    uint256 public constant MIN_ENTRY =       100 * 1e18;
     uint256 public constant MAX_ENTRY = 1_000_000 * 1e18;
 
     uint256 public constant TIMEOUT = 7 days;

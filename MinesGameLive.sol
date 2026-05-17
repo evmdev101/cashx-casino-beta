@@ -23,7 +23,7 @@ contract MinesGameLive {
 
     address public owner;
     address public gameSigner;
-    uint256 public minBet = 500 * 1e18;
+    uint256 public minBet = 1 * 1e18;
     uint256 public maxBet = 5_000 * 1e18;
     uint256 public maxPayout = 25_000 * 1e18;
     uint256 public minPoolReserve = 25_000 * 1e18;

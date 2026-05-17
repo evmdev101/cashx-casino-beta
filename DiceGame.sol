@@ -20,7 +20,7 @@ contract DiceGame {
 
     // State
     address public owner;
-    uint256 public minBet     = 500     * 1e18;   // 500 CASHX
+    uint256 public minBet     = 1       * 1e18;   // 1 CASHX
     uint256 public maxBet     = 5_000   * 1e18;   // 5,000 CASHX
     uint256 public totalBurned;
     uint256 public betCount;

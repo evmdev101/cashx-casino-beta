@@ -378,6 +378,12 @@ select {
   background: rgba(5, 2, 12, .72);
 }
 
+.bet-field {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
 .compact-field {
   padding: 10px 12px;
 }
@@ -392,6 +398,19 @@ select {
   font-size: .58rem;
   letter-spacing: 1.5px;
   text-transform: uppercase;
+}
+
+.bet-field > .bet-head {
+  margin-bottom: .45rem;
+  color: var(--text-dim);
+  letter-spacing: 2.2px;
+}
+
+.bet-head .bet-limit {
+  color: rgba(221,224,240,.78);
+  font-family: "Space Mono", monospace;
+  font-size: .62rem;
+  letter-spacing: 1.4px;
 }
 
 output {
@@ -413,11 +432,112 @@ select {
   font-weight: 700;
 }
 
+.bet-field input {
+  min-height: 50px;
+  margin-bottom: .5rem;
+  border-color: rgba(200,85,247,.58);
+  border-radius: 10px;
+  color: var(--gold);
+  background: rgba(5,2,12,.62);
+  font-family: "Orbitron", monospace;
+  font-size: .94rem;
+}
+
+.bet-field input::placeholder {
+  color: rgba(221,224,240,.68);
+}
+
+.bet-field input::-webkit-outer-spin-button,
+.bet-field input::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.bet-field input[type="number"] {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+
 input:focus,
 select:focus {
   border-color: var(--pink);
   box-shadow: 0 0 0 3px rgba(255, 31, 154, .16);
 }
+
+.bet-field input:focus {
+  border-color: var(--purple);
+  box-shadow: 0 0 16px rgba(200,85,247,.22);
+}
+
+.quick-bets {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .45rem;
+}
+
+.quick-bet {
+  min-height: 30px;
+  border: 1px solid rgba(200,85,247,.36);
+  border-radius: 7px;
+  color: rgba(221,224,240,.84);
+  background: rgba(5,2,12,.78);
+  font-family: "Rajdhani", sans-serif;
+  font-size: .82rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  cursor: pointer;
+  transition: border-color .15s, color .15s, background .15s;
+}
+
+.quick-bet:hover:not(:disabled) {
+  border-color: var(--purple);
+  color: #fff;
+  background: rgba(200,85,247,.14);
+}
+
+.quick-bet.active {
+  color: #130717;
+  border-color: rgba(245,166,35,.74);
+  background: linear-gradient(135deg, var(--gold), #ffbf3a);
+}
+
+.quick-bet:disabled {
+  opacity: .38;
+  cursor: not-allowed;
+}
+
+.bet-preview {
+  display: grid;
+  gap: .45rem;
+  margin-top: .65rem;
+}
+
+.bet-preview-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: .8rem;
+  align-items: center;
+  min-height: 36px;
+  padding: .5rem .72rem;
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 9px;
+  background: rgba(5,2,12,.52);
+}
+
+.bet-preview-row span {
+  color: rgba(221,224,240,.78);
+  font-size: .8rem;
+}
+
+.bet-preview-row strong {
+  color: #fff;
+  font-family: "Orbitron", monospace;
+  font-size: .82rem;
+  text-align: right;
+}
+
+.bet-preview-row .burn-value { color: var(--red); }
+.bet-preview-row .winner-value { color: var(--green); }
 
 .stepper {
   display: grid;
@@ -826,7 +946,13 @@ select:focus {
   border-radius: 10px;
   background: rgba(5,2,12,.94);
   box-shadow: 0 0 24px rgba(245,166,35,.16), 0 18px 40px rgba(0,0,0,.34);
-  text-align: left;
+  text-align: center;
+  animation: bannerPulse 1.65s ease-in-out infinite;
+}
+
+@keyframes bannerPulse {
+  0%, 100% { box-shadow: 0 0 18px rgba(245,166,35,.12), 0 18px 40px rgba(0,0,0,.34); }
+  50% { box-shadow: 0 0 30px rgba(245,166,35,.28), 0 18px 40px rgba(0,0,0,.34); }
 }
 
 .round-banner.live {
@@ -1032,6 +1158,27 @@ select:focus {
   overflow-x: auto;
 }
 
+.table-wrap.table-scroll {
+  max-height: min(430px, 52vh);
+  overflow: auto;
+  scrollbar-color: rgba(200,85,247,.62) rgba(255,255,255,.06);
+  scrollbar-width: thin;
+}
+
+.table-wrap.table-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.table-wrap.table-scroll::-webkit-scrollbar-track {
+  background: rgba(255,255,255,.05);
+}
+
+.table-wrap.table-scroll::-webkit-scrollbar-thumb {
+  background: rgba(200,85,247,.6);
+  border-radius: 999px;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -1047,11 +1194,18 @@ td {
 }
 
 th {
+  background: rgba(16,8,28,.96);
   color: var(--text-dim);
   font-family: "Michroma", sans-serif;
   font-size: .58rem;
   letter-spacing: 2px;
   text-transform: uppercase;
+}
+
+.table-wrap.table-scroll th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
 }
 
 td {

@@ -216,6 +216,26 @@
       -webkit-backdrop-filter: blur(16px);
     }
     .wallet-hub.visible { display: inline-flex; }
+    .cashier-btn {
+      min-height: 38px;
+      border: 0;
+      border-radius: 999px;
+      padding: .35rem 1rem;
+      color: #130717;
+      background: linear-gradient(135deg, #ff4d6d, #f5a623);
+      cursor: pointer;
+      font-family: 'Orbitron', 'Michroma', sans-serif;
+      font-size: .68rem;
+      font-weight: 900;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      box-shadow: 0 10px 26px rgba(245,166,35,.24);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+    }
+    .cashier-btn:hover { transform: translateY(-1px); box-shadow: 0 12px 32px rgba(245,166,35,.34); }
     .wallet-account-hub {
       position: relative;
       display: none;
@@ -225,7 +245,6 @@
     .wallet-balance-pill,
     .wallet-avatar-btn {
       border: 0;
-      cursor: pointer;
       font-family: 'Bebas Neue', sans-serif;
       letter-spacing: 1.4px;
       white-space: nowrap;
@@ -272,7 +291,8 @@
       font-size: .72rem;
       font-weight: 900;
     }
-    .wallet-chevron { color: rgba(220,224,240,.72); font-size: .8rem; transform: translateY(-1px); }
+    .wallet-balance-pill { cursor: default; }
+    .wallet-chevron { display: none; }
     .wallet-avatar-btn {
       width: 46px;
       height: 46px;
@@ -333,11 +353,24 @@
       margin: .25rem 0;
       background: rgba(255,31,154,.18);
     }
+    .cashier-backdrop {
+      position: fixed;
+      inset: 0;
+      display: none;
+      background: rgba(8,3,13,.66);
+      backdrop-filter: blur(7px);
+      -webkit-backdrop-filter: blur(7px);
+      z-index: 880;
+    }
+    .cashier-backdrop.open { display: block; }
     .wallet-balance-menu {
-      position: absolute;
-      top: calc(100% + 12px);
-      right: 0;
-      width: 278px;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      right: auto;
+      width: min(430px, calc(100vw - 1.5rem));
+      max-height: min(760px, calc(100vh - 2rem));
+      overflow-y: auto;
       display: none;
       border: 1px solid rgba(200,85,247,.32);
       border-radius: 16px;
@@ -346,6 +379,7 @@
       background: rgba(14,7,24,.97);
       box-shadow: 0 24px 70px rgba(0,0,0,.6);
       z-index: 900;
+      transform: translate(-50%, -50%);
     }
     .wallet-balance-menu.open { display: grid; gap: .7rem; animation: dropIn .18s ease; }
     .wallet-menu-head {
@@ -367,6 +401,17 @@
       font-family: 'Space Mono', monospace;
       font-size: .68rem;
     }
+    .cashier-close {
+      width: 34px;
+      height: 34px;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 50%;
+      color: rgba(255,255,255,.78);
+      background: rgba(255,255,255,.06);
+      cursor: pointer;
+      font-size: 1.2rem;
+      line-height: 1;
+    }
     .wallet-menu-balance {
       padding: .85rem;
       border-radius: 12px;
@@ -387,6 +432,172 @@
       font-family: 'Orbitron', monospace;
       font-size: .95rem;
     }
+    .wallet-approval-remaining {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .35rem .75rem;
+      padding: .78rem .85rem;
+      border-radius: 12px;
+      border: 1px solid rgba(137,255,189,.16);
+      background: rgba(137,255,189,.045);
+    }
+    .wallet-approval-remaining span {
+      color: rgba(220,224,240,.62);
+      font-family: 'Michroma', sans-serif;
+      font-size: .47rem;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+    .wallet-approval-remaining strong {
+      color: rgba(137,255,189,.95);
+      font-family: 'Orbitron', monospace;
+      font-size: .84rem;
+      text-align: right;
+    }
+    .wallet-approval-remaining small {
+      grid-column: 1 / -1;
+      color: rgba(220,224,240,.62);
+      font-size: .68rem;
+      line-height: 1.3;
+    }
+    .wallet-revoke-btn {
+      grid-column: 1 / -1;
+      min-height: 32px;
+      margin-top: .25rem;
+      border: 1px solid rgba(255,68,85,.28);
+      border-radius: 9px;
+      color: rgba(255,117,133,.95);
+      background: rgba(255,68,85,.08);
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 800;
+      letter-spacing: .8px;
+    }
+    .wallet-menu-section { padding: .2rem 0 .1rem; }
+    .wallet-menu-section-title {
+      color: rgba(220,224,240,.62);
+      font-family: 'Michroma', sans-serif;
+      font-size: .48rem;
+      letter-spacing: 1.6px;
+      text-transform: uppercase;
+      margin-bottom: .45rem;
+    }
+    .wallet-approval-intro {
+      display: grid;
+      gap: .45rem;
+      padding: .72rem;
+      margin-bottom: .58rem;
+      border: 1px solid rgba(200,85,247,.22);
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(200,85,247,.12), rgba(245,166,35,.06));
+    }
+    .wallet-approval-intro strong {
+      color: #fff;
+      font-family: 'Rajdhani', sans-serif;
+      font-size: .94rem;
+      letter-spacing: .5px;
+    }
+    .wallet-approval-intro span {
+      color: rgba(220,224,240,.7);
+      font-size: .72rem;
+      line-height: 1.35;
+    }
+    .wallet-approval-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem; }
+    .wallet-approval-btn {
+      min-height: 34px;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 9px;
+      color: rgba(220,224,240,.86);
+      background: rgba(255,255,255,.05);
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 800;
+      letter-spacing: .8px;
+    }
+    .wallet-approval-btn:hover { color: #fff; border-color: rgba(245,166,35,.42); background: rgba(245,166,35,.1); }
+    .wallet-approval-btn.active {
+      color: #0b0612;
+      border-color: rgba(245,166,35,.82);
+      background: linear-gradient(135deg, var(--amber), #ffbf3a);
+    }
+    .wallet-approval-custom {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: .45rem;
+      margin-top: .5rem;
+    }
+    .wallet-approval-custom input {
+      min-width: 0;
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 9px;
+      color: #fff;
+      background: rgba(255,255,255,.05);
+      padding: .5rem .6rem;
+      font-family: 'Space Mono', monospace;
+      font-size: .78rem;
+      outline: none;
+    }
+    .wallet-approval-custom input:focus { border-color: rgba(245,166,35,.62); box-shadow: 0 0 0 2px rgba(245,166,35,.1); }
+    .wallet-approval-custom button {
+      min-height: 34px;
+      border: 1px solid rgba(245,166,35,.4);
+      border-radius: 9px;
+      color: #0b0612;
+      background: linear-gradient(135deg, var(--amber), #ffbf3a);
+      cursor: pointer;
+      font-family: 'Rajdhani', sans-serif;
+      font-weight: 900;
+      letter-spacing: .8px;
+      padding: 0 .72rem;
+    }
+    .wallet-approval-summary {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .4rem .75rem;
+      align-items: center;
+      padding: .68rem .72rem;
+      margin: .58rem 0;
+      border: 1px solid rgba(245,166,35,.22);
+      border-radius: 12px;
+      background: rgba(245,166,35,.07);
+    }
+    .wallet-approval-summary span {
+      color: rgba(220,224,240,.58);
+      font-family: 'Michroma', sans-serif;
+      font-size: .47rem;
+      letter-spacing: 1.3px;
+      text-transform: uppercase;
+    }
+    .wallet-approval-summary strong {
+      color: #ffbf3a;
+      font-family: 'Orbitron', monospace;
+      font-size: .82rem;
+      text-align: right;
+    }
+    .wallet-approval-summary p {
+      grid-column: 1 / -1;
+      margin: 0;
+      color: rgba(220,224,240,.68);
+      font-size: .7rem;
+      line-height: 1.35;
+    }
+    .wallet-approval-safety {
+      display: grid;
+      gap: .32rem;
+      margin: .6rem 0 .1rem;
+      padding: .62rem .68rem;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 12px;
+      background: rgba(255,255,255,.035);
+    }
+    .wallet-approval-safety span {
+      color: rgba(220,224,240,.68);
+      font-size: .69rem;
+      line-height: 1.3;
+    }
+    .wallet-approval-safety b { color: #fff; font-weight: 800; }
+    .wallet-menu-note { color: rgba(220,224,240,.54); font-size: .7rem; line-height: 1.35; margin-top: .45rem; }
+    .wallet-menu-note.success { color: rgba(137,255,189,.88); }
     .wallet-menu-actions {
       display: grid;
       grid-template-columns: 1fr 1fr;
@@ -500,6 +711,8 @@
 
     /* 3D Dice stage */
     .dice-stage {
+      --dice-size: 120px;
+      --dice-depth: 60px;
       flex: none;
       perspective: 600px;
       display: flex;
@@ -516,6 +729,15 @@
         radial-gradient(circle at 25% 85%, rgba(200,85,247,.16), transparent 38%),
         rgba(5,2,12,.54);
       box-shadow: inset 0 0 36px rgba(0,0,0,.45);
+      transition: flex .35s ease, min-height .35s ease, padding .35s ease, border-color .2s ease, box-shadow .2s ease;
+    }
+    body.cashx-dice-live .dice-stage {
+      --dice-size: 176px;
+      --dice-depth: 88px;
+      flex: 1 1 auto;
+      min-height: min(540px, 58vh);
+      justify-content: center;
+      padding: 2rem 1.3rem 1.7rem;
     }
     .dice-stage::before {
       content: "";
@@ -553,11 +775,11 @@
     }
 
     .dice-cube {
-      width: 120px; height: 120px;
+      width: var(--dice-size); height: var(--dice-size);
       position: relative;
       transform-style: preserve-3d;
       transform: rotateX(-18deg) rotateY(22deg);
-      transition: transform .7s cubic-bezier(.34,1.56,.64,1);
+      transition: width .35s ease, height .35s ease, transform .7s cubic-bezier(.34,1.56,.64,1);
       margin-bottom: 1.2rem;
       z-index: 1;
     }
@@ -577,7 +799,7 @@
 
     .dice-face {
       position: absolute;
-      width: 120px; height: 120px;
+      width: var(--dice-size); height: var(--dice-size);
       border: 2px solid rgba(200,85,247,.35);
       background: rgba(13,8,24,.92);
       border-radius: 18px;
@@ -586,9 +808,10 @@
       justify-content: center;
       backface-visibility: hidden;
       -webkit-backface-visibility: hidden;
-      font-size: 2.8rem;
+      font-size: calc(var(--dice-size) * .233);
       color: var(--text-dim);
       box-shadow: inset 0 0 24px rgba(200,85,247,.08);
+      transition: width .35s ease, height .35s ease, font-size .35s ease;
     }
     .dice-face::after {
       content: "";
@@ -598,16 +821,16 @@
       border-radius: 12px;
       pointer-events: none;
     }
-    .face-front  { transform: translateZ(60px); }
-    .face-back   { transform: rotateY(180deg)  translateZ(60px); }
-    .face-right  { transform: rotateY(90deg)   translateZ(60px); }
-    .face-left   { transform: rotateY(-90deg)  translateZ(60px); }
-    .face-top    { transform: rotateX(90deg)   translateZ(60px); }
-    .face-bottom { transform: rotateX(-90deg)  translateZ(60px); }
+    .face-front  { transform: translateZ(var(--dice-depth)); }
+    .face-back   { transform: rotateY(180deg)  translateZ(var(--dice-depth)); }
+    .face-right  { transform: rotateY(90deg)   translateZ(var(--dice-depth)); }
+    .face-left   { transform: rotateY(-90deg)  translateZ(var(--dice-depth)); }
+    .face-top    { transform: rotateX(90deg)   translateZ(var(--dice-depth)); }
+    .face-bottom { transform: rotateX(-90deg)  translateZ(var(--dice-depth)); }
 
     #diceResult {
       font-family: 'Orbitron', monospace;
-      font-size: 2.8rem;
+      font-size: calc(var(--dice-size) * .233);
       font-weight: 900;
       color: var(--amber);
       text-shadow: 0 0 30px var(--amber-glow);
@@ -741,7 +964,6 @@
     #betAmount[type="number"] { -moz-appearance: textfield; appearance: textfield; }
     #betAmount:focus { border-color: var(--purple); box-shadow: 0 0 16px rgba(200,85,247,.2); }
     #betAmount::placeholder { color: rgba(220,224,240,.68); font-size: .85rem; }
-
     .quick-bets { display: flex; gap: .4rem; margin-bottom: 1.4rem; }
     .qb {
       flex: 1;
@@ -758,6 +980,39 @@
       transition: border-color .15s, color .15s, background .15s;
     }
     .qb:hover { border-color: var(--purple); color: var(--purple); background: rgba(200,85,247,.14); }
+    .qb.active {
+      color: #120713;
+      border-color: rgba(245,166,35,.74);
+      background: linear-gradient(135deg, var(--amber), #ffbf3a);
+    }
+    .bet-preview {
+      display: grid;
+      gap: .45rem;
+      margin: 0 0 1.2rem;
+    }
+    .bet-preview-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: .8rem;
+      align-items: center;
+      min-height: 36px;
+      padding: .5rem .72rem;
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: 9px;
+      background: rgba(5,2,12,.52);
+    }
+    .bet-preview-row span {
+      color: rgba(220,224,240,.78);
+      font-size: .8rem;
+    }
+    .bet-preview-row strong {
+      color: #fff;
+      font-family: 'Orbitron', monospace;
+      font-size: .82rem;
+      text-align: right;
+    }
+    .bet-preview-row .burn-value { color: var(--red); }
+    .bet-preview-row .winner-value { color: var(--green); }
 
     /* Over / Under buttons */
     .bet-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-bottom: 1.2rem; }
@@ -830,6 +1085,7 @@
       justify-content: center;
       gap: 1.1rem;
       min-height: 190px;
+      max-height: 320px;
       border-radius: 14px;
       background:
         radial-gradient(ellipse at 50% 50%, rgba(245,166,35,.09) 0%, transparent 68%),
@@ -838,6 +1094,24 @@
       padding: 1.4rem 1rem;
       overflow: hidden;
       position: relative;
+      transition:
+        opacity .35s ease,
+        transform .35s ease,
+        min-height .35s ease,
+        max-height .35s ease,
+        padding .35s ease,
+        border-color .35s ease;
+    }
+    .dice-idle-preview.preview-paused {
+      flex: 0 0 0;
+      min-height: 0;
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+      border-color: transparent;
+      opacity: 0;
+      transform: translateY(8px);
+      pointer-events: none;
     }
     .dice-idle-preview::before {
       content: '';
@@ -1144,11 +1418,21 @@
       .stat-value { font-size: clamp(.68rem, 3.1vw, .86rem); }
     }
     @media (max-width: 860px) {
-      .topnav { padding: 0 .95rem; gap: .75rem; }
+      .topnav {
+        height: auto !important;
+        min-height: 84px !important;
+        flex-wrap: wrap !important;
+        padding: .8rem .95rem !important;
+        gap: .75rem;
+      }
       .topnav-center {
-        position: static;
-        transform: none;
-        flex: 1;
+        position: static !important;
+        left: auto !important;
+        top: auto !important;
+        transform: none !important;
+        order: 3 !important;
+        flex: 0 0 100% !important;
+        width: 100% !important;
         display: flex;
         justify-content: flex-end;
       }
@@ -1163,7 +1447,7 @@
       .wallet-balance-pill { min-height: 34px; padding: .3rem .52rem .3rem .32rem; }
       .wallet-token-mark { width: 25px; height: 25px; font-size: .6rem; }
       .wallet-balance-main span:last-child { font-size: .64rem; }
-      .wallet-balance-menu { right: -.5rem; width: min(280px, calc(100vw - 1.5rem)); }
+      .cashier-btn { min-height: 34px; padding: .3rem .78rem .3rem .64rem; }
       .wallet-avatar-btn { width: 38px; height: 38px; }
     }
     @media (max-width: 480px) {
@@ -1193,25 +1477,61 @@
   <a href="index.html" class="topnav-brand">$<span>CASHX</span> CASINO <span class="topnav-beta">BETA</span></a>
   <div class="topnav-center">
     <div class="wallet-hub" id="walletHub">
-      <button class="wallet-balance-pill" type="button" onclick="toggleBalanceMenu(event)" aria-label="Open wallet balance">
+      <div class="wallet-balance-pill" aria-label="CASHX balance">
         <span class="wallet-token-mark">CX</span>
         <span class="wallet-balance-main">
           <span>Wallet</span>
           <span id="topCashxBalance">0 CASHX</span>
         </span>
-        <span class="wallet-chevron">⌄</span>
-      </button>
+      </div>
+      <button class="cashier-btn" id="cashierBtn" type="button" onclick="openCashier(event)">Cashier</button>
+      <div class="cashier-backdrop" id="cashierBackdrop" onclick="closeBalanceMenu()"></div>
       <div class="wallet-balance-menu" id="walletBalanceMenu">
         <div class="wallet-menu-head">
           <div>
-            <b>Connected Wallet</b>
+            <b>Cashier</b>
             <div class="wallet-menu-address" id="walletMenuAddress">—</div>
           </div>
-          <span class="wallet-token-mark">CX</span>
+          <button class="cashier-close" type="button" onclick="closeBalanceMenu()" aria-label="Close cashier">×</button>
         </div>
         <div class="wallet-menu-balance">
           <span>CASHX in wallet</span>
           <strong id="walletMenuBalance">0 CASHX</strong>
+        </div>
+        <div class="wallet-approval-remaining">
+          <span>Approved Remaining</span>
+          <strong id="walletApprovalRemaining">--</strong>
+          <small id="walletApprovalTarget">Allowance for this game. Winnings pay back to your wallet.</small>
+          <button class="wallet-revoke-btn" id="walletApprovalRevoke" type="button">Revoke Approval</button>
+        </div>
+        <div class="wallet-menu-section">
+          <div class="wallet-menu-section-title">Game Approval</div>
+          <div class="wallet-approval-intro">
+            <strong>Choose how much games may use</strong>
+            <span>This is a wallet allowance, not a deposit. Your CASHX stays in your wallet until you create or join a game.</span>
+          </div>
+          <div class="wallet-approval-grid">
+            <button class="wallet-approval-btn active" type="button" data-approval="bet">This Bet</button>
+            <button class="wallet-approval-btn" type="button" data-approval="10000">10K</button>
+            <button class="wallet-approval-btn" type="button" data-approval="100000">100K</button>
+            <button class="wallet-approval-btn" type="button" data-approval="1000000">1M</button>
+          </div>
+          <div class="wallet-approval-summary">
+            <span>Selected limit</span>
+            <strong id="walletApprovalSelected">This bet only</strong>
+            <p id="walletApprovalDescription">You will only approve the amount needed for the next game you start or join.</p>
+          </div>
+          <div class="wallet-approval-custom">
+            <input id="walletApprovalCustom" type="number" min="100" max="1000000" step="100" placeholder="Custom amount" />
+            <button type="button" id="walletApprovalApply">Set</button>
+          </div>
+          <button class="wallet-approval-confirm" id="walletApprovalConfirm" type="button">Approve Selected Limit</button>
+          <div class="wallet-approval-safety">
+            <span><b>What you approve:</b> the maximum CASHX the game contract may spend for future game entries.</span>
+            <span><b>What does not happen:</b> selecting a limit does not send CASHX or start a game.</span>
+            <span><b>When funds move:</b> only after you confirm a create or join transaction in your wallet.</span>
+          </div>
+          <div class="wallet-menu-note" id="walletApprovalFeedback">Custom approval must be 100 to 1,000,000 CASHX.</div>
         </div>
         <div class="wallet-menu-actions">
           <button class="wallet-menu-action" type="button" onclick="copyConnectedWallet()">Copy</button>
@@ -1254,28 +1574,21 @@
         </div>
       </div>
 
-      <div class="stats-bar">
-        <div class="stat-card">
-          <div class="stat-label">Your Balance</div>
-          <div class="stat-value" id="playerBalance">—</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-label">Total Burned</div>
-          <div class="stat-value" id="totalBurnedStat">—</div>
-        </div>
-      </div>
-
       <div>
         <div class="section-label">
           <span>Bet Amount</span>
-          <span id="betLimitsDisplay">Min 500 · Max 5,000 CASHX</span>
+          <span id="betLimitsDisplay">Min 1 · Max 5,000 CASHX</span>
         </div>
-        <input type="number" id="betAmount" placeholder="Enter CASHX amount…" min="500" max="5000" step="100" />
+        <input type="number" id="betAmount" placeholder="Enter CASHX amount…" min="1" max="5000" step="1" />
         <div class="quick-bets">
-          <button class="qb" onclick="setQuickBet(500)">MIN</button>
           <button class="qb" onclick="setQuickBet(1000)">1K</button>
           <button class="qb" onclick="setQuickBet(2500)">2.5K</button>
           <button class="qb" onclick="setQuickBet(5000)">MAX</button>
+        </div>
+        <div class="bet-preview" id="betPreview">
+          <div class="bet-preview-row"><span>Total Pot</span><strong id="previewTotalPot">—</strong></div>
+          <div class="bet-preview-row"><span>Burn</span><strong class="burn-value" id="previewBurn">—</strong></div>
+          <div class="bet-preview-row"><span>Winner Gets</span><strong class="winner-value" id="previewWinnerGets">—</strong></div>
         </div>
       </div>
 
@@ -1436,30 +1749,68 @@
 
   // Dice idle battle preview
   (function startDiceIdlePreview() {
+    const preview  = document.getElementById('diceIdlePreview');
     const dieLeft  = document.getElementById('dipDieLeft');
     const numLeft  = document.getElementById('dipNumLeft');
     const dieRight = document.getElementById('dipDieRight');
     const result   = document.getElementById('dipResult');
-    if (!dieLeft) return;
+    if (!preview || !dieLeft) return;
 
-    function runRound() {
-      // Reset
+    let previewActive = true;
+    let roundTimer = null;
+    let rollTimer = null;
+    let settleTimer = null;
+    let resumeTimer = null;
+
+    function clearPreviewTimers() {
+      window.clearTimeout(roundTimer);
+      window.clearInterval(rollTimer);
+      window.clearTimeout(settleTimer);
+      roundTimer = null;
+      rollTimer = null;
+      settleTimer = null;
+    }
+
+    function resetPreviewVisuals() {
       dieLeft.classList.remove('d-win', 'd-lose');
       dieRight.classList.remove('d-win', 'd-lose');
       result.classList.remove('visible', 'res-under', 'res-over', 'res-push');
       numLeft.textContent = '?';
+    }
 
-      // Roll animation — cycle numbers rapidly
-      let rolling = true;
-      const rollAnim = setInterval(() => {
-        if (!rolling) return;
+    function scheduleNextRound() {
+      window.clearTimeout(roundTimer);
+      roundTimer = window.setTimeout(runRound, 4400);
+    }
+
+    function setPreviewActive(active) {
+      previewActive = !!active;
+      preview.classList.toggle('preview-paused', !previewActive);
+      clearPreviewTimers();
+      resetPreviewVisuals();
+
+      if (previewActive) {
+        runRound();
+      }
+    }
+
+    function runRound() {
+      if (!previewActive) return;
+
+      resetPreviewVisuals();
+
+      rollTimer = window.setInterval(() => {
+        if (!previewActive) return;
         numLeft.textContent = Math.floor(Math.random() * 99) + 1;
       }, 55);
 
       // Settle on a random result (avoid 50 for cleaner demo)
-      setTimeout(() => {
-        rolling = false;
-        clearInterval(rollAnim);
+      settleTimer = window.setTimeout(() => {
+        if (!previewActive) return;
+
+        window.clearInterval(rollTimer);
+        rollTimer = null;
+
         let roll = Math.floor(Math.random() * 98) + 1;
         if (roll >= 50) roll++; // skip 50, range becomes 1-49 or 51-99
         numLeft.textContent = roll;
@@ -1476,11 +1827,22 @@
           result.classList.add('res-over');
         }
         result.classList.add('visible');
+        scheduleNextRound();
       }, 1500);
     }
 
     runRound();
-    setInterval(runRound, 4400);
+
+    window.addEventListener('cashx:dice-game-active', (event) => {
+      const gameActive = !!(event.detail && event.detail.active);
+      window.clearTimeout(resumeTimer);
+
+      if (gameActive) {
+        setPreviewActive(false);
+      } else {
+        resumeTimer = window.setTimeout(() => setPreviewActive(true), 1800);
+      }
+    });
   })();
 
   // Screen flash

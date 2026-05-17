@@ -4,9 +4,9 @@ const TILE_COUNT = 25;
 const MAX_MINE_COUNT = 16;
 const HOUSE_EDGE_BPS = 300;
 const BPS = 10000;
-const UI_MIN_BET = 500;
-const UI_MAX_BET = 1000;
-const UI_BET_STEP = 100;
+const UI_MIN_BET = 1;
+const UI_MAX_BET = 5000;
+const UI_BET_STEP = 1;
 const MINES_LIVE_ADDRESS = '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
 const CASHX_ADDRESS = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
 const BACKEND_URL = window.CASHX_MINES_BACKEND_URL || 'http://localhost:8787';
@@ -43,7 +43,7 @@ const state = {
   minesContract: null,
   cashxContract: null,
   bet: 500,
-  minBet: ethers.utils.parseUnits('500', 18),
+  minBet: ethers.utils.parseUnits('1', 18),
   maxBet: ethers.utils.parseUnits('5000', 18),
   mines: 3,
   activeGame: null,
@@ -51,12 +51,16 @@ const state = {
   mineTiles: [],
   forceCashout: false,
   transacting: false,
+  selectedApproval: getStoredApprovalPreset(),
 };
 
 const els = {
   board: document.getElementById('board'),
   balance: document.getElementById('balanceOutput'),
   betInput: document.getElementById('betInput'),
+  previewTotalPot: document.getElementById('previewTotalPot'),
+  previewBurn: document.getElementById('previewBurn'),
+  previewWinnerGets: document.getElementById('previewWinnerGets'),
   mineSelect: document.getElementById('mineSelect'),
   startBtn: document.getElementById('startBtn'),
   cashoutBtn: document.getElementById('cashoutBtn'),
@@ -66,6 +70,7 @@ const els = {
   multiplier: document.getElementById('multiplierOutput'),
   nextMultiplier: document.getElementById('nextMultiplierOutput'),
   profit: document.getElementById('profitOutput'),
+  betLimits: document.getElementById('betLimitsDisplay'),
   banner: document.getElementById('roundBanner'),
   roundResult: document.getElementById('roundResult'),
   roundResultLabel: document.getElementById('roundResultLabel'),
@@ -92,37 +97,46 @@ function bindEvents() {
   els.startBtn.addEventListener('click', startGame);
   els.cashoutBtn.addEventListener('click', cashOut);
 
-  els.betInput.addEventListener('change', () => {
-    state.bet = clampBet(Number(els.betInput.value));
-    els.betInput.value = state.bet;
-    updateUi();
-  });
-
   els.betInput.addEventListener('input', () => {
-    const raw = Math.floor(Number(els.betInput.value));
-    if (Number.isFinite(raw) && raw > UI_MAX_BET) {
-      els.betInput.value = UI_MAX_BET;
-      state.bet = UI_MAX_BET;
-      updateUi();
-    }
+    useThisBetApproval();
+    updateUi(false);
   });
 
-  document.getElementById('halveBetBtn').addEventListener('click', () => {
-    state.bet = clampBet(state.bet - UI_BET_STEP);
-    els.betInput.value = state.bet;
-    updateUi();
+  els.betInput.addEventListener('change', () => {
+    normalizeBetInput();
+    updateUi(false);
   });
 
-  document.getElementById('doubleBetBtn').addEventListener('click', () => {
-    state.bet = clampBet(state.bet + UI_BET_STEP);
-    els.betInput.value = state.bet;
-    updateUi();
+  document.querySelectorAll('[data-quick-bet]').forEach(button => {
+    button.addEventListener('click', () => {
+      const quickBet = button.dataset.quickBet === 'max'
+        ? Number(ethers.utils.formatUnits(state.maxBet, 18))
+        : Number(button.dataset.quickBet);
+      setBetAmount(quickBet, true);
+    });
   });
 
   els.mineSelect.addEventListener('change', () => {
     state.mines = Number(els.mineSelect.value);
     updateUi();
   });
+}
+
+function setBetAmount(amount, confirmed) {
+  const next = clampBet(Number(amount));
+  state.bet = next;
+  els.betInput.value = next;
+  useThisBetApproval();
+  updateUi(!!confirmed);
+}
+
+function normalizeBetInput() {
+  const value = Number(String(els.betInput.value || '').trim());
+  if (!Number.isFinite(value) || value <= 0) return 0;
+  const next = clampBet(value);
+  state.bet = next;
+  els.betInput.value = next;
+  return next;
 }
 
 function renderBoard() {
@@ -202,6 +216,9 @@ async function refreshLimits() {
     els.betInput.min = String(UI_MIN_BET);
     els.betInput.max = String(UI_MAX_BET);
     els.betInput.step = String(UI_BET_STEP);
+    if (els.betLimits) {
+      els.betLimits.textContent = 'Min ' + fmtCashx(state.minBet) + ' · Max ' + fmtCashx(state.maxBet) + ' CASHX';
+    }
   } catch (_) {}
 }
 
@@ -244,19 +261,25 @@ async function startGame() {
 
   try {
     const mineCount = Number(els.mineSelect.value);
-    updateBanner('Getting provably fair seed commitment...');
+    setWalletFlow('start', 'Preparing wallet request. MetaMask may take a moment to open.');
+    updateBanner('Preparing game start... waiting for wallet request.', 'pending');
     const session = await api('/api/mines/session', {
       player: state.player,
       mineCount,
     });
+    updateBanner('Game seed ready. Opening wallet confirmation...', 'pending');
 
     const allowance = await state.cashxContract.allowance(state.player, MINES_LIVE_ADDRESS);
     if (allowance.lt(betAmount)) {
+      const approvalAmount = approvalAmountWei(betAmount);
       setWalletFlow('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
-      updateBanner('Step 1 of 2: Approve CASHX spend in MetaMask...', 'pending');
-      const approveTx = await state.cashxContract.approve(MINES_LIVE_ADDRESS, betAmount);
+      updateBanner('Step 1 of 2: Approve up to ' + fmtCashx(approvalAmount) + ' CASHX in MetaMask...', 'pending');
+      const approveTx = await state.cashxContract.approve(MINES_LIVE_ADDRESS, approvalAmount);
       updateBanner('Step 1 of 2: Waiting for approval confirmation...', 'pending');
       await waitForTx(approveTx);
+      if (window.CashXNav && window.CashXNav.refreshApprovalAllowance) {
+        window.CashXNav.refreshApprovalAllowance();
+      }
       updateBanner('Approval confirmed.', 'win');
     }
 
@@ -269,6 +292,9 @@ async function startGame() {
     const tx = await state.minesContract.startGame(betAmount, mineCount, session.serverSeedHash);
     updateBanner('Starting instant Mines... waiting for block confirmation.', 'pending');
     const receipt = await waitForTx(tx);
+    if (window.CashXNav && window.CashXNav.refreshApprovalAllowance) {
+      window.CashXNav.refreshApprovalAllowance();
+    }
     const started = parseGameStarted(receipt);
     if (!started) throw new Error('GameStarted event not found');
 
@@ -374,6 +400,8 @@ async function cashOut() {
 async function settleResult(result) {
   if (result.txHash) {
     updateBanner('Settlement submitted by server');
+    setWalletFlow('complete', 'Settlement complete. Payout and burn applied.');
+    await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
     return;
   }
 
@@ -387,7 +415,7 @@ async function settleResult(result) {
     result.signature
   );
   await waitForTx(tx);
-  setWalletFlow('payout', 'Settlement complete. Payout and burn applied.');
+  setWalletFlow('complete', 'Settlement complete. Payout and burn applied.');
   await Promise.all([refreshBalance(), refreshPublicStats(), loadPlayerGames()]);
 }
 
@@ -487,6 +515,10 @@ async function api(path, payload) {
 }
 
 function parseBetAmount() {
+  if (!els.betInput.value.trim()) {
+    updateBanner('Enter a valid bet amount', 'loss');
+    return null;
+  }
   state.bet = clampBet(Number(els.betInput.value));
   els.betInput.value = state.bet;
   const raw = String(state.bet);
@@ -511,6 +543,43 @@ function parseBetAmount() {
   }
 }
 
+function selectApproval(value) {
+  state.selectedApproval = normalizeApprovalPreset(value);
+}
+
+function useThisBetApproval() {
+  state.selectedApproval = 'bet';
+  try { localStorage.setItem('cashx:approvalPreset', 'bet'); } catch (_) {}
+  window.dispatchEvent(new CustomEvent('cashx:approvalPresetChanged', { detail: { value: 'bet' } }));
+}
+
+function getStoredApprovalPreset() {
+  try {
+    return normalizeApprovalPreset(localStorage.getItem('cashx:approvalPreset') || 'bet');
+  } catch (_) {
+    return 'bet';
+  }
+}
+
+function normalizeApprovalPreset(value) {
+  const raw = String(value || 'bet').trim().replace(/,/g, '');
+  if (raw === 'bet' || raw.toLowerCase() === 'this bet') return 'bet';
+  if (!/^\d+(\.\d)?\d*$/.test(raw)) return 'bet';
+  const amount = Math.max(100, Math.min(1000000, Math.floor(Number(raw))));
+  if (!Number.isFinite(amount)) return 'bet';
+  return String(amount);
+}
+
+function approvalAmountWei(requiredWei) {
+  if (state.selectedApproval === 'bet') return requiredWei;
+  const presetWei = ethers.utils.parseUnits(String(state.selectedApproval), 18);
+  return presetWei.gt(requiredWei) ? presetWei : requiredWei;
+}
+
+window.addEventListener('cashx:approvalPresetChanged', event => {
+  selectApproval(event.detail && event.detail.value);
+});
+
 function calculateMultiplier(safePicks, mines) {
   if (!safePicks) return 1;
   let probability = 1;
@@ -521,9 +590,10 @@ function calculateMultiplier(safePicks, mines) {
   return Math.max(1, fair * (BPS - HOUSE_EDGE_BPS) / BPS);
 }
 
-function updateUi() {
-  state.bet = clampBet(Number(els.betInput.value));
-  if (Number(els.betInput.value) > UI_MAX_BET) els.betInput.value = state.bet;
+function updateUi(confirmed) {
+  const rawBet = Number(els.betInput.value);
+  state.bet = Number.isFinite(rawBet) && rawBet > 0 ? clampBet(rawBet) : 0;
+  if (Number(els.betInput.value) > UI_MAX_BET) els.betInput.value = clampBet(Number(els.betInput.value));
   state.mines = Number(els.mineSelect.value);
   if (state.mines > MAX_MINE_COUNT) {
     state.mines = MAX_MINE_COUNT;
@@ -538,6 +608,7 @@ function updateUi() {
   els.multiplier.textContent = multiplier.toFixed(2) + 'x';
   els.nextMultiplier.textContent = next.toFixed(2) + 'x';
   els.profit.textContent = formatNumber(liveProfit) + ' CASHX';
+  updateBetPreview(!!confirmed, multiplier);
 
   els.startBtn.textContent = state.activeGame ? 'Game Running' : 'Start Game';
   els.startBtn.disabled = state.transacting || !!state.activeGame || !isLiveConfigured();
@@ -546,13 +617,29 @@ function updateUi() {
   const controlsLocked = state.transacting || !!state.activeGame;
   els.betInput.disabled = controlsLocked;
   els.mineSelect.disabled = controlsLocked;
-  document.getElementById('halveBetBtn').disabled = controlsLocked;
-  document.getElementById('doubleBetBtn').disabled = controlsLocked;
+  document.querySelectorAll('[data-quick-bet]').forEach(button => {
+    button.disabled = controlsLocked;
+    const quickAmount = button.dataset.quickBet === 'max'
+      ? Number(ethers.utils.formatUnits(state.maxBet, 18))
+      : Number(button.dataset.quickBet);
+    button.classList.toggle('active', !controlsLocked && state.bet > 0 && quickAmount === state.bet);
+  });
 
   document.querySelectorAll('.tile').forEach(tile => {
     const index = Number(tile.dataset.index);
     tile.disabled = state.transacting || !state.activeGame || state.forceCashout || state.safeTiles.includes(index) || state.mineTiles.includes(index);
   });
+}
+
+function updateBetPreview(confirmed, multiplier) {
+  const valid = Number.isFinite(state.bet) && state.bet > 0;
+  const activeMultiplier = Number.isFinite(multiplier) ? multiplier : 1;
+  const burn = valid ? state.bet * HOUSE_EDGE_BPS / BPS : 0;
+  const payout = valid ? state.bet * activeMultiplier : 0;
+
+  if (els.previewTotalPot) els.previewTotalPot.textContent = valid ? formatNumber(payout) + ' CASHX' : '—';
+  if (els.previewBurn) els.previewBurn.textContent = valid ? formatNumber(burn) + ' CASHX' : '—';
+  if (els.previewWinnerGets) els.previewWinnerGets.textContent = valid ? formatNumber(payout) + ' CASHX' : '—';
 }
 
 function markPending(index) {
@@ -603,11 +690,12 @@ function updateBanner(text, type = '') {
 
 function setWalletFlow(stage, note) {
   const steps = ['approve', 'start', 'reveal', 'payout'];
-  const activeIndex = steps.indexOf(stage);
+  const isComplete = stage === 'complete';
+  const activeIndex = isComplete ? steps.length : steps.indexOf(stage);
   document.querySelectorAll('[data-tx-step]').forEach(step => {
     const index = steps.indexOf(step.dataset.txStep);
-    step.classList.toggle('done', index > -1 && index < activeIndex);
-    step.classList.toggle('active', step.dataset.txStep === stage);
+    step.classList.toggle('done', index > -1 && (isComplete || index < activeIndex));
+    step.classList.toggle('active', !isComplete && step.dataset.txStep === stage);
   });
   const noteEl = document.getElementById('txProgressNote');
   if (noteEl && note) noteEl.textContent = note;
@@ -677,7 +765,7 @@ function fmtCashx(value) {
 }
 
 function formatNumber(value) {
-  return Number(value).toLocaleString('en-US');
+  return Number(value).toLocaleString('en-US', { maximumFractionDigits: 2 });
 }
 
 function shortAddress(address) {
