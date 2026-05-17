@@ -659,21 +659,22 @@ select:focus {
 }
 
 .board-wrap {
-  min-height: 560px;
+  min-height: 650px;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: flex-start;
-  gap: 16px;
+  gap: 18px;
 }
 
 .board {
-  width: min(500px, 100%);
+  width: min(580px, 100%, calc(100vh - 295px));
+  min-width: min(100%, 500px);
   aspect-ratio: 1;
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  gap: 10px;
-  padding: 14px;
+  gap: 11px;
+  padding: 15px;
   border: 1px solid rgba(255, 31, 154, .28);
   border-radius: 22px;
   background:
@@ -929,7 +930,7 @@ select:focus {
 
 .round-banner {
   position: relative;
-  width: min(500px, 100%);
+  width: min(580px, 100%);
   min-width: 260px;
   padding: 13px 20px;
   border: 1px solid rgba(255, 31, 154, .32);
@@ -1007,7 +1008,7 @@ select:focus {
 }
 
 .round-result {
-  width: min(500px, 100%);
+  width: min(580px, 100%);
   padding: 16px;
   border: 1px solid rgba(255,255,255,.14);
   border-radius: 16px;
@@ -1352,6 +1353,8 @@ footer a:hover {
   }
 
   .board {
+    width: min(100%, 500px);
+    min-width: 0;
     gap: 8px;
     padding: 10px;
   }
