@@ -52,6 +52,9 @@ const state = {
   forceCashout: false,
   transacting: false,
   selectedApproval: getStoredApprovalPreset(),
+  preparedSession: null,
+  sessionPromise: null,
+  sessionKey: '',
 };
 
 const els = {
@@ -118,7 +121,9 @@ function bindEvents() {
 
   els.mineSelect.addEventListener('change', () => {
     state.mines = Number(els.mineSelect.value);
+    clearPreparedSession();
     updateUi();
+    prepareMinesSession().catch(() => {});
   });
 }
 
@@ -198,6 +203,7 @@ async function initContracts() {
   await Promise.all([refreshLimits(), refreshBalance(), loadPlayerGames()]);
   updateBanner('Start a game, then reveal tiles instantly');
   updateUi();
+  prepareMinesSession().catch(() => {});
 
   if (window.ethereum) {
     window.ethereum.on('accountsChanged', () => location.reload());
@@ -245,6 +251,45 @@ async function refreshPublicStats() {
   }
 }
 
+function currentSessionKey() {
+  if (!state.player) return '';
+  return state.player.toLowerCase() + ':' + Number(els.mineSelect.value || state.mines || 0);
+}
+
+function clearPreparedSession() {
+  state.preparedSession = null;
+  state.sessionPromise = null;
+  state.sessionKey = '';
+}
+
+function prepareMinesSession() {
+  if (!state.player || state.activeGame) return Promise.resolve(null);
+  const key = currentSessionKey();
+  if (state.preparedSession && state.sessionKey === key) return Promise.resolve(state.preparedSession);
+  if (state.sessionPromise && state.sessionKey === key) return state.sessionPromise;
+
+  state.sessionKey = key;
+  state.sessionPromise = api('/api/mines/session', {
+    player: state.player,
+    mineCount: Number(els.mineSelect.value),
+  }).then(session => {
+    if (state.sessionKey === key) state.preparedSession = session;
+    return session;
+  }).catch(err => {
+    if (state.sessionKey === key) clearPreparedSession();
+    throw err;
+  });
+  return state.sessionPromise;
+}
+
+async function takePreparedMinesSession() {
+  const key = currentSessionKey();
+  const session = await prepareMinesSession();
+  if (!session || state.sessionKey !== key) throw new Error('Could not prepare Mines seed.');
+  clearPreparedSession();
+  return session;
+}
+
 async function startGame() {
   window._minesStopDemo?.();
   if (state.transacting || state.activeGame) return;
@@ -261,14 +306,9 @@ async function startGame() {
 
   try {
     const mineCount = Number(els.mineSelect.value);
-    setWalletFlow('start', 'Preparing wallet request. MetaMask may take a moment to open.');
-    updateBanner('Preparing game start... waiting for wallet request.', 'pending');
-    const session = await api('/api/mines/session', {
-      player: state.player,
-      mineCount,
-    });
-    updateBanner('Game seed ready. Opening wallet confirmation...', 'pending');
-
+    const sessionPromise = prepareMinesSession();
+    setWalletFlow('start', 'Checking approval and preparing game seed...');
+    updateBanner('Checking approval and preparing game seed...', 'pending');
     const allowance = await state.cashxContract.allowance(state.player, MINES_LIVE_ADDRESS);
     if (allowance.lt(betAmount)) {
       const approvalAmount = approvalAmountWei(betAmount);
@@ -282,6 +322,8 @@ async function startGame() {
       }
       updateBanner('Approval confirmed.', 'win');
     }
+
+    const session = await sessionPromise.then(() => takePreparedMinesSession());
 
     setWalletFlow('start', allowance.lt(betAmount)
       ? 'Step 2 of 2: Confirm game start in MetaMask...'
@@ -423,6 +465,8 @@ function finishGame() {
   state.activeGame = null;
   state.safeTiles = [];
   state.forceCashout = false;
+  clearPreparedSession();
+  prepareMinesSession().catch(() => {});
 }
 
 function resetGrid() {
