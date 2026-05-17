@@ -1042,7 +1042,7 @@ function disconnectWallet() {
 
 // Live games feed
 const CX_CONFIG = window.CashX && window.CashX.config;
-const PVP_API = (window.CASHX_PVP_BACKEND_URL || (CX_CONFIG && CX_CONFIG.featureFlags.pvpBackendUrl) || 'http://localhost:8790').replace(/\/$/, '');
+const PVP_API = (window.CASHX_PVP_BACKEND_URL || (CX_CONFIG && CX_CONFIG.featureFlags.pvpBackendUrl) || 'https://cashx-pvp-backend.onrender.com').replace(/\/$/, '');
 const CONNECT4_LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
 const LIVE_ABI = [
   'function getActiveGames() view returns (uint256[])',

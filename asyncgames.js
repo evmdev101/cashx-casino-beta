@@ -1337,7 +1337,7 @@ function normalizeApprovalPreset(value) {
 async function approveAsyncIfNeeded(requiredWei) {
   const allowance = await cashxContractRO.allowance(playerAddress, ASYNC_GAMES_ADDRESS);
   if (allowance.gte(requiredWei)) {
-    setTxStage('approve', 'Approval already covers this table.');
+    setStatus('Approval already covers this table.', 'pending');
     return;
   }
 

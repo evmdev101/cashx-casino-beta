@@ -26,7 +26,7 @@
   <script src="wallet-modal.js"></script>
   <script src="cashx-nav.js" data-asset-prefix=""></script>
   <script>
-    window.CASHX_PVP_BACKEND_URL = 'http://localhost:8790';
+    window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
   </script>
 
   <style>
@@ -723,7 +723,7 @@
   </main>
 
   <script>
-    const PVP_API = (window.CASHX_PVP_BACKEND_URL || 'http://localhost:8790').replace(/\/$/, '');
+    const PVP_API = (window.CASHX_PVP_BACKEND_URL || 'https://cashx-pvp-backend.onrender.com').replace(/\/$/, '');
     const BURN_BPS = 500;
     const BALL_COLORS = {
       1:'#f7c843',2:'#274ecf',3:'#df3030',4:'#7d35c9',5:'#f07c25',6:'#269a5a',7:'#8d241e',8:'#111',

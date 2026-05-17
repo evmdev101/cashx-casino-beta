@@ -9,7 +9,7 @@ const UI_MAX_BET = 5000;
 const UI_BET_STEP = 1;
 const MINES_LIVE_ADDRESS = '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
 const CASHX_ADDRESS = '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
-const BACKEND_URL = window.CASHX_MINES_BACKEND_URL || 'http://localhost:8787';
+const BACKEND_URL = window.CASHX_MINES_BACKEND_URL || 'https://cashx-mines-backend.onrender.com';
 const PULSECHAIN_ID = 369;
 const RPC_URL = 'https://rpc.pulsechain.com';
 

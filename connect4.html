@@ -1520,7 +1520,7 @@
     const COLUMNS = 7;
     const ROWS = 6;
     const CX_CONFIG = window.CashX && window.CashX.config;
-    const PVP_API = (window.CASHX_PVP_BACKEND_URL || (CX_CONFIG && CX_CONFIG.featureFlags.pvpBackendUrl) || 'http://localhost:8790').replace(/\/$/, '');
+    const PVP_API = (window.CASHX_PVP_BACKEND_URL || (CX_CONFIG && CX_CONFIG.featureFlags.pvpBackendUrl) || 'https://cashx-pvp-backend.onrender.com').replace(/\/$/, '');
     const PVP_WAGER_ADDRESS = String(window.CASHX_PVP_WAGER_ADDRESS || (CX_CONFIG && CX_CONFIG.contracts.pvpWager) || '').trim();
     const CASHX_ADDRESS = CX_CONFIG ? CX_CONFIG.addresses.cashxToken : '0x4C450b3C2b89a2DAbE5A3eE39FF475134A30d665';
     const PULSECHAIN_ID = CX_CONFIG ? CX_CONFIG.chain.id : 369;

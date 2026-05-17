@@ -593,7 +593,8 @@
       const wrap = document.createElement('div');
       wrap.innerHTML = accountHubMarkup();
       const accountHub = wrap.firstElementChild;
-      right.insertBefore(accountHub, connectBtn);
+      if (connectBtn && right.contains(connectBtn)) right.insertBefore(accountHub, connectBtn);
+      else right.appendChild(accountHub);
     }
 
     bindConnectButton(connectBtn);
