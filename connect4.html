@@ -1650,6 +1650,8 @@
     let joiningRoom = false;
     let selectedApproval = getStoredApprovalPreset();
     let _dropTargetIdx = -1;
+    const chainJoinedRooms = new Set();
+    const chainJoinChecks = new Set();
 
     init();
 
@@ -1942,7 +1944,9 @@
         readyBadgeX.classList.remove('visible');
         readyBadgeO.classList.remove('visible');
         roundTitle.textContent = 'Room waiting';
-        roundCopy.textContent = 'Open the invite in another tab, then click Join Room.';
+        roundCopy.textContent = chainJoinedRooms.has(room.id)
+          ? 'A Join Match transaction is confirmed on-chain. Waiting for the room to sync before cancellation options change.'
+          : 'Open the invite in another tab, then click Join Room.';
       } else if (room.status === 'ready-check') {
         stopCountdown();
         const readyList = room.readyPlayers || [];
@@ -2011,7 +2015,7 @@
         forfeitZone.hidden = false;
         forfeitBtn.disabled = false;
         if (room.status === 'waiting') {
-          if (forfeitBtn.dataset.chainJoinWarned === room.id) {
+          if (chainJoinedRooms.has(room.id)) {
             forfeitBtn.disabled = true;
             forfeitBtn.textContent = 'Join Confirmed On-Chain';
           } else {
@@ -3034,9 +3038,17 @@
     async function refreshWaitingChainJoin(room) {
       if (!room || !room.chain || !room.chain.matchId) return;
       const roomId = room.id;
-      const confirmedJoin = await getConfirmedJoin(room.chain.matchId);
+      if (chainJoinedRooms.has(roomId) || chainJoinChecks.has(roomId)) return;
+      chainJoinChecks.add(roomId);
+      let confirmedJoin = null;
+      try {
+        confirmedJoin = await getConfirmedJoin(room.chain.matchId);
+      } finally {
+        chainJoinChecks.delete(roomId);
+      }
       if (!confirmedJoin || !currentRoom || currentRoom.id !== roomId || currentRoom.status !== 'waiting') return;
 
+      chainJoinedRooms.add(roomId);
       forfeitBtn.disabled = true;
       forfeitBtn.textContent = 'Join Confirmed On-Chain';
       roundCopy.textContent = 'A Join Match transaction is confirmed on-chain. Waiting for the room to sync before cancellation options change.';
