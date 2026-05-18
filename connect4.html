@@ -1843,6 +1843,13 @@
       try {
         setBackendBadge('Checking', false);
         if (!currentRoomId) throw new Error('Create or open a room first.');
+        roundTitle.textContent = 'Joining room';
+        roundCopy.textContent = 'Refreshing room state before opening your wallet.';
+        currentRoom = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(currentRoomId));
+        syncRoom(currentRoom);
+        if (currentRoom.status !== 'waiting') {
+          throw new Error('This room is no longer open. Refresh the lobby and choose another room.');
+        }
         if (currentRoom && currentRoom.chain && isChainEnabled()) {
           await joinChainMatch(currentRoom.chain.matchId, currentRoom.chain.wagerWei);
         }
@@ -2067,10 +2074,9 @@
     function updateJoinButton(room) {
       const joinBtn = document.getElementById('joinMatchBtn');
       if (!joinBtn) return;
-      const alreadyInRoom = Boolean(myMark);
       const roomIsOpen = room && room.status === 'waiting' && (room.players || []).length < 2;
       const chainAlreadyJoined = room && chainJoinedRooms.has(room.id);
-      const canJoin = roomIsOpen && !alreadyInRoom && !chainAlreadyJoined;
+      const canJoin = roomIsOpen && !chainAlreadyJoined;
       joinBtn.disabled = joiningRoom || !canJoin;
       joinBtn.textContent = joiningRoom ? 'Joining...' : 'Join Room';
     }
@@ -2446,7 +2452,6 @@
         if (!settled.length) {
           settled = await fetchOnChainSettledRooms();
         }
-        renderBurnTotal(settled);
         renderRecentGames(settled.slice(0, 10));
         renderYourGames(settled);
       } catch (_) {
@@ -2894,7 +2899,6 @@
     function syncCashierNav() {
       if (!window.CashXNav) return;
       if (!connectedAddress) {
-        if (typeof window.CashXNav.disconnectWallet === 'function') window.CashXNav.disconnectWallet();
         return;
       }
       if (typeof window.CashXNav.applyConnectedWallet === 'function') {
@@ -2940,17 +2944,25 @@
 
     async function ensureWallet() {
       if (walletSigner && connectedAddress) return;
+      await restoreWalletSession({ reloadRoom: false });
+      if (walletSigner && connectedAddress) return;
       if (!window.showWalletModal) throw new Error('Wallet unavailable');
       const result = await window.showWalletModal();
       applyWalletConnection(result);
       refreshGameHistory();
     }
 
-    async function restoreWalletSession() {
+    async function restoreWalletSession(options = {}) {
+      const reloadRoom = options.reloadRoom !== false;
       if (!window.ethers) return;
       let shouldReconnect = false;
+      let wasDisconnected = false;
       try { shouldReconnect = localStorage.getItem('cashx:walletConnected') === '1'; } catch (_) {}
-      if (!shouldReconnect) return;
+      try { wasDisconnected = localStorage.getItem('cashx:walletDisconnected') === '1'; } catch (_) {}
+      if (wasDisconnected) return;
+      if (window.CashX && window.CashX.wallet && window.CashX.wallet.listWalletProviders) {
+        await window.CashX.wallet.listWalletProviders(350);
+      }
       const injectedProvider = selectedWalletProvider();
       if (!injectedProvider) return;
       try {
@@ -2959,8 +2971,10 @@
         const provider = new ethers.providers.Web3Provider(injectedProvider);
         const signer = provider.getSigner();
         applyWalletConnection({ provider, signer, address: await signer.getAddress() });
+        try { localStorage.setItem('cashx:walletConnected', '1'); } catch (_) {}
+        try { localStorage.removeItem('cashx:walletDisconnected'); } catch (_) {}
         refreshGameHistory();
-        if (currentRoomId) loadRoom(currentRoomId);
+        if (reloadRoom && currentRoomId) loadRoom(currentRoomId);
       } catch (_) {}
     }
 

@@ -858,21 +858,8 @@
   <div class="games-section">
     <div class="all-games-grid" id="gamesGrid">
 
-      <!-- Connect Four -->
-      <div class="game-card-expanded fade-in" data-status="live" data-type="multiplayer" onclick="location.href='connect4.html'">
-        <div class="gce-image" style="background-image: url('connect4-card.png')">
-          <span class="gce-badge">● Live PvP</span>
-        </div>
-        <div class="gce-body">
-          <div class="gce-title">Connect Four Wagers</div>
-          <div class="gce-mode live-pvp" id="connect4LobbyBadge">PvP</div>
-          <p class="gce-desc">Drop pieces, connect four, and win the player-funded pot minus burn. Open lobbies appear in the live table above.</p>
-          <button class="gce-btn" onclick="event.stopPropagation(); location.href='connect4.html'">▶ Play Now</button>
-        </div>
-      </div>
-
       <!-- Card War -->
-      <div class="game-card-expanded fade-in delay-2" data-status="live" data-type="multiplayer" onclick="location.href='games.html?game=0'">
+      <div class="game-card-expanded fade-in" data-status="live" data-type="multiplayer" onclick="location.href='games.html?game=0'">
         <div class="gce-image" style="background-image: url('card-war-card.png')">
           <span class="gce-badge">● Live</span>
         </div>
@@ -884,8 +871,21 @@
         </div>
       </div>
 
+      <!-- Connect Four -->
+      <div class="game-card-expanded fade-in delay-1" data-status="live" data-type="multiplayer" onclick="location.href='connect4.html'">
+        <div class="gce-image" style="background-image: url('connect4-card.png')">
+          <span class="gce-badge">● Live PvP</span>
+        </div>
+        <div class="gce-body">
+          <div class="gce-title">Connect Four Wagers</div>
+          <div class="gce-mode live-pvp" id="connect4LobbyBadge">PvP</div>
+          <p class="gce-desc">Drop pieces, connect four, and win the player-funded pot minus burn. Open lobbies appear in the live table above.</p>
+          <button class="gce-btn" onclick="event.stopPropagation(); location.href='connect4.html'">▶ Play Now</button>
+        </div>
+      </div>
+
       <!-- Dice -->
-      <div class="game-card-expanded fade-in" data-status="live" data-type="vs-house" onclick="location.href='dice.html'">
+      <div class="game-card-expanded fade-in delay-2" data-status="live" data-type="vs-house" onclick="location.href='dice.html'">
         <div class="gce-image" style="background-image: url('dice-card.png')">
           <span class="gce-badge">● Live</span>
         </div>
@@ -977,7 +977,23 @@ document.querySelectorAll('.fade-in').forEach(el => fadeObserver.observe(el));
 const WALLET_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M21 18v1a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1h-9a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h9zm-9-2h10V8H12v8zm4-2.5a1.5 1.5 0 1 1 0-3 1.5 1.5 0 0 1 0 3z"/></svg>`;
 let connectedAddress = null;
 
+window.addEventListener('cashx:wallet:connected', event => {
+  connectedAddress = event.detail && event.detail.address ? event.detail.address : connectedAddress;
+  refreshLiveGames();
+});
+window.addEventListener('cashx:wallet:accountsChanged', event => {
+  connectedAddress = event.detail && event.detail.address ? event.detail.address : null;
+  refreshLiveGames();
+});
+window.addEventListener('cashx:wallet:disconnected', () => {
+  connectedAddress = null;
+  refreshLiveGames();
+});
+
 async function connectWallet() {
+  if (window.CashXNav && window.CashXNav.connectWallet) {
+    return window.CashXNav.connectWallet();
+  }
   const btn = document.getElementById('connectBtn');
   if (!window.showWalletModal) { alert('Wallet modal not loaded — please refresh.'); return; }
   btn.textContent = 'Connecting…';
@@ -1036,6 +1052,9 @@ function copyAddress(address) {
   if (item) { item.textContent = 'Copied!'; setTimeout(closeWalletMenu, 800); }
 }
 function disconnectWallet() {
+  if (window.CashXNav && window.CashXNav.disconnectWallet) {
+    return window.CashXNav.disconnectWallet();
+  }
   closeWalletMenu();
   connectedAddress = null;
   const btn = document.getElementById('connectBtn');
@@ -1198,6 +1217,7 @@ setInterval(refreshLiveGames, 5_000);
 
 // Auto-reconnect if already authorised
 (async () => {
+  if (window.CashXNav) return;
   if (!window.ethereum) return;
   const accounts = await window.ethereum.request({ method: 'eth_accounts' });
   if (accounts.length) {

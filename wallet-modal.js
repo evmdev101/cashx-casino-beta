@@ -155,25 +155,22 @@ function showWalletModal() {
       const icon = entry && entry.info && entry.info.icon;
       if (icon) return '<img src="' + icon.replace(/"/g, '&quot;') + '" alt="" />';
       const name = entry && entry.info && entry.info.name ? entry.info.name : '';
-      if (/internet/i.test(name)) return 'IM';
       if (/meta/i.test(name)) return '🦊';
       return '◆';
     }
 
-    function isAllowedPulseWallet(entry) {
+    function isMetaMaskWallet(entry) {
       const provider = entry && entry.provider;
       const info = entry && entry.info ? entry.info : {};
       const name = String(info.name || '').toLowerCase();
       const rdns = String(info.rdns || '').toLowerCase();
-      if (/phantom|coinbase|uniswap|rabby/.test(name) || /phantom|coinbase|uniswap|rabby/.test(rdns)) return false;
-      if (/internet money|metamask/.test(name) || /internetmoney|metamask/.test(rdns)) return true;
-      if (provider && (provider.isInternetMoney || provider.isIMWallet || provider.isInternetMoneyWallet || provider.isMetaMask)) return true;
-      return false;
+      if (/rabby|internet money|internetmoney|coinbase|phantom|uniswap/.test(name) || /rabby|internetmoney|coinbase|phantom|uniswap/.test(rdns)) return false;
+      return /metamask/.test(name) || /metamask/.test(rdns) || Boolean(provider && provider.isMetaMask);
     }
 
     function renderWalletOptions(entries) {
       walletEntries.length = 0;
-      const filtered = (entries || []).filter(isAllowedPulseWallet);
+      const filtered = (entries || []).filter(isMetaMaskWallet);
       walletEntries.push(...filtered);
       if (!walletEntries.length) {
         optionsEl.innerHTML = `
@@ -181,13 +178,13 @@ function showWalletModal() {
             <div class="wm-icon">◆</div>
             <div class="wm-info">
               <div class="wm-name">No Wallet Detected</div>
-              <div class="wm-sub">Install MetaMask, Rabby, or Internet Money Wallet, then refresh.</div>
+              <div class="wm-sub">Install or enable MetaMask, then refresh.</div>
             </div>
             <div class="wm-arrow">›</div>
           </button>
         `;
         document.getElementById('wmNoWallet').onclick = () => {
-          setMsg('No wallet detected. Install an EVM wallet extension, then refresh this page.', 'err');
+          setMsg('No MetaMask wallet detected. Install or enable MetaMask, then refresh this page.', 'err');
         };
         return;
       }
@@ -214,7 +211,7 @@ function showWalletModal() {
     async function connectEntry(entry) {
       const injectedProvider = entry && entry.provider ? entry.provider : window.ethereum;
       if (!injectedProvider) {
-        setMsg('No wallet detected. Please install MetaMask, Rabby, or Internet Money Wallet.', 'err');
+        setMsg('No MetaMask wallet detected. Please install or enable MetaMask.', 'err');
         return;
       }
       setMsg('Connecting…', 'info');

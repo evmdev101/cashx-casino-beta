@@ -789,6 +789,7 @@
     const btn = byId('connectBtn');
     setConnectButtonBusy(true);
     try {
+      try { localStorage.removeItem('cashx:walletDisconnected'); } catch (_) {}
       await ensureWalletTools();
       let result = null;
       if (window.showWalletModal) result = await window.showWalletModal();
@@ -807,7 +808,7 @@
     const injectedProvider = window.CashX && window.CashX.wallet && window.CashX.wallet.getEthereum
       ? window.CashX.wallet.getEthereum()
       : window.ethereum;
-    if (!injectedProvider) throw new Error('No wallet detected.');
+    if (!injectedProvider) throw new Error('No MetaMask wallet detected.');
     await injectedProvider.request({ method: 'eth_requestAccounts' });
     if (window.ethers) {
       const provider = new ethers.providers.Web3Provider(injectedProvider);
@@ -859,13 +860,23 @@
   async function refreshFromWallet() {
     try {
       let shouldReconnect = false;
+      let wasDisconnected = false;
       try { shouldReconnect = localStorage.getItem('cashx:walletConnected') === '1'; } catch (_) {}
-      if (!shouldReconnect) return;
+      try { wasDisconnected = localStorage.getItem('cashx:walletDisconnected') === '1'; } catch (_) {}
+      if (wasDisconnected) return;
+      await ensureWalletTools();
+      if (window.CashX && window.CashX.wallet && window.CashX.wallet.listWalletProviders) {
+        await window.CashX.wallet.listWalletProviders(350);
+      }
       let result = null;
-      if (window.CashX && window.CashX.wallet && window.CashX.wallet.getConnectedAccount) {
+      if (shouldReconnect && window.CashX && window.CashX.wallet && window.CashX.wallet.reconnect) {
+        result = await window.CashX.wallet.reconnect();
+      }
+      if (!result && window.CashX && window.CashX.wallet && window.CashX.wallet.getConnectedAccount) {
         const address = await window.CashX.wallet.getConnectedAccount();
         if (address) result = { address };
-      } else if (window.ethereum) {
+      }
+      if (!result && window.ethereum) {
         const accounts = await window.ethereum.request({ method: 'eth_accounts' });
         if (accounts && accounts[0]) result = { address: accounts[0] };
       }
@@ -913,6 +924,7 @@
     if (avatar) avatar.title = 'Wallet ' + short;
 
     try { localStorage.setItem('cashx:walletConnected', '1'); } catch (_) {}
+    try { localStorage.removeItem('cashx:walletDisconnected'); } catch (_) {}
     await refreshCashxBalance();
     await refreshApprovalAllowance();
   }
@@ -1201,7 +1213,7 @@
     const injectedProvider = window.CashX && window.CashX.wallet && window.CashX.wallet.getEthereum
       ? window.CashX.wallet.getEthereum()
       : window.ethereum;
-    if (!injectedProvider) throw new Error('No wallet detected.');
+    if (!injectedProvider) throw new Error('No MetaMask wallet detected.');
     const provider = new ethers.providers.Web3Provider(injectedProvider);
     state.provider = provider;
     state.signer = provider.getSigner();
@@ -1299,6 +1311,7 @@
 
   function disconnectWallet() {
     try { localStorage.removeItem('cashx:walletConnected'); } catch (_) {}
+    try { localStorage.setItem('cashx:walletDisconnected', '1'); } catch (_) {}
     try { localStorage.removeItem('cashx:selectedWallet'); } catch (_) {}
     try { localStorage.removeItem('cashxWallet'); } catch (_) {}
     if (window.CashX && window.CashX.wallet && window.CashX.wallet.selectProvider) {
