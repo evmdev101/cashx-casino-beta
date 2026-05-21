@@ -4,7 +4,9 @@ import fs from 'node:fs';
 import path from 'node:path';
 import cors from 'cors';
 import express from 'express';
-import { AbiCoder, Wallet, getAddress, getBytes, keccak256, toUtf8Bytes } from 'ethers';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
+import { AbiCoder, Wallet, getAddress, getBytes, isAddress, keccak256, toUtf8Bytes } from 'ethers';
 
 const PORT = Number(process.env.PVP_PORT || 8790);
 const BURN_BPS = 500n;
@@ -20,14 +22,16 @@ const abiCoder = AbiCoder.defaultAbiCoder();
 const rooms = new Map();
 
 // ── Persistence ────────────────────────────────────────────────────────────────
+const DATA_DIR = process.env.DATA_DIR || path.join(process.cwd(), 'data');
 const ROOMS_FILE = process.env.ROOMS_FILE
-  || path.join(process.cwd(), 'pvp-rooms.json');
+  || path.join(DATA_DIR, 'pvp-rooms.json');
 
 // Remove rooms that have been settled / abandoned for more than 24 h.
 const STALE_MS = 24 * 60 * 60 * 1000;
 
 function loadRooms() {
   try {
+    fs.mkdirSync(path.dirname(ROOMS_FILE), { recursive: true });
     if (!fs.existsSync(ROOMS_FILE)) return;
     const data = JSON.parse(fs.readFileSync(ROOMS_FILE, 'utf8'));
     if (!Array.isArray(data)) return;
@@ -56,6 +60,7 @@ function saveRooms() {
       const data = [...rooms.values()]
         .filter(r => (r.updatedAt || r.createdAt || 0) >= cutoff)
         .map(r => ({ ...r, wager: r.wager.toString() })); // BigInt → string
+      fs.mkdirSync(path.dirname(ROOMS_FILE), { recursive: true });
       fs.writeFileSync(ROOMS_FILE, JSON.stringify(data), 'utf8');
     } catch (err) {
       console.warn('[persist] Could not save rooms:', err.message);
@@ -65,8 +70,36 @@ function saveRooms() {
 // ──────────────────────────────────────────────────────────────────────────────
 
 const app = express();
-app.use(cors());
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_PER_MINUTE || 120),
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+
+const allowedOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(v => v.trim())
+  .filter(Boolean);
+const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+    if (!isProd) return cb(null, true);
+    if (!allowedOrigins.length) return cb(new Error('CORS is not configured'), false);
+    return cb(null, allowedOrigins.includes(origin));
+  },
+}));
 app.use(express.json({ limit: '64kb' }));
+
+if (PVP_WAGER_ADDRESS && !isAddress(PVP_WAGER_ADDRESS)) {
+  throw new Error('PVP_WAGER_ADDRESS is not a valid address');
+}
+if (isProd && !PVP_WAGER_ADDRESS) {
+  throw new Error('PVP_WAGER_ADDRESS is required in production');
+}
 
 app.get('/api/pvp/health', (_, res) => {
   res.json({
@@ -78,6 +111,7 @@ app.get('/api/pvp/health', (_, res) => {
     chainId: PVP_CHAIN_ID,
     contractAddress: PVP_WAGER_ADDRESS || null,
     signerReady: Boolean(PVP_SIGNER_PRIVATE_KEY),
+    roomsFile: ROOMS_FILE,
   });
 });
 
@@ -335,13 +369,20 @@ app.post('/api/pvp/rooms/:id/sign-result', async (req, res) => {
     if (!room.winner) throw new Error('Draws do not have a winner to sign');
     if (!room.chain || !room.chain.matchId) throw new Error('Room is not linked to an on-chain match');
 
-    const contractAddress = normalizeAddress(req.body.contractAddress || room.chain.contractAddress || PVP_WAGER_ADDRESS);
-    const chainId = Number(req.body.chainId || room.chain.chainId || PVP_CHAIN_ID);
+    if (!PVP_WAGER_ADDRESS) throw new Error('PVP_WAGER_ADDRESS is not configured');
+    const contractAddress = normalizeAddress(PVP_WAGER_ADDRESS);
+    const chainId = PVP_CHAIN_ID;
     const matchId = String(room.chain.matchId);
+    if (room.chain.contractAddress && normalizeAddress(room.chain.contractAddress) !== contractAddress) {
+      throw new Error('Room contract address does not match server configuration');
+    }
+    if (room.chain.chainId && Number(room.chain.chainId) !== chainId) {
+      throw new Error('Room chainId does not match server configuration');
+    }
     const player1 = normalizeAddress(room.chain.player1 || room.players[0]?.address);
     const player2 = normalizeAddress(room.chain.player2 || room.players[1]?.address);
     const winner = normalizeAddress(room.winner);
-    const wagerWei = String(room.chain.wagerWei || req.body.wagerWei || '');
+    const wagerWei = String(room.chain.wagerWei || '');
     if (!/^\d+$/.test(wagerWei) || BigInt(wagerWei) <= 0n) throw new Error('Missing on-chain wager');
 
     const finalState = {
@@ -659,11 +700,18 @@ function normalizeChain(value) {
   const matchId = String(value.matchId || '').trim();
   const wagerWei = String(value.wagerWei || '').trim();
   if (!/^\d+$/.test(matchId) || !/^\d+$/.test(wagerWei)) throw new Error('Bad on-chain match data');
+  const chainId = Number(value.chainId || PVP_CHAIN_ID);
+  if (chainId !== PVP_CHAIN_ID) throw new Error('Unsupported chainId');
+  const configuredAddress = PVP_WAGER_ADDRESS ? normalizeAddress(PVP_WAGER_ADDRESS) : null;
+  const contractAddress = normalizeOptionalAddress(value.contractAddress) || configuredAddress;
+  if (configuredAddress && contractAddress && contractAddress !== configuredAddress) {
+    throw new Error('Unsupported contract address');
+  }
   return {
     matchId,
     wagerWei,
-    chainId: Number(value.chainId || PVP_CHAIN_ID),
-    contractAddress: normalizeOptionalAddress(value.contractAddress) || null,
+    chainId,
+    contractAddress: contractAddress || null,
     player1: normalizeOptionalAddress(value.player1) || null,
     player2: normalizeOptionalAddress(value.player2) || null,
   };

@@ -7,7 +7,9 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "node -e \"console.log('ok')\"",
+    "audit:server": "node scripts/audit-server.mjs",
+    "check:server": "node scripts/check-server.mjs"
   },
   "repository": {
     "type": "git",

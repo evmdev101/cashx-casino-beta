@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
@@ -26,7 +26,11 @@
   <script src="wallet-modal.js"></script>
   <script src="cashx-nav.js" data-asset-prefix=""></script>
   <script>
-    window.CASHX_PVP_BACKEND_URL = 'https://cashx-pvp-backend.onrender.com';
+    window.CASHX_PVP_BACKEND_URL = window.CASHX_PVP_BACKEND_URL || (
+      ['localhost', '127.0.0.1', '::1'].includes(location.hostname)
+        ? 'http://127.0.0.1:8790'
+        : 'https://cashx-pvp-backend.onrender.com'
+    );
     window.CASHX_PVP_WAGER_ADDRESS = '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
   </script>
 
@@ -337,6 +341,18 @@
       border-color: rgba(245,166,35,.78);
       color: #fff;
     }
+    .segmented button span {
+      display: block;
+      margin-top: .16rem;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+      font-size: .58rem;
+      font-weight: 700;
+      letter-spacing: 0;
+      text-transform: none;
+      line-height: 1;
+    }
+    .segmented button.active span { color: rgba(255,255,255,.72); }
     .action-btn {
       width: 100%;
       min-height: 46px;
@@ -991,59 +1007,6 @@
       margin-top: -.35rem;
     }
     .status-actions.visible { display: grid; }
-    .rematch-box {
-      display: none;
-      border: 1px solid rgba(245,166,35,.25);
-      background: rgba(245,166,35,.07);
-      border-radius: 8px;
-      padding: .8rem;
-      gap: .6rem;
-    }
-    .rematch-box.visible { display: grid; }
-    .rematch-box strong {
-      color: #fff;
-      font-family: 'Barlow Condensed', sans-serif;
-      font-size: 1.1rem;
-      letter-spacing: 1px;
-      text-transform: uppercase;
-    }
-    .rematch-box span { color: var(--muted); font-size: .9rem; line-height: 1.35; }
-    .rematch-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .55rem; }
-    .ready-phase {
-      border: 1px solid rgba(245,166,35,.28);
-      background: rgba(245,166,35,.06);
-      border-radius: 8px;
-      padding: .9rem;
-      display: none;
-      gap: .75rem;
-    }
-    .ready-phase:not([hidden]) { display: grid; }
-    .ready-header { color: #fff; font-family: 'Barlow Condensed', sans-serif; font-size: 1.1rem; font-weight: 700; letter-spacing: 1px; text-transform: uppercase; }
-    .ready-indicators { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
-    .ready-indicator {
-      display: flex;
-      align-items: center;
-      gap: .5rem;
-      padding: .55rem .7rem;
-      border: 1px solid rgba(255,255,255,.08);
-      border-radius: 8px;
-      background: rgba(0,0,0,.18);
-      font-size: .88rem;
-    }
-    .ready-dot { width: 10px; height: 10px; border-radius: 50%; background: rgba(255,255,255,.18); flex-shrink: 0; transition: background .3s, box-shadow .3s; }
-    .ready-dot.is-ready { background: var(--green); box-shadow: 0 0 8px rgba(61,255,160,.55); }
-    .ready-badge {
-      font-family: 'Michroma', sans-serif;
-      font-size: .42rem;
-      letter-spacing: 1.5px;
-      color: var(--green);
-      border: 1px solid rgba(61,255,160,.38);
-      padding: .08rem .28rem;
-      margin-left: .35rem;
-      vertical-align: middle;
-      display: none;
-    }
-    .ready-badge.visible { display: inline; }
     .feed { display: none; }
     .feed-item {
       border: 1px solid rgba(255,255,255,.08);
@@ -1305,16 +1268,16 @@
           </div>
 
           <div class="field">
-            <label>Clock</label>
-            <div class="segmented" id="clockButtons">
-              <button data-clock="20">20s</button>
-              <button class="active" data-clock="30">30s</button>
-              <button data-clock="45">45s</button>
+            <label>Mode</label>
+            <div class="segmented" id="modeButtons">
+              <button data-mode="quick">⚡ Quick<span>2 min timer</span></button>
+              <button class="active" data-mode="classic">Classic<span>5 min timer</span></button>
+              <button data-mode="casual">☕ Casual<span>No timer</span></button>
             </div>
           </div>
 
-          <button class="action-btn" id="newMatchBtn">Create Room</button>
-          <button class="ghost-btn" id="joinMatchBtn">Join Room</button>
+          <button class="action-btn" id="newMatchBtn">Create Game</button>
+          <button class="ghost-btn" id="joinMatchBtn">Join Game</button>
           <div class="room-code" id="roomCode" hidden>
             <b>Invite</b>
             <span id="roomIdText">Not created</span>
@@ -1356,12 +1319,12 @@
         </div>
         <div class="scorebar">
           <div class="player-card active" id="xCard">
-            <div class="player-label">Player X <span class="ready-badge" id="readyBadgeX">READY</span></div>
+            <div class="player-label">Player X</div>
             <div class="player-name" id="xName">Waiting</div>
           </div>
           <div class="timer" id="timer">30</div>
           <div class="player-card" id="oCard">
-            <div class="player-label">Player O <span class="ready-badge" id="readyBadgeO">READY</span></div>
+            <div class="player-label">Player O</div>
             <div class="player-name" id="oName">Waiting</div>
           </div>
         </div>
@@ -1376,22 +1339,11 @@
             <span id="roundCopy">Open the invite in another tab to test a real two-player flow.</span>
           </div>
           <div class="tx-status" id="txStatusBox" hidden></div>
-        </div>
-        <div class="ready-phase" id="readyPhase" hidden>
-          <div class="ready-header">Both players must ready up to start</div>
-          <div class="ready-indicators">
-            <div class="ready-indicator">
-              <div class="ready-dot" id="readyDotX"></div>
-              <span>Player X: <b id="readyStatusX">Not Ready</b></span>
-            </div>
-            <div class="ready-indicator">
-              <div class="ready-dot" id="readyDotO"></div>
-              <span>Player O: <b id="readyStatusO">Not Ready</b></span>
-            </div>
+          <div id="forfeitZone" hidden>
+            <button class="action-btn" id="claimInactivityBtn" type="button" hidden>Claim Inactivity Victory</button>
+            <button class="ghost-btn forfeit-btn" id="forfeitBtn" type="button">Leave Game</button>
           </div>
-          <button class="action-btn" id="readyUpBtn" type="button">Ready Up</button>
         </div>
-
         <!-- ── Treasure chest: shown to winner of a funded match ── -->
         <div class="treasure-win" id="treasureWin">
           <div class="treasure-coins" aria-hidden="true">
@@ -1413,21 +1365,8 @@
         </div>
 
         <div class="status-actions" id="postGameActions">
-          <button class="action-btn" id="rematchBtn" type="button">Request Rematch</button>
           <button class="ghost-btn" id="freshRoomBtn" type="button">New Room</button>
         </div>
-        <div class="rematch-box" id="rematchBox">
-          <strong id="rematchTitle">Rematch requested</strong>
-          <span id="rematchCopy">The other player wants another round.</span>
-          <div class="rematch-actions" id="rematchActions">
-            <button class="action-btn" id="acceptRematchBtn" type="button">Accept</button>
-            <button class="ghost-btn" id="declineRematchBtn" type="button">Decline</button>
-          </div>
-        </div>
-        <div id="forfeitZone" hidden>
-          <button class="ghost-btn forfeit-btn" id="forfeitBtn" type="button">Leave Room</button>
-        </div>
-
         <div id="cancelZone" hidden>
           <div id="cancelStatus"></div>
           <button class="ghost-btn cancel-req-btn" id="cancelReqBtn" type="button">⇌ Request Mutual Cancel</button>
@@ -1528,6 +1467,7 @@
     const PULSECHAIN_ID = CX_CONFIG ? CX_CONFIG.chain.id : 369;
     const LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
     const PAID_CACHE_KEY = 'cashxConnect4PaidRooms';
+    const ROOM_MODE_CACHE_KEY = 'cashxConnect4RoomModes';
     const GAS_BUFFER_BPS = 13000;
     const GAS_PRICE_BOOST_BPS = 25000;
     const TX_STEPS = ['approve', 'fund', 'join', 'claim'];
@@ -1583,29 +1523,15 @@
     const backendBadge = document.getElementById('backendBadge');
     const copyInviteBtn = document.getElementById('copyInviteBtn');
     const openInviteBtn = document.getElementById('openInviteBtn');
-    const readyPhase = document.getElementById('readyPhase');
-    const readyUpBtn = document.getElementById('readyUpBtn');
-    const readyDotX = document.getElementById('readyDotX');
-    const readyDotO = document.getElementById('readyDotO');
-    const readyStatusX = document.getElementById('readyStatusX');
-    const readyStatusO = document.getElementById('readyStatusO');
-    const readyBadgeX = document.getElementById('readyBadgeX');
-    const readyBadgeO = document.getElementById('readyBadgeO');
     const postGameActions = document.getElementById('postGameActions');
     const treasureWin = document.getElementById('treasureWin');
     const treasureAmountBig = document.getElementById('treasureAmountBig');
     const treasureBtn = document.getElementById('treasureBtn');
     const treasureChest = document.getElementById('treasureChest');
     const treasureError = document.getElementById('treasureError');
-    const rematchBtn = document.getElementById('rematchBtn');
     const freshRoomBtn = document.getElementById('freshRoomBtn');
-    const rematchBox = document.getElementById('rematchBox');
-    const rematchTitle = document.getElementById('rematchTitle');
-    const rematchCopy = document.getElementById('rematchCopy');
-    const rematchActions = document.getElementById('rematchActions');
-    const acceptRematchBtn = document.getElementById('acceptRematchBtn');
-    const declineRematchBtn = document.getElementById('declineRematchBtn');
     const forfeitZone = document.getElementById('forfeitZone');
+    const claimInactivityBtn = document.getElementById('claimInactivityBtn');
     const forfeitBtn = document.getElementById('forfeitBtn');
     const cancelZone = document.getElementById('cancelZone');
     const cancelStatus = document.getElementById('cancelStatus');
@@ -1635,11 +1561,14 @@
     }
     let board = Array(COLUMNS * ROWS).fill('');
     let winningCells = [];
+    const initialParams = new URLSearchParams(location.search);
     let currentRoom = null;
-    let currentRoomId = new URLSearchParams(location.search).get('room') || '';
+    let currentRoomId = initialParams.get('room') || '';
     let myMark = null;
-    let clockSeconds = 30;
-    let timeLeft = 30;
+    let selectedMode = normalizeModeValue(initialParams.get('mode')) || 'classic';
+    let clockSeconds = modeClockSeconds(selectedMode);
+    let timeLeft = clockSeconds;
+    let inactivityLeft = null;
     let pollHandle = null;
     let lobbyHandle = null;
     let historyHandle = null;
@@ -1656,12 +1585,15 @@
     const chainJoinedRooms = new Set();
     const chainJoinChecks = new Set();
     const chainJoinSyncs = new Set();
+    const autoReadyRooms = new Set();
 
     init();
 
     function init() {
       renderBoard();
       updateMoney();
+      syncModeButtons();
+      renderTimer();
       addFeed('Connect Four loaded', 'Create a room, open another tab, then join as player two.');
       document.getElementById('newMatchBtn').addEventListener('click', createRoom);
       document.getElementById('joinMatchBtn').addEventListener('click', joinRoom);
@@ -1670,28 +1602,27 @@
       });
       treasureBtn.addEventListener('click', () => settleOnChain({ fromBtn: true }));
       treasureChest.addEventListener('click', () => settleOnChain({ fromBtn: true }));
-      rematchBtn.addEventListener('click', requestRematch);
-      acceptRematchBtn.addEventListener('click', acceptRematch);
-      declineRematchBtn.addEventListener('click', declineRematch);
       freshRoomBtn.addEventListener('click', resetToFreshRoom);
+      claimInactivityBtn.addEventListener('click', claimInactivityVictory);
       forfeitBtn.addEventListener('click', forfeitRoom);
       cancelReqBtn.addEventListener('click', requestMutualCancel);
       cancelRevokeBtn.addEventListener('click', revokeMutualCancel);
       cancelForceBtn.addEventListener('click', forceCancelRefund);
-      readyUpBtn.addEventListener('click', readyUp);
       copyInviteBtn.addEventListener('click', copyInviteLink);
       openInviteBtn.addEventListener('click', openInviteTab);
       refreshLobbiesBtn.addEventListener('click', refreshOpenLobbies);
       wagerInput.addEventListener('input', updateMoney);
       boardEl.addEventListener('mousemove', handleBoardHover);
       boardEl.addEventListener('mouseleave', clearDropTarget);
-      document.getElementById('clockButtons').addEventListener('click', event => {
-        const button = event.target.closest('button[data-clock]');
+      document.getElementById('modeButtons').addEventListener('click', event => {
+        const button = event.target.closest('button[data-mode]');
         if (!button) return;
-        document.querySelectorAll('#clockButtons button').forEach(btn => btn.classList.remove('active'));
+        document.querySelectorAll('#modeButtons button').forEach(btn => btn.classList.remove('active'));
         button.classList.add('active');
-        clockSeconds = Number(button.dataset.clock);
+        selectedMode = button.dataset.mode || 'classic';
+        clockSeconds = modeClockSeconds(selectedMode);
         timeLeft = clockSeconds;
+        inactivityLeft = null;
         renderTimer();
       });
       setupWallet();
@@ -1705,11 +1636,20 @@
       historyHandle = setInterval(refreshGameHistory, 15000);
       healthHandle = setInterval(checkBackendHealth, 10000);
       setInterval(refreshOnChainBurn, 60000);
+      if (currentRoomId && normalizeModeValue(initialParams.get('mode'))) {
+        cacheRoomMode(currentRoomId, normalizeModeValue(initialParams.get('mode')));
+      }
       if (currentRoomId) loadRoom(currentRoomId);
     }
 
     async function createRoom() {
       try {
+        const mode = selectedModeFromButtons();
+        selectedMode = mode;
+        clockSeconds = modeClockSeconds(mode);
+        timeLeft = clockSeconds;
+        inactivityLeft = null;
+        renderTimer();
         setBackendBadge('Checking', false);
         stopPolling();
         stopCountdown();
@@ -1722,9 +1662,18 @@
           game: 'connect4',
           creator: playerId(),
           wager: String(Math.max(100, Math.floor(Number(wagerInput.value || 0)))),
-          clockSeconds,
+          mode,
+          clockSeconds: mode === 'casual' ? null : clockSeconds,
           chain,
         });
+        cacheRoomMode(room.id, mode);
+        if (mode === 'casual') {
+          room.mode = 'casual';
+          room.variant = 'casual';
+          room.clockSeconds = null;
+          room.playerClocks = null;
+          room.moveExpiresAt = null;
+        }
         syncRoom(room);
         updateRoomUrl(room.id);
         addFeed(
@@ -1769,11 +1718,7 @@
       renderTimer();
       updateActivePlayer();
       postGameActions.classList.remove('visible');
-      rematchBox.classList.remove('visible');
-      readyPhase.hidden = true;
       resetTxProgress();
-      readyBadgeX.classList.remove('visible');
-      readyBadgeO.classList.remove('visible');
       roundTitle.textContent = 'Create a room';
       roundCopy.textContent = 'Open the invite in another tab to test a real two-player flow.';
       addFeed('Ready', 'Create a fresh Connect Four room.');
@@ -1788,21 +1733,25 @@
       // Build a confirmation message appropriate to the current state
       let confirmMsg;
       if (status === 'waiting') {
-        confirmMsg = 'Cancel this room? It will be removed from the lobby.';
+        confirmMsg = 'Leave this game? It will be removed from the lobby.';
         if (room.chain) {
           confirmMsg += '\n\nThis will open your wallet once to refund the funded CASHX escrow.';
         }
-      } else if (status === 'ready-check') {
-        confirmMsg = 'Leave this room? The other player will win by forfeit.';
-        if (room.chain) confirmMsg += '\n\nNote: on-chain wagers will be claimable by the other player.';
       } else if (status === 'active') {
-        confirmMsg = 'Forfeit this match? The other player wins immediately.';
+        confirmMsg = 'Leave this live game?';
+        if (room.chain) confirmMsg += '\n\nNote: on-chain wagers will be claimable by the other player.';
+      } else if (status === 'ready-check') {
+        confirmMsg = 'Leave this game? Both wallets are joined, so leaving will forfeit the match.';
         if (room.chain) confirmMsg += '\n\nNote: on-chain wagers will be claimable by the other player.';
       } else {
         return; // already finished, nothing to do
       }
 
       if (!confirm(confirmMsg)) return;
+      if (status === 'active' || status === 'ready-check') {
+        const forfeitConfirmed = confirm('This game is live. If you leave now, you forfeit and your opponent wins automatically.');
+        if (!forfeitConfirmed) return;
+      }
 
       forfeitBtn.disabled = true;
       try {
@@ -1822,16 +1771,42 @@
           syncRoom(result.room);
           if (status === 'waiting') {
             addFeed('Room cancelled', 'The room has been removed.');
-          } else if (status === 'ready-check') {
-            addFeed('Left room', 'You left before the match started. The other player wins.');
           } else {
             addFeed('Forfeited', 'You forfeited the match. The other player wins.');
           }
         }
       } catch (err) {
+        const raw = err && err.message ? err.message : String(err);
+        if (/already finished|finished|settled/i.test(raw) && !room.winner && !isBoardFull(room.board)) {
+          addFeed('Room cleared', 'This stale room was removed from your screen.');
+          resetToFreshRoom();
+          return;
+        }
         showBackendError(err);
       } finally {
         forfeitBtn.disabled = false;
+        if (status === 'waiting' && room.chain && currentRoom && currentRoom.id === room.id) {
+          forfeitBtn.textContent = 'Try Leave Again';
+        }
+      }
+    }
+
+    async function claimInactivityVictory() {
+      if (!currentRoom || !currentRoomId) return;
+      claimInactivityBtn.disabled = true;
+      claimInactivityBtn.textContent = 'Claiming...';
+      try {
+        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoomId) + '/claim-inactivity', {
+          player: playerId(),
+        });
+        syncRoom(room);
+        addFeed('Opponent inactive', 'Inactivity victory recorded. The winner can claim the pot.');
+        refreshGameHistory();
+      } catch (err) {
+        showBackendError(err);
+      } finally {
+        claimInactivityBtn.disabled = false;
+        claimInactivityBtn.textContent = 'Claim Inactivity Victory';
       }
     }
 
@@ -1859,15 +1834,20 @@
         });
         syncRoom(room);
         const joinTitle = room.chain ? 'Funded room joined' : 'Room joined';
-        const joinMsg = room.status === 'ready-check'
-          ? 'Both players must click Ready Up before the match begins.'
-          : 'Match is live. Drop pieces by choosing a column.';
+        const joinMsg = 'Match auto-started. Drop pieces by choosing a column.';
         addFeed(joinTitle, joinMsg);
         setBackendBadge('Online', true);
         refreshOpenLobbies();
         refreshGameHistory();
         startPolling();
       } catch (err) {
+        if (await recoverConfirmedJoinAfterError(err)) {
+          setBackendBadge('Online', true);
+          refreshOpenLobbies();
+          refreshGameHistory();
+          startPolling();
+          return;
+        }
         showBackendError(err);
         // Only re-enable the button on error so the player can retry
         joiningRoom = false;
@@ -1875,23 +1855,6 @@
       } finally {
         joiningRoom = false;
         if (currentRoom) updateJoinButton(currentRoom);
-      }
-    }
-
-    async function readyUp() {
-      try {
-        if (!currentRoom || currentRoom.status !== 'ready-check') throw new Error('Not in ready phase.');
-        readyUpBtn.disabled = true;
-        readyUpBtn.textContent = 'Confirming...';
-        const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/ready', {
-          player: playerId(),
-        });
-        syncRoom(room);
-        addFeed('Ready!', room.status === 'active' ? 'Both players ready — match is live!' : 'Waiting for the other player to ready up.');
-      } catch (err) {
-        showBackendError(err);
-        readyUpBtn.disabled = false;
-        readyUpBtn.textContent = 'Ready Up';
       }
     }
 
@@ -1929,20 +1892,22 @@
     function syncRoom(room) {
       cacheOpenLobby(room);
       window._c4StopDemo?.();
+      room = normalizeIncomingRoom(room);
       currentRoom = room;
       currentRoomId = room.id;
       board = room.board.slice();
       winningCells = room.winningCells || [];
-      clockSeconds = Number(room.clockSeconds || clockSeconds);
+      selectedMode = room.mode || room.variant || selectedMode;
+      clockSeconds = modeClockSeconds(selectedMode);
+      syncModeButtons();
       lastMoveCell = room.lastMove && Number.isInteger(room.lastMove.cell) ? room.lastMove.cell : null;
       const mySeat = room.players.find(player => samePlayer(player.address, playerId()));
       myMark = mySeat ? mySeat.mark : null;
       wagerInput.value = room.wager;
-      xName.textContent = room.players[0] ? playerLabel(room.players[0]) : 'Waiting';
-      oName.textContent = room.players[1] ? playerLabel(room.players[1]) : 'Waiting';
       updateMoneyFromRoom(room);
       updateRoomCode();
       updateClockFromRoom(room);
+      renderPlayerLabels();
       renderBoard();
       updateActivePlayer();
       updateRoomUrl(room.id);
@@ -1957,114 +1922,97 @@
       if (showTreasure) {
         treasureAmountBig.textContent = formatAmount(Number(room.payout)) + ' CASHX';
       }
-      updateRematchNotice(room);
       updateChainStatus();
       syncTxProgressFromRoom(room);
       updateJoinButton(room);
 
       if (room.status === 'waiting') {
         stopCountdown();
-        readyPhase.hidden = true;
-        readyBadgeX.classList.remove('visible');
-        readyBadgeO.classList.remove('visible');
         roundTitle.textContent = 'Room waiting';
         roundCopy.textContent = chainJoinedRooms.has(room.id)
           ? 'A Join Match transaction is confirmed on-chain. Waiting for the room to sync before cancellation options change.'
           : 'Open the invite in another tab, then click Join Room.';
       } else if (room.status === 'ready-check') {
         stopCountdown();
-        const readyList = room.readyPlayers || [];
-        const xAddr = room.players[0] && room.players[0].address;
-        const oAddr = room.players[1] && room.players[1].address;
-        const xReady = readyList.some(p => samePlayer(p, xAddr));
-        const oReady = readyList.some(p => samePlayer(p, oAddr));
-        const iAmReady = myMark === 'X' ? xReady : oReady;
-        readyDotX.classList.toggle('is-ready', xReady);
-        readyDotO.classList.toggle('is-ready', oReady);
-        readyStatusX.textContent = xReady ? 'READY ✓' : 'Not Ready';
-        readyStatusO.textContent = oReady ? 'READY ✓' : 'Not Ready';
-        readyBadgeX.classList.toggle('visible', xReady);
-        readyBadgeO.classList.toggle('visible', oReady);
-        readyPhase.hidden = false;
-        readyUpBtn.disabled = iAmReady || !myMark;
-        readyUpBtn.textContent = iAmReady ? 'Waiting for opponent…' : 'Ready Up';
-        roundTitle.textContent = iAmReady ? 'Waiting for opponent' : 'Ready up to start';
-        roundCopy.textContent = room.chain
-          ? 'Both escrows are funded on-chain. Use mutual cancel below for a refund, or ready up to play.'
-          : myMark
-          ? (iAmReady ? 'The other player still needs to ready up.' : 'Click Ready Up when you\'re set to play.')
-          : 'Both players must ready up before the game begins.';
+        roundTitle.textContent = 'Starting game';
+        roundCopy.textContent = 'Both wallets are joined. Starting the match automatically...';
+        autoStartReadyCheck(room);
       } else if (room.status === 'active') {
-        readyPhase.hidden = true;
-        readyBadgeX.classList.remove('visible');
-        readyBadgeO.classList.remove('visible');
         startCountdown();
         roundTitle.textContent = myMark === room.turn ? 'Your move' : 'Player ' + room.turn + ' to move';
         roundCopy.textContent = myMark
-          ? 'You are Player ' + myMark + '. Choose any open column before the clock hits zero.'
+          ? (selectedMode === 'casual'
+            ? 'You are Player ' + myMark + '. No timer is running in this game.'
+            : 'You are Player ' + myMark + '. Your turn clock resets after every move.')
           : 'Spectating this room. Join before moving.';
       } else if (room.winner) {
-        readyPhase.hidden = true;
         stopCountdown();
         const winnerSeat = room.players.find(player => player.address === room.winner);
         const isWinnerWallet = connectedAddress && samePlayer(connectedAddress, room.winner);
         const payoutText = formatAmount(Number(room.payout)) + ' CASHX payout after burn.';
         const isForfeit = room.winReason === 'forfeit';
+        const isInactive = room.winReason === 'inactive';
         if (isWinnerWallet) {
-          roundTitle.textContent = isForfeit ? 'Opponent forfeited' : 'You won';
-          roundCopy.textContent = isForfeit
-            ? (room.chain ? 'Opponent left the match. Click Claim Winnings to receive ' + payoutText : 'Opponent left — ' + payoutText)
+          roundTitle.textContent = isForfeit ? 'Opponent forfeited' : isInactive ? 'Opponent inactive' : 'You won';
+          roundCopy.textContent = (isForfeit || isInactive)
+            ? (room.chain ? 'Opponent left or timed out. Click Claim Winnings to receive ' + payoutText : 'Opponent left or timed out — ' + payoutText)
             : (room.chain ? 'Click Claim Winnings to receive ' + payoutText : payoutText);
           maybeAutoSettleWinner(room);
         } else if (myMark) {
-          roundTitle.textContent = isForfeit ? 'You forfeited' : 'You lost';
-          roundCopy.textContent = isForfeit
-            ? (room.chain ? 'You left the match. The winner will claim on chain.' : 'You left — winner gets ' + payoutText)
+          roundTitle.textContent = isForfeit ? 'You forfeited' : isInactive ? 'You were inactive' : 'You lost';
+          roundCopy.textContent = (isForfeit || isInactive)
+            ? (room.chain ? 'The winner can claim on chain.' : 'Winner gets ' + payoutText)
             : (room.chain ? 'Winner will claim the payout on chain.' : 'Winner gets ' + payoutText);
         } else {
           roundTitle.textContent = 'Player ' + (winnerSeat ? winnerSeat.mark : '?') + ' wins';
-          roundCopy.textContent = isForfeit ? 'Opponent forfeited. ' + payoutText : payoutText;
+          roundCopy.textContent = (isForfeit || isInactive) ? 'Won by forfeit or inactivity. ' + payoutText : payoutText;
         }
         updateChainStatus();
       } else {
         stopCountdown();
-        readyPhase.hidden = true;
-        readyBadgeX.classList.remove('visible');
-        readyBadgeO.classList.remove('visible');
-        roundTitle.textContent = 'Draw';
-        roundCopy.textContent = 'Board filled. Live contract rules can refund or rematch.';
+        if (isBoardFull(room.board)) {
+          roundTitle.textContent = 'Draw';
+          roundCopy.textContent = room.chain
+            ? 'Board filled. Use mutual cancel so both players can receive a full refund.'
+            : 'Board filled. Test room ends as a draw with no winner.';
+        } else {
+          roundTitle.textContent = 'Syncing room';
+          roundCopy.textContent = 'Waiting for the current match state to refresh.';
+        }
       }
 
       // Show/hide leave-room / forfeit button based on current status and player membership
       const isInRoom = Boolean(myMark);
-      if (isInRoom && (room.status === 'waiting' || room.status === 'ready-check' || room.status === 'active')) {
+      const canClaimInactive = isInRoom
+        && room.status === 'active'
+        && false;
+      const canLeaveGame = isInRoom && (room.status === 'waiting' || room.status === 'ready-check' || room.status === 'active' || (!room.winner && !isBoardFull(room.board)));
+      if (canLeaveGame) {
         forfeitZone.hidden = false;
+        claimInactivityBtn.hidden = !canClaimInactive;
         forfeitBtn.disabled = false;
         if (room.status === 'waiting') {
           if (chainJoinedRooms.has(room.id)) {
-            forfeitBtn.disabled = true;
-            forfeitBtn.textContent = 'Join Confirmed On-Chain';
+            forfeitBtn.textContent = 'Refresh / Leave Game';
           } else {
-            forfeitBtn.textContent = '✕ Cancel Room';
+            forfeitBtn.textContent = '✕ Leave Game';
           }
           if (room.chain && room.chain.matchId) {
             refreshWaitingChainJoin(room).catch(() => {});
           }
-        } else if (room.status === 'ready-check') {
-          delete forfeitBtn.dataset.chainJoinWarned;
-          forfeitBtn.textContent = room.chain ? '⚑ Forfeit Match' : '✕ Leave Room';
         } else {
           delete forfeitBtn.dataset.chainJoinWarned;
-          forfeitBtn.textContent = '⚑ Forfeit Match';
+          forfeitBtn.textContent = '⚑ Leave Game';
         }
       } else {
         delete forfeitBtn.dataset.chainJoinWarned;
         forfeitZone.hidden = true;
+        claimInactivityBtn.hidden = true;
       }
 
       // Show mutual cancel once both escrows are funded on-chain.
       const showCancelZone = isInRoom
-        && (room.status === 'ready-check' || room.status === 'active')
+        && (room.status === 'active' || (!room.winner && room.winReason === 'draw'))
         && room.chain && room.chain.matchId
         && connectedAddress;
       cancelZone.hidden = !showCancelZone;
@@ -2078,7 +2026,107 @@
       const chainAlreadyJoined = room && chainJoinedRooms.has(room.id);
       const canJoin = roomIsOpen && !chainAlreadyJoined;
       joinBtn.disabled = joiningRoom || !canJoin;
-      joinBtn.textContent = joiningRoom ? 'Joining...' : 'Join Room';
+      joinBtn.textContent = joiningRoom ? 'Joining...' : 'Join Game';
+    }
+
+    function normalizeIncomingRoom(room) {
+      if (!room || !Array.isArray(room.board)) return room;
+      const next = { ...room, board: room.board.slice() };
+      const cachedMode = roomModeOverride(next.id);
+      const serverMode = normalizeModeValue(next.mode) || normalizeModeValue(next.variant);
+      const inferredMode = !serverMode && !cachedMode;
+      if (serverMode) next.mode = serverMode;
+      else if (cachedMode) next.mode = cachedMode;
+      if (inferredMode) next.mode = modeFromClock(next.clockSeconds);
+      if (next.mode === 'quick' || next.mode === 'classic') {
+        next.clockSeconds = modeClockSeconds(next.mode);
+        if (!next.playerClocks || inferredMode) next.playerClocks = { X: next.clockSeconds, O: next.clockSeconds };
+      } else if (next.mode === 'casual') {
+        next.clockSeconds = null;
+        next.playerClocks = null;
+        next.moveExpiresAt = null;
+      }
+      if (next.status === 'settled' && !next.winner && !isBoardFull(next.board)) {
+        next.status = next.players && next.players.length >= 2 ? 'active' : 'waiting';
+        next.winReason = null;
+        next.winningCells = [];
+        next.turn = next.turn || 'X';
+      }
+      return next;
+    }
+
+    async function autoStartReadyCheck(room) {
+      if (!room || room.game !== 'connect4' || room.status !== 'ready-check' || autoReadyRooms.has(room.id)) return;
+      const seat = room.players && room.players.find(player => samePlayer(player.address, playerId()));
+      if (!seat) return;
+      autoReadyRooms.add(room.id);
+      try {
+        const started = await api('/api/pvp/rooms/' + encodeURIComponent(room.id) + '/ready', {
+          player: playerId(),
+        });
+        syncRoom(started);
+      } catch (err) {
+        autoReadyRooms.delete(room.id);
+        addFeed('Auto-start pending', 'Waiting for both wallets to sync into the match.');
+      }
+    }
+
+    function modeFromClock(seconds) {
+      const clock = Number(seconds || 300);
+      if (clock <= 120) return 'quick';
+      return 'classic';
+    }
+
+    function modeClockSeconds(mode) {
+      if (mode === 'quick') return 120;
+      if (mode === 'classic') return 300;
+      return 0;
+    }
+
+    function normalizeModeValue(mode) {
+      mode = String(mode || '').toLowerCase();
+      return mode === 'quick' || mode === 'classic' || mode === 'casual' ? mode : '';
+    }
+
+    function isCasualMode(mode) {
+      return normalizeModeValue(mode) === 'casual';
+    }
+
+    function isCasualRoom(room) {
+      return Boolean(room) && (
+        isCasualMode(room.mode)
+        || isCasualMode(room.variant)
+        || room.clockSeconds === null
+      );
+    }
+
+    function selectedModeFromButtons() {
+      return document.querySelector('#modeButtons button.active')?.dataset.mode || selectedMode || 'classic';
+    }
+
+    function roomModeOverrides() {
+      try {
+        return JSON.parse(localStorage.getItem(ROOM_MODE_CACHE_KEY) || '{}');
+      } catch (_) {
+        return {};
+      }
+    }
+
+    function roomModeOverride(roomId) {
+      return roomId ? roomModeOverrides()[roomId] : null;
+    }
+
+    function cacheRoomMode(roomId, mode) {
+      if (!roomId || !mode) return;
+      try {
+        const modes = roomModeOverrides();
+        modes[roomId] = mode;
+        localStorage.setItem(ROOM_MODE_CACHE_KEY, JSON.stringify(modes));
+      } catch (_) {}
+    }
+
+    function isBoardFull(cells) {
+      return Array.isArray(cells) && cells.length >= COLUMNS * ROWS && cells.every(Boolean);
     }
     function paidRoomIds() {
       try {
@@ -2210,6 +2258,12 @@
       updateMoney();
     }
 
+    function syncModeButtons() {
+      document.querySelectorAll('#modeButtons button').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.mode === selectedMode);
+      });
+    }
+
     function _syncWagerQuickBtns() {
       const val = Number(wagerInput.value);
       document.querySelectorAll('.wager-quick button').forEach(b => {
@@ -2235,25 +2289,54 @@
     }
 
     function renderTimer() {
-      timerEl.textContent = String(timeLeft);
+      if (isCasualMode(selectedMode)) {
+        timerEl.style.visibility = 'hidden';
+        timerEl.textContent = '';
+        timerEl.style.setProperty('--timer', '100%');
+        renderPlayerLabels();
+        return;
+      }
+      timerEl.style.visibility = 'visible';
+      timerEl.textContent = formatClock(timeLeft);
       const percent = Math.max(0, Math.min(100, (timeLeft / clockSeconds) * 100));
       timerEl.style.setProperty('--timer', percent + '%');
+      renderPlayerLabels();
     }
 
     function updateClockFromRoom(room) {
-      if (room.status !== 'active' || !room.moveExpiresAt) {
+      if (isCasualRoom(room)) {
+        selectedMode = 'casual';
+        inactivityLeft = null;
+        renderTimer();
+        return;
+      }
+      if (room.status === 'active' && room.moveExpiresAt) {
+        timeLeft = Math.max(0, Math.ceil((Number(room.moveExpiresAt) - Date.now()) / 1000));
+        renderTimer();
+        return;
+      }
+      if (room.status !== 'active') {
         timeLeft = Number(room.clockSeconds || clockSeconds);
         renderTimer();
         return;
       }
-      timeLeft = Math.max(0, Math.ceil((Number(room.moveExpiresAt) - Date.now()) / 1000));
+      if (room.playerClocks && room.turn) {
+        timeLeft = Number(room.playerClocks[room.turn] ?? room.clockSeconds ?? clockSeconds);
+      }
       renderTimer();
     }
 
     function startCountdown() {
       stopCountdown();
       countdownHandle = setInterval(() => {
-        if (!currentRoom || currentRoom.status !== 'active' || !currentRoom.moveExpiresAt) return;
+        if (!currentRoom || currentRoom.status !== 'active') return;
+        if (isCasualRoom(currentRoom)) {
+          inactivityLeft = null;
+          claimInactivityBtn.hidden = true;
+          renderTimer();
+          return;
+        }
+        if (!currentRoom.moveExpiresAt) return;
         timeLeft = Math.max(0, Math.ceil((Number(currentRoom.moveExpiresAt) - Date.now()) / 1000));
         renderTimer();
       }, 250);
@@ -2272,9 +2355,34 @@
       return String(left || '').toLowerCase() === String(right || '').toLowerCase();
     }
 
-    function playerLabel(player) {
+    function playerLabel(player, mark, room) {
       const label = shortPlayer(player.address);
-      return samePlayer(player.address, playerId()) ? label + ' (You)' : label;
+      const suffix = samePlayer(player.address, playerId()) ? ' (You)' : '';
+      const clocks = room && room.playerClocks;
+      const displayClock = displayClockForMark(mark, room);
+      const clockText = clocks && clocks[mark] != null ? ' · ' + formatClock(displayClock) : '';
+      return label + suffix + clockText;
+    }
+
+    function displayClockForMark(mark, room = currentRoom) {
+      if (!room || isCasualRoom(room)) return 0;
+      if (room.status === 'active' && room.turn === mark && room.moveExpiresAt) {
+        return Math.max(0, Math.ceil((Number(room.moveExpiresAt) - Date.now()) / 1000));
+      }
+      return Number(room.playerClocks?.[mark] ?? room.clockSeconds ?? clockSeconds);
+    }
+
+    function renderPlayerLabels() {
+      if (!currentRoom || !Array.isArray(currentRoom.players)) return;
+      xName.textContent = currentRoom.players[0] ? playerLabel(currentRoom.players[0], 'X', currentRoom) : 'Waiting';
+      oName.textContent = currentRoom.players[1] ? playerLabel(currentRoom.players[1], 'O', currentRoom) : 'Waiting';
+    }
+
+    function formatClock(totalSeconds) {
+      const seconds = Math.max(0, Math.ceil(Number(totalSeconds || 0)));
+      const minutes = Math.floor(seconds / 60);
+      const rest = seconds % 60;
+      return minutes + ':' + String(rest).padStart(2, '0');
     }
 
     function shortPlayer(value) {
@@ -2296,12 +2404,14 @@
     function updateRoomUrl(roomId) {
       const url = new URL(location.href);
       url.searchParams.set('room', roomId);
+      if (selectedMode) url.searchParams.set('mode', selectedMode);
       history.replaceState(null, '', url.toString());
     }
 
     function inviteLink() {
       const url = new URL(location.href);
       if (currentRoomId) url.searchParams.set('room', currentRoomId);
+      if (selectedMode) url.searchParams.set('mode', selectedMode);
       return url.toString();
     }
 
@@ -2537,7 +2647,7 @@
     }
 
     function renderBurnTotal(rooms) {
-      const burned = rooms.reduce((sum, room) => sum + (room.status === 'settled' ? roomBurn(room) : 0), 0);
+      const burned = rooms.reduce((sum, room) => sum + (room.status === 'settled' && room.winner ? roomBurn(room) : 0), 0);
       totalBurned.textContent = formatAmount(burned) + ' CASHX';
     }
 
@@ -2547,7 +2657,7 @@
         return;
       }
       recentGamesBody.innerHTML = rooms.map(room => {
-        const settled = room.status === 'settled';
+        const settled = room.status === 'settled' && Boolean(room.winner);
         const winner = settled ? shortPlayer(room.winner) : 'Draw';
         const result = settled ? 'WIN' : 'DRAW';
         const pillClass = settled ? 'result-pill' : 'result-pill loss';
@@ -2576,7 +2686,7 @@
         return;
       }
       yourGamesBody.innerHTML = mine.map(room => {
-        const settled = room.status === 'settled';
+        const settled = room.status === 'settled' && Boolean(room.winner);
         const iWon = settled && samePlayer(room.winner, connectedAddress);
         const result = settled ? (iWon ? 'WIN' : 'LOSS') : 'DRAW';
         const pillClass = iWon ? 'result-pill' : 'result-pill loss';
@@ -2616,130 +2726,6 @@
       await loadRoom(roomId);
       window.scrollTo({ top: 0, behavior: 'smooth' });
       startPolling();
-    }
-
-    async function requestRematch() {
-      try {
-        if (!currentRoom || currentRoom.status !== 'settled') throw new Error('Finish this game first.');
-        const room = await rematchApi('request');
-        syncRoom(room);
-        addFeed('Rematch requested', 'Waiting for the other player to accept.');
-      } catch (err) {
-        showBackendError(err);
-      }
-    }
-
-    async function acceptRematch() {
-      try {
-        const sourceRoom = currentRoom;
-        if (!sourceRoom || sourceRoom.status !== 'settled') throw new Error('Finish this game first.');
-
-        // If the rematch was already accepted by the other player and I was the requester,
-        // just join the new room — don't create another one.
-        const rm = sourceRoom.rematch;
-        if (rm && rm.status === 'accepted' && rm.newRoomId && samePlayer(rm.requestedBy, playerId())) {
-          addFeed('Joining rematch room', 'Navigating to the new room…');
-          await openLobby(rm.newRoomId);
-          return;
-        }
-        roundTitle.textContent = 'Accepting rematch';
-        roundCopy.textContent = isChainEnabled()
-          ? 'Creating fresh escrow for the next round.'
-          : 'Creating the next room.';
-        wagerInput.value = sourceRoom.wager;
-        clockSeconds = Number(sourceRoom.clockSeconds || clockSeconds);
-        const chain = isChainEnabled() ? await createChainMatch() : null;
-        const newRoom = await api('/api/pvp/rooms', {
-          game: 'connect4',
-          creator: playerId(),
-          wager: String(sourceRoom.wager),
-          clockSeconds,
-          chain,
-        });
-        const result = await api('/api/pvp/rooms/' + encodeURIComponent(sourceRoom.id) + '/rematch', {
-          player: playerId(),
-          action: 'accept',
-          newRoomId: newRoom.id,
-        });
-        addFeed('Rematch accepted', 'Opening the new rematch room.');
-        if (result.newRoom || newRoom) {
-          syncRoom(result.newRoom || newRoom);
-          updateRoomUrl((result.newRoom || newRoom).id);
-          roundTitle.textContent = 'Rematch room';
-          roundCopy.textContent = chain
-            ? 'Fresh escrow is funded. Other player can join this rematch.'
-            : 'Other player can join this rematch.';
-        } else if (result.room) {
-          syncRoom(result.room);
-        }
-      } catch (err) {
-        showBackendError(err);
-      }
-    }
-
-    async function declineRematch() {
-      try {
-        const room = await rematchApi('decline');
-        syncRoom(room);
-        addFeed('Rematch declined', 'Start a new room when ready.');
-      } catch (err) {
-        showBackendError(err);
-      }
-    }
-
-    async function rematchApi(action) {
-      const result = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/rematch', {
-        player: playerId(),
-        action,
-      });
-      return result.newRoom ? result : result;
-    }
-
-    function updateRematchNotice(room) {
-      const rematch = room && room.rematch;
-      const seat = room && room.players ? room.players.find(player => samePlayer(player.address, playerId())) : null;
-      rematchBox.classList.remove('visible');
-      rematchActions.hidden = false;
-      declineRematchBtn.hidden = false;
-      acceptRematchBtn.textContent = 'Accept';
-      rematchBtn.disabled = false;
-      rematchBtn.textContent = 'Request Rematch';
-
-      if (!room || room.status !== 'settled' || !rematch) return;
-
-      if (rematch.status === 'requested') {
-        const requestedByMe = samePlayer(rematch.requestedBy, playerId());
-        rematchBox.classList.add('visible');
-        rematchTitle.textContent = requestedByMe ? 'Rematch sent' : 'Rematch requested';
-        rematchCopy.textContent = requestedByMe
-          ? 'Waiting for the other player to accept.'
-          : 'The other player wants another round.';
-        rematchActions.hidden = requestedByMe || !seat;
-        rematchBtn.disabled = true;
-        rematchBtn.textContent = requestedByMe ? 'Waiting' : 'Rematch Pending';
-      } else if (rematch.status === 'declined') {
-        rematchBox.classList.add('visible');
-        rematchTitle.textContent = 'Rematch declined';
-        rematchCopy.textContent = 'Create a new room when you are ready.';
-        rematchActions.hidden = true;
-      } else if (rematch.status === 'accepted') {
-        const requestedByMe = samePlayer(rematch.requestedBy, playerId());
-        rematchBox.classList.add('visible');
-        rematchTitle.textContent = 'Rematch accepted';
-        if (requestedByMe && rematch.newRoomId) {
-          // I sent the request — the other player created the new room. Show a Join button.
-          rematchCopy.textContent = 'New room ready — click below to join the rematch!';
-          rematchActions.hidden = false;
-          acceptRematchBtn.textContent = '▶ Join Rematch Room';
-          declineRematchBtn.hidden = true;
-        } else {
-          // I accepted — I already created and navigated to the new room.
-          rematchCopy.textContent = rematch.newRoomId
-            ? 'New room ready: ' + rematch.newRoomId.slice(0, 8) + '. Waiting for opponent.'
-            : 'Rematch room is ready. Waiting for the other player to join.';
-          rematchActions.hidden = true;
-        }
-      }
     }
 
     async function checkBackendHealth() {
@@ -2858,7 +2844,7 @@
         completeTxStage('fund', 'Funded ' + matchLabel + ' is waiting for Player O.');
         return;
       }
-      if (room.status === 'ready-check' || room.status === 'active') {
+      if (room.status === 'active') {
         completeTxStage('join', 'Both escrows are funded. Play the match.');
         return;
       }
@@ -2943,13 +2929,32 @@
     }
 
     async function ensureWallet() {
+      await refreshInjectedWallet();
       if (walletSigner && connectedAddress) return;
       await restoreWalletSession({ reloadRoom: false });
+      await refreshInjectedWallet();
       if (walletSigner && connectedAddress) return;
       if (!window.showWalletModal) throw new Error('Wallet unavailable');
       const result = await window.showWalletModal();
       applyWalletConnection(result);
       refreshGameHistory();
+    }
+
+    async function refreshInjectedWallet() {
+      if (!window.ethers) return;
+      const injectedProvider = selectedWalletProvider();
+      if (!injectedProvider || !injectedProvider.request) return;
+      try {
+        const accounts = await injectedProvider.request({ method: 'eth_accounts' });
+        if (!accounts || !accounts.length) return;
+        const provider = new ethers.providers.Web3Provider(injectedProvider);
+        const signer = provider.getSigner();
+        const address = await signer.getAddress();
+        if (!walletSigner || !connectedAddress || !samePlayer(address, connectedAddress)) {
+          applyWalletConnection({ provider, signer, address });
+          refreshGameHistory();
+        }
+      } catch (_) {}
     }
 
     async function restoreWalletSession(options = {}) {
@@ -3061,6 +3066,12 @@
       if (!isChainEnabled()) return;
       await ensureWallet();
       const wagerWei = ethers.BigNumber.from(String(wagerWeiValue || '0'));
+      const creator = currentRoom && currentRoom.chain
+        ? (currentRoom.chain.player1 || currentRoom.players?.[0]?.address)
+        : null;
+      if (creator && samePlayer(connectedAddress, creator)) {
+        throw new Error('Switch MetaMask to the second wallet before joining. This tab is still connected as Player X.');
+      }
 
       // Check if this wallet already joined this match on-chain (handles the case where
       // the chain tx confirmed but the backend /join call failed, leaving the room desynced).
@@ -3100,9 +3111,33 @@
       setTxStage('join', 'Step 2 of 2: Confirm join transaction in MetaMask...');
       addFeed('Wallet step', 'Joining the funded Connect Four match.');
       await preflightContractCall(pvpContract, 'joinMatch', [matchId]);
-      const tx = await pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId]));
+      const tx = await requestWalletTransaction(
+        pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId])),
+        'MetaMask did not return the join transaction. Open MetaMask, reject or confirm any pending prompt, then click Join again.'
+      );
       await waitForTx(tx);
       completeTxStage('join', 'Joined on chain. Both players can start the match.');
+    }
+
+    async function recoverConfirmedJoinAfterError(err) {
+      if (!currentRoom || !currentRoom.chain || !currentRoom.chain.matchId || !isChainEnabled()) return false;
+      const raw = err && err.message ? err.message : String(err || '');
+      if (!/join|waiting|open|dropped|replaced|transaction|already/i.test(raw)) return false;
+      await ensureWallet();
+      const matchState = await getChainMatchState(currentRoom.chain.matchId);
+      const player2 = matchState && matchState.player2 && !/^0x0{40}$/i.test(matchState.player2)
+        ? matchState.player2
+        : null;
+      if (!player2 || !samePlayer(player2, connectedAddress)) return false;
+
+      addFeed('Join confirmed', 'Your on-chain join is confirmed. Syncing the room without another wallet transaction.');
+      const room = await api('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id) + '/join', {
+        player: player2,
+        chainPlayer2: player2,
+      }).catch(async () => fetchJson('/api/pvp/rooms/' + encodeURIComponent(currentRoom.id)));
+      syncRoom(room);
+      completeTxStage('join', 'Join confirmed on-chain and synced.');
+      return true;
     }
 
     async function getChainMatchState(matchId) {
@@ -3153,8 +3188,8 @@
       if (!confirmedJoin || !currentRoom || currentRoom.id !== roomId || currentRoom.status !== 'waiting') return;
 
       chainJoinedRooms.add(roomId);
-      forfeitBtn.disabled = true;
-      forfeitBtn.textContent = 'Join Confirmed On-Chain';
+      forfeitBtn.disabled = false;
+      forfeitBtn.textContent = 'Refresh / Leave Game';
       roundCopy.textContent = 'A Join Match transaction is confirmed on-chain. Waiting for the room to sync before cancellation options change.';
       if (forfeitBtn.dataset.chainJoinWarned !== roomId) {
         forfeitBtn.dataset.chainJoinWarned = roomId;
@@ -3307,7 +3342,10 @@
       setTxStage('fund', 'Cancelling funded match #' + room.chain.matchId + ' in your wallet.');
       addFeed('Wallet step', 'Cancelling the unmatched Connect Four match.');
       await preflightContractCall(pvpContract, 'cancelUnmatched', [room.chain.matchId]);
-      const tx = await pvpContract.cancelUnmatched(room.chain.matchId, await txOptions(pvpContract, 'cancelUnmatched', [room.chain.matchId]));
+      const tx = await requestWalletTransaction(
+        pvpContract.cancelUnmatched(room.chain.matchId, await txOptions(pvpContract, 'cancelUnmatched', [room.chain.matchId])),
+        'MetaMask did not return the cancel transaction. Open MetaMask, reject or confirm any pending prompt, then click Leave again.'
+      );
       await waitForTx(tx);
       completeTxStage('fund', 'Escrow refunded. Removing the room from the lobby.');
     }
@@ -3414,6 +3452,19 @@
       }
     }
 
+    async function requestWalletTransaction(txPromise, timeoutMessage) {
+      const WALLET_PROMPT_TIMEOUT_MS = 45000;
+      let timeoutHandle;
+      const timeoutPromise = new Promise((_, reject) => {
+        timeoutHandle = setTimeout(() => reject(new Error(timeoutMessage)), WALLET_PROMPT_TIMEOUT_MS);
+      });
+      try {
+        return await Promise.race([txPromise, timeoutPromise]);
+      } finally {
+        clearTimeout(timeoutHandle);
+      }
+    }
+
     function friendlyChainError(err, method) {
       const raw = err && (err.reason || err.errorName || err.data?.message || err.error?.message || err.message) ? String(err.reason || err.errorName || err.data?.message || err.error?.message || err.message) : '';
       if (/insufficient funds|not enough funds/i.test(raw)) return new Error('This wallet needs a little PLS for gas before it can fund a match.');
@@ -3449,7 +3500,11 @@
         clearTimeout(timeoutHandle);
         if (err && err.code === 'TX_TIMEOUT') throw err;
         if (err && err.code === 'TRANSACTION_REPLACED' && err.receipt) {
-          if (err.cancelled) throw new Error('Transaction was cancelled in wallet.');
+          if (err.cancelled) {
+            const cancelled = new Error('Transaction cancelled in wallet.');
+            cancelled.code = 4001;
+            throw cancelled;
+          }
           return assertSuccessfulReceipt(err.receipt);
         }
         throw err;
@@ -3532,6 +3587,9 @@
         } else if (window.switchWallet) {
           await window.switchWallet();
         }
+        await restoreWalletSession({ reloadRoom: false });
+        await refreshInjectedWallet();
+        if (currentRoom) syncRoom(currentRoom);
       });
 
       disconnectWalletBtn.addEventListener('click', () => {
@@ -3564,6 +3622,23 @@
         updateWalletButtonText();
         if (currentRoom) syncRoom(currentRoom);
       });
+
+      const injectedProvider = selectedWalletProvider();
+      if (injectedProvider && injectedProvider.on) {
+        injectedProvider.on('accountsChanged', accounts => {
+          dropdown.hidden = true;
+          if (!accounts || !accounts.length) {
+            clearWalletConnection();
+            updateWalletButtonText();
+            if (currentRoom) syncRoom(currentRoom);
+            return;
+          }
+          refreshInjectedWallet().then(() => {
+            updateWalletButtonText();
+            if (currentRoom) syncRoom(currentRoom);
+          });
+        });
+      }
 
       updateWalletButtonText();
     }

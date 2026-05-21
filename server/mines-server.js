@@ -2,6 +2,8 @@ import crypto from 'node:crypto';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
+import rateLimit from 'express-rate-limit';
+import helmet from 'helmet';
 import { AbiCoder, Contract, JsonRpcProvider, Wallet, getBytes, getAddress, hexlify, isAddress, keccak256, solidityPackedKeccak256 } from 'ethers';
 
 dotenv.config();
@@ -17,16 +19,38 @@ const MAX_SAFE_PICKS = 10;
 const MAX_MINE_COUNT = 16;
 const HOUSE_EDGE_BPS = 300n;
 const BPS = 10000n;
+const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+const allowedOrigins = String(process.env.CORS_ORIGINS || '')
+  .split(',')
+  .map(v => v.trim())
+  .filter(Boolean);
 
 if (!isAddress(CONTRACT_ADDRESS)) {
+  if (isProd) throw new Error('MINES_CONTRACT_ADDRESS must be a valid address in production');
   console.warn('MINES_CONTRACT_ADDRESS is not configured yet.');
 }
 if (!SIGNER_KEY) {
+  if (isProd) throw new Error('GAME_SIGNER_PRIVATE_KEY is required in production');
   console.warn('GAME_SIGNER_PRIVATE_KEY is not configured yet.');
 }
 
 const signer = SIGNER_KEY ? new Wallet(SIGNER_KEY) : null;
 const provider = new JsonRpcProvider(RPC_URL);
+let rpcChainId = null;
+let rpcChainIdMismatch = false;
+provider.getNetwork()
+  .then(net => {
+    rpcChainId = BigInt(net.chainId);
+    rpcChainIdMismatch = rpcChainId !== CHAIN_ID;
+    if (rpcChainIdMismatch) {
+      const msg = `RPC chainId ${rpcChainId} does not match configured CHAIN_ID ${CHAIN_ID}`;
+      if (isProd) throw new Error(msg);
+      console.warn(msg);
+    }
+  })
+  .catch(err => {
+    console.warn('Could not read RPC network chainId:', err && err.message ? err.message : String(err));
+  });
 const chainSigner = signer ? signer.connect(provider) : null;
 const minesContract = isAddress(CONTRACT_ADDRESS) && chainSigner
   ? new Contract(CONTRACT_ADDRESS, [
@@ -35,7 +59,22 @@ const minesContract = isAddress(CONTRACT_ADDRESS) && chainSigner
   : null;
 const sessions = new Map();
 const app = express();
-app.use(cors());
+app.disable('x-powered-by');
+app.use(helmet());
+app.use(rateLimit({
+  windowMs: 60 * 1000,
+  limit: Number(process.env.RATE_LIMIT_PER_MINUTE || 120),
+  standardHeaders: true,
+  legacyHeaders: false,
+}));
+app.use(cors({
+  origin(origin, cb) {
+    if (!origin) return cb(null, true);
+    if (!isProd) return cb(null, true);
+    if (!allowedOrigins.length) return cb(new Error('CORS is not configured'), false);
+    return cb(null, allowedOrigins.includes(origin));
+  },
+}));
 app.use(express.json({ limit: '64kb' }));
 
 app.get('/api/mines/health', (_, res) => {
@@ -44,6 +83,9 @@ app.get('/api/mines/health', (_, res) => {
     signer: signer ? signer.address : null,
     contractAddress: CONTRACT_ADDRESS || null,
     autoSettle: AUTO_SETTLE,
+    chainIdConfigured: CHAIN_ID.toString(),
+    chainIdRpc: rpcChainId ? rpcChainId.toString() : null,
+    chainIdMismatch: rpcChainIdMismatch,
   });
 });
 
@@ -81,7 +123,8 @@ app.post('/api/mines/attach', (req, res) => {
     const session = getSession(req.body.sessionId);
     const gameId = BigInt(req.body.gameId);
     const betAmount = BigInt(req.body.betAmount);
-    const contractAddress = normalizeAddress(req.body.contractAddress || CONTRACT_ADDRESS);
+    if (!isAddress(CONTRACT_ADDRESS)) throw new Error('MINES_CONTRACT_ADDRESS is not configured');
+    const contractAddress = normalizeAddress(CONTRACT_ADDRESS);
 
     session.gameId = gameId;
     session.betAmount = betAmount;

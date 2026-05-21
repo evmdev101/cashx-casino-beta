@@ -266,11 +266,28 @@ function showWalletModal() {
       }
     }
 
-    if (window.CashX && window.CashX.wallet && window.CashX.wallet.listWalletProviders) {
-      window.CashX.wallet.listWalletProviders(350).then(renderWalletOptions);
-    } else {
-      renderWalletOptions(window.ethereum ? [{ provider: window.ethereum, info: { name: 'Browser Wallet' } }] : []);
+    async function discoverWallets() {
+      setMsg('Looking for wallet providers…', 'info');
+      try {
+        if (window.CashX && window.CashX.wallet && window.CashX.wallet.listWalletProviders) {
+          const entries = await window.CashX.wallet.listWalletProviders(2500);
+          renderWalletOptions(entries);
+          if (walletEntries.length) setMsg('', '');
+          return;
+        }
+        // Fallback: poll for injected provider briefly.
+        const start = Date.now();
+        while (!window.ethereum && (Date.now() - start) < 2500) {
+          await new Promise(r => setTimeout(r, 50));
+        }
+        renderWalletOptions(window.ethereum ? [{ provider: window.ethereum, info: { name: 'Browser Wallet' } }] : []);
+        if (walletEntries.length) setMsg('', '');
+      } catch (_) {
+        renderWalletOptions([]);
+      }
     }
+
+    discoverWallets();
 
   });
 }

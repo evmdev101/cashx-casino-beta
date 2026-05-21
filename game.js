@@ -390,7 +390,12 @@ async function waitForTx(tx) {
   try {
     return await tx.wait();
   } catch (err) {
-    if (err.code === 'TRANSACTION_REPLACED' && !err.cancelled) {
+    if (err && err.code === 'TRANSACTION_REPLACED') {
+      if (err.cancelled) {
+        const cancelled = new Error('Transaction cancelled in wallet.');
+        cancelled.code = 4001;
+        throw cancelled;
+      }
       return err.receipt;
     }
     throw err;
