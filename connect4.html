@@ -1278,6 +1278,7 @@
 
           <button class="action-btn" id="newMatchBtn">Create Game</button>
           <button class="ghost-btn" id="joinMatchBtn">Join Game</button>
+          <button class="ghost-btn" id="cancelGameBtn" type="button" hidden>Cancel Game</button>
           <div class="room-code" id="roomCode" hidden>
             <b>Invite</b>
             <span id="roomIdText">Not created</span>
@@ -1597,6 +1598,8 @@
       addFeed('Connect Four loaded', 'Create a room, open another tab, then join as player two.');
       document.getElementById('newMatchBtn').addEventListener('click', createRoom);
       document.getElementById('joinMatchBtn').addEventListener('click', joinRoom);
+      const cancelGameBtn = document.getElementById('cancelGameBtn');
+      if (cancelGameBtn) cancelGameBtn.addEventListener('click', forfeitRoom);
       window.addEventListener('cashx:approvalPresetChanged', event => {
         selectApproval(event.detail && event.detail.value);
       });
@@ -2008,6 +2011,19 @@
         delete forfeitBtn.dataset.chainJoinWarned;
         forfeitZone.hidden = true;
         claimInactivityBtn.hidden = true;
+      }
+
+      // Also show a cancel/leave button in the left panel so players always have an obvious exit.
+      const cancelGameBtn = document.getElementById('cancelGameBtn');
+      if (cancelGameBtn) {
+        const showCancel = isInRoom && (room.status === 'waiting' || room.status === 'ready-check' || room.status === 'active');
+        cancelGameBtn.hidden = !showCancel;
+        if (showCancel) {
+          cancelGameBtn.textContent = room.status === 'waiting'
+            ? (room.chain ? 'Cancel & Refund' : 'Cancel Game')
+            : 'Leave Game';
+          cancelGameBtn.disabled = Boolean(forfeitBtn && forfeitBtn.disabled);
+        }
       }
 
       // Show mutual cancel once both escrows are funded on-chain.
