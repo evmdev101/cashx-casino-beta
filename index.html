@@ -1441,6 +1441,7 @@ const diceContract   = new ethers.Contract(DICE_GAME_ADDRESS,    DICE_ABI, rpcPr
 const diceContractV1 = new ethers.Contract(DICE_GAME_ADDRESS_V1, DICE_ABI, rpcProvider);
 const asyncContract  = new ethers.Contract(ASYNC_GAMES_ADDRESS,  ASYNC_ABI, rpcProvider);
 const pvpWagerContract = new ethers.Contract(PVP_WAGER_ADDRESS,  PVP_WAGER_ABI, rpcProvider);
+const liveMinesContract = new ethers.Contract(CashX.addresses.liveMinesGame, CashX.abis.LIVE_MINES_GAME, rpcProvider);
 
 // Helpers
 function fmtCashx(bigNum) {
@@ -1594,12 +1595,14 @@ async function loadRecentBurns() {
     const fromBlock    = Math.max(0, currentBlock - 50000); // ~5–6 days of 10s blocks
 
     // Fetch event streams in parallel; let any one fail gracefully
-    const [diceEvents, asyncEvents, connect4Events] = await Promise.all([
+    const [diceEvents, asyncEvents, connect4Events, minesEvents] = await Promise.all([
       diceContract.queryFilter(diceContract.filters.Roll(), fromBlock, currentBlock)
         .catch(() => []),
       asyncContract.queryFilter(asyncContract.filters.GameResolved(), fromBlock, currentBlock)
         .catch(() => []),
       pvpWagerContract.queryFilter(pvpWagerContract.filters.MatchSettled(), fromBlock, currentBlock)
+        .catch(() => []),
+      liveMinesContract.queryFilter(liveMinesContract.filters.GameSettled(), fromBlock, currentBlock)
         .catch(() => []),
     ]);
 
@@ -1608,6 +1611,7 @@ async function loadRecentBurns() {
       ...diceEvents.map(e  => ({ e, src: 'dice' })),
       ...asyncEvents.map(e => ({ e, src: 'async' })),
       ...connect4Events.map(e => ({ e, src: 'connect4' })),
+      ...minesEvents.map(e  => ({ e, src: 'mines' })),
     ];
 
     if (tagged.length === 0) {
@@ -1633,6 +1637,10 @@ async function loadRecentBurns() {
         fromAddress = player;
         burnedAmt = bet.mul(3).div(100);
         badge = '<span class="pill-game" style="background:rgba(200,85,247,.12);color:#c855f7;border-color:rgba(200,85,247,.3);">🎲 VS HOUSE</span>';
+      } else if (src === 'mines') {
+        fromAddress = e.args.player;
+        burnedAmt = e.args.burned;
+        badge = '<span class="pill-game" style="background:rgba(255,68,85,.1);color:#ff4455;border-color:rgba(255,68,85,.3);">💣 MINES</span>';
       } else if (src === 'connect4') {
         fromAddress = e.args.winner;
         burnedAmt = e.args.burned;
@@ -1660,7 +1668,7 @@ async function loadRecentBurns() {
       if (src === 'dice') {
         const { won, bet } = e.args;
         eventsTotal = eventsTotal.add(bet.mul(3).div(100));
-      } else if (src === 'connect4' || src === 'async') {
+      } else if (src === 'connect4' || src === 'async' || src === 'mines') {
         eventsTotal = eventsTotal.add(e.args.burned);
       }
     });
@@ -1673,8 +1681,8 @@ async function loadRecentBurns() {
       dispEl.textContent = fmtCashx(eventsTotal) + ' CASHX';
     }
 
-    // Total games played count (Roll + GameResolved + MatchSettled events in window)
-    const totalGames = diceEvents.length + asyncEvents.length + connect4Events.length;
+    // Total games played count (Roll + GameResolved + MatchSettled + GameSettled events in window)
+    const totalGames = diceEvents.length + asyncEvents.length + connect4Events.length + minesEvents.length;
     const gamesEl = document.getElementById('totalGamesDisplay');
     if (gamesEl) {
       const fmt = totalGames >= 1000
