@@ -73,7 +73,7 @@ app.use(cors({
     if (!isProd) return cb(null, true); // dev mode: allow all
     // Always allow localhost/127.0.0.1 for local testing
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
-    if (!allowedOrigins.length) return cb(new Error('CORS is not configured'), false);
+    if (!allowedOrigins.length) return cb(null, true); // no list configured → allow all (set CORS_ORIGINS to restrict)
     return cb(null, allowedOrigins.includes(origin));
   },
 }));
