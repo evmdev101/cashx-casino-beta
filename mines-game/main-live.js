@@ -232,7 +232,7 @@ async function refreshBalance() {
   if (!state.cashxContract || !state.player) return;
   try {
     const balance = await state.cashxContract.balanceOf(state.player);
-    els.balance.textContent = fmtCashx(balance) + ' CASHX';
+    if (els.balance) els.balance.textContent = fmtCashx(balance) + ' CASHX';
   } catch (_) {}
 }
 
