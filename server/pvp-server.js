@@ -86,8 +86,10 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
 const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
 app.use(cors({
   origin(origin, cb) {
-    if (!origin) return cb(null, true);
-    if (!isProd) return cb(null, true);
+    if (!origin) return cb(null, true); // server-to-server
+    if (!isProd) return cb(null, true); // dev mode: allow all
+    // Always allow localhost/127.0.0.1 for local testing
+    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
     if (!allowedOrigins.length) return cb(new Error('CORS is not configured'), false);
     return cb(null, allowedOrigins.includes(origin));
   },
