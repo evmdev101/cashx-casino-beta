@@ -1436,12 +1436,14 @@ const PVP_WAGER_ABI = [
 ];
 
 // Read-only provider — no wallet connection needed
+const LIVE_MINES_ADDRESS = CX_CONFIG ? CX_CONFIG.contracts.liveMinesGame : '0x684e6B760FC931BB858b3bf3dFC056e550b13D90';
+
 const rpcProvider    = new ethers.providers.JsonRpcProvider(RPC_URL);
 const diceContract   = new ethers.Contract(DICE_GAME_ADDRESS,    DICE_ABI, rpcProvider);
 const diceContractV1 = new ethers.Contract(DICE_GAME_ADDRESS_V1, DICE_ABI, rpcProvider);
 const asyncContract  = new ethers.Contract(ASYNC_GAMES_ADDRESS,  ASYNC_ABI, rpcProvider);
 const pvpWagerContract = new ethers.Contract(PVP_WAGER_ADDRESS,  PVP_WAGER_ABI, rpcProvider);
-const liveMinesContract = new ethers.Contract(CashX.addresses.liveMinesGame, CashX.abis.LIVE_MINES_GAME, rpcProvider);
+const liveMinesContract = new ethers.Contract(LIVE_MINES_ADDRESS, CashX.abis.LIVE_MINES_GAME, rpcProvider);
 
 // Helpers
 function fmtCashx(bigNum) {
