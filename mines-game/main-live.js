@@ -571,17 +571,29 @@ async function api(path, payload) {
 }
 
 async function txOptions(contract, method, args) {
+  // PulseChain gas price cap — some RPCs return inflated values; 500 Gwei is a safe ceiling
+  const MAX_GAS_PRICE_GWEI = ethers.utils.parseUnits('500', 'gwei');
+  const FALLBACK_GAS_LIMIT = ethers.BigNumber.from(350000);
+
+  let gasPrice;
   try {
-    const [estimate, gasPrice] = await Promise.all([
-      contract.estimateGas[method](...args),
-      state.provider.getGasPrice(),
-    ]);
-    return {
-      gasLimit: estimate.mul(130).div(100),
-      gasPrice: gasPrice.mul(150).div(100),
-    };
+    const raw = await state.provider.getGasPrice();
+    gasPrice = raw.gt(MAX_GAS_PRICE_GWEI) ? MAX_GAS_PRICE_GWEI : raw.mul(130).div(100);
   } catch (_) {
-    return {};
+    gasPrice = ethers.utils.parseUnits('10', 'gwei'); // safe default for PulseChain
+  }
+
+  try {
+    const estimate = await contract.estimateGas[method](...args);
+    return { gasLimit: estimate.mul(130).div(100), gasPrice };
+  } catch (estimateErr) {
+    // Gas estimation failed — tx may revert. Use a capped fallback so MetaMask
+    // doesn't invent an absurd gas limit that triggers false "insufficient funds".
+    const reason = estimateErr.reason || estimateErr.message || '';
+    if (/revert|invalid|already settled|not open/i.test(reason)) {
+      throw new Error('Cannot settle: ' + (estimateErr.reason || 'the game may already be settled on-chain.'));
+    }
+    return { gasLimit: FALLBACK_GAS_LIMIT, gasPrice };
   }
 }
 
@@ -849,6 +861,13 @@ function shortAddress(address) {
 function readableError(err) {
   const msg = err.reason || (err.data && err.data.message) || err.message || 'Transaction failed';
   if (err.code === 'TRANSACTION_REPLACED' && err.cancelled) return 'Transaction was cancelled in MetaMask.';
+  if (err.code === 'INSUFFICIENT_FUNDS' || /INTERNAL_ERROR.*insufficient funds|insufficient funds for intrinsic/i.test(msg)) {
+    return 'Settlement error — the server settlement wallet is out of gas. A server update is needed to fix this.';
+  }
+  if (/Transfer failed|ERC20.*balance|transfer amount exceeds/i.test(msg)) {
+    return 'CASHX transfer failed. Your balance may be too low for this bet.';
+  }
+  if (/user rejected|user denied/i.test(msg)) return 'Transaction rejected in MetaMask.';
   return msg.replace('execution reverted: ', '');
 }
 

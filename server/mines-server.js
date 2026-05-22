@@ -155,7 +155,10 @@ app.post('/api/mines/reveal', async (req, res) => {
       const revealedTiles = [...session.revealedTiles, tile];
       const revealedMask = tilesToMask(revealedTiles);
       const signature = await signResult(session, revealedMask, false);
-      const txHash = await autoSettle(session, revealedMask, false, signature);
+      let txHash = null;
+      try { txHash = await autoSettle(session, revealedMask, false, signature); } catch (e) {
+        console.warn('autoSettle failed (mine hit) — user will settle manually:', e.message);
+      }
       session.finalResult = {
         hitMine: true,
         won: false,
@@ -203,7 +206,10 @@ app.post('/api/mines/cashout', async (req, res) => {
 
     const revealedMask = tilesToMask(session.revealedTiles);
     const signature = await signResult(session, revealedMask, true);
-    const txHash = await autoSettle(session, revealedMask, true, signature);
+    let txHash = null;
+    try { txHash = await autoSettle(session, revealedMask, true, signature); } catch (e) {
+      console.warn('autoSettle failed (cashout) — user will settle manually:', e.message);
+    }
 
     session.finalResult = {
       won: true,

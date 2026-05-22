@@ -118,13 +118,14 @@ app.get('/api/pvp/health', (_, res) => {
 app.post('/api/pvp/rooms', (req, res) => {
   try {
     const game = normalizeGame(req.body.game);
+    const variant = normalizeVariant(game, req.body.mode || req.body.variant);
     const creator = normalizePlayer(req.body.creator);
     const wager = normalizeWager(req.body.wager);
-    const clockSeconds = normalizeClock(req.body.clockSeconds);
+    const clockSeconds = normalizeClock(req.body.clockSeconds, variant);
     const room = {
       id: crypto.randomUUID(),
       game,
-      variant: game === 'connect4' || game === '8ball' ? 'classic' : 'vanishing',
+      variant,
       status: 'waiting',
       players: [
         { address: creator, mark: 'X' },
@@ -432,13 +433,23 @@ app.listen(PORT, () => {
   console.log(`CashX PvP prototype server listening on http://localhost:${PORT}`);
 });
 
+// Only two modes now: 'quick' (any timed game) and 'casual' (no timer).
+// Any room with a positive clockSeconds is 'quick', regardless of how it was stored.
+function effectiveVariant(room) {
+  if (room.variant === 'casual') return 'casual';
+  const clock = Number(room.clockSeconds);
+  if (Number.isFinite(clock) && clock > 0) return 'quick';
+  return 'casual';
+}
+
 function publicRoom(room) {
   const pot = room.wager * 2n;
   const burn = pot * BURN_BPS / BPS;
+  const hasMoveClock = Number.isFinite(Number(room.clockSeconds)) && Number(room.clockSeconds) > 0;
   return {
     id: room.id,
     game: room.game,
-    variant: room.variant,
+    variant: effectiveVariant(room),
     status: room.status,
     players: room.players,
     wager: room.wager.toString(),
@@ -458,7 +469,7 @@ function publicRoom(room) {
     createdAt: room.createdAt,
     updatedAt: room.updatedAt,
     lastMoveAt: room.lastMoveAt,
-    moveExpiresAt: room.status === 'active' && room.lastMoveAt
+    moveExpiresAt: room.status === 'active' && room.lastMoveAt && hasMoveClock
       ? room.lastMoveAt + room.clockSeconds * 1000
       : null,
     lastMove: room.moves.length ? room.moves[room.moves.length - 1] : null,
@@ -499,6 +510,7 @@ function createRematchRoom(sourceRoom, creator) {
 
 function settleExpiredRoom(room) {
   if (room.status !== 'active' || !room.lastMoveAt) return false;
+  if (!Number.isFinite(Number(room.clockSeconds)) || Number(room.clockSeconds) <= 0) return false;
   if (Date.now() <= room.lastMoveAt + room.clockSeconds * 1000) return false;
 
   const winnerSeat = room.players.find(entry => entry.mark !== room.turn);
@@ -676,6 +688,16 @@ function normalizeGame(value) {
   return game;
 }
 
+function normalizeVariant(game, value) {
+  const variant = String(value || '').toLowerCase();
+  if (game === 'connect4') {
+    if (['quick', 'classic', 'casual'].includes(variant)) return variant;
+    return 'classic';
+  }
+  if (game === '8ball') return 'classic';
+  return 'vanishing';
+}
+
 function normalizePlayer(value) {
   const player = String(value || '').trim();
   if (!player) throw new Error('Player is required');
@@ -689,7 +711,8 @@ function normalizeWager(value) {
   return wager;
 }
 
-function normalizeClock(value) {
+function normalizeClock(value, variant = '') {
+  if (variant === 'casual' && (value === null || value === undefined || value === '')) return null;
   const clock = Number(value || 30);
   if (!Number.isInteger(clock) || clock < 5 || clock > 300) throw new Error('Clock must be 5 to 300 seconds');
   return clock;

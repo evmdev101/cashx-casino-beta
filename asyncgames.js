@@ -98,6 +98,7 @@ let transacting          = false;
 let currentView          = 'BC';
 let latestKnownBlock     = 0;
 let pendingInviteGameId  = null;
+let pendingJoinFromLobby = null; // { id, gameType } — set when user clicks JOIN IN from live lobby
 
 // Burn totals per game type — populated by the burn IIFE, displayed on tab switch
 let asyncBurnByType = { 0: null, 1: null };
@@ -193,7 +194,7 @@ function gameCopy(gameType = activeTab) {
     playersHead: 'Duelists',
     potHead: 'Prize',
     resultHead: 'Card',
-    join: 'DRAW IN',
+    join: 'JOIN IN',
     settle: 'REVEAL WAR',
     leave: 'FOLD',
     refund: 'CLAIM ANTE',
@@ -357,7 +358,7 @@ async function refreshAllActiveGames() {
           inGame
             ? '<span class="badge-in">IN GAME</span>'
             : canJoin
-              ? '<button class="btn-join" onclick="joinGame(' + idStr + ')">' + copy.join + '</button>'
+              ? '<button class="btn-join" onclick="showJoinPanel(' + idStr + ',' + Number(g.gameType) + ')">' + copy.join + '</button>'
               : '<button class="btn-join" disabled>' + copy.join + '</button>'
         ) + '</td>' +
       '</tr>';
@@ -410,7 +411,7 @@ async function refreshFilteredActiveGames() {
           inGame
             ? '<span class="badge-in">IN GAME</span>'
             : canJoin
-              ? '<button class="btn-join" onclick="joinGame(' + idStr + ')">' + copy.join + '</button>'
+              ? '<button class="btn-join" onclick="showJoinPanel(' + idStr + ',' + Number(g.gameType) + ')">' + copy.join + '</button>'
               : '<button class="btn-join" disabled>' + copy.join + '</button>'
         ) + '</td>' +
       '</tr>';
@@ -1522,11 +1523,19 @@ function renderInvitePanel(gameId) {
   if (!id) {
     panel.classList.remove('visible', 'invite-join');
     panel.innerHTML = '';
+    pendingJoinFromLobby = null;
     return;
   }
 
   const link = inviteLinkForGame(id);
-  const isJoinInvite = getInviteGameIdFromUrl() === String(id);
+  const fromLobby = pendingJoinFromLobby && pendingJoinFromLobby.id === String(id);
+  const isJoinInvite = getInviteGameIdFromUrl() === String(id) || fromLobby;
+
+  // Button label: "Join War Table #X" for Card War (gameType 0), "Join Battle Arena #X" for Dice Battle
+  const joinLabel = fromLobby && pendingJoinFromLobby.gameType !== 0
+    ? 'Join Battle Arena #' + String(id)
+    : 'Join War Table #' + String(id);
+
   panel.classList.toggle('invite-join', isJoinInvite);
   panel.classList.add('visible');
   panel.innerHTML =
@@ -1534,7 +1543,7 @@ function renderInvitePanel(gameId) {
     '<span class="invite-link">' + escapeHtml(link) + '</span>' +
     '<div class="invite-actions' + (isJoinInvite ? ' single' : '') + '">' +
       (isJoinInvite
-        ? '<button class="invite-btn invite-primary" type="button" onclick="joinInvitedGame(' + String(id) + ')">Join War Table #' + String(id) + '</button>'
+        ? '<button class="invite-btn invite-primary" type="button" onclick="joinInvitedGame(' + String(id) + ')">' + joinLabel + '</button>'
         : '<button class="invite-btn" type="button" onclick="copyInviteLink(' + String(id) + ')">Copy Link</button>' +
           '<button class="invite-btn" type="button" onclick="openInviteLink(' + String(id) + ')">Open Tab</button>') +
     '</div>';
@@ -1568,6 +1577,15 @@ function showInviteForGame(gameId) {
   if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
 }
 
+// Called when user clicks JOIN IN from the live lobby — shows the panel with a join button
+function showJoinPanel(gameId, gameType) {
+  pendingJoinFromLobby = { id: String(gameId), gameType: Number(gameType) };
+  pendingInviteGameId = String(gameId);
+  renderInvitePanel(gameId);
+  const panel = document.getElementById('invitePanel');
+  if (panel) panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
 function copyInviteLink(gameId) {
   navigator.clipboard.writeText(inviteLinkForGame(gameId)).catch(() => {});
   setStatus('Invite link copied for war table #' + String(gameId) + '.', 'success');
@@ -1578,6 +1596,7 @@ function openInviteLink(gameId) {
 }
 
 function joinInvitedGame(gameId) {
+  pendingJoinFromLobby = null;
   joinGame(gameId);
 }
 

@@ -26,10 +26,13 @@
   <script src="wallet-modal.js"></script>
   <script src="cashx-nav.js" data-asset-prefix=""></script>
   <script>
+    // Default to the hosted PvP backend even during local static testing.
+    // Use the local backend only when explicitly requested:
+    //   - add `?localBackend=1` (or `?pvpBackend=local`) to the URL
+    const params = new URLSearchParams(location.search);
+    const useLocalBackend = params.has('localBackend') || params.get('pvpBackend') === 'local';
     window.CASHX_PVP_BACKEND_URL = window.CASHX_PVP_BACKEND_URL || (
-      ['localhost', '127.0.0.1', '::1'].includes(location.hostname)
-        ? 'http://127.0.0.1:8790'
-        : 'https://cashx-pvp-backend.onrender.com'
+      useLocalBackend ? 'http://127.0.0.1:8790' : 'https://cashx-pvp-backend.onrender.com'
     );
     window.CASHX_PVP_WAGER_ADDRESS = '0x7fEA5BB21c776f89Fb9561F7a121bFeC31EC2c80';
   </script>
@@ -1269,10 +1272,9 @@
 
           <div class="field">
             <label>Mode</label>
-            <div class="segmented" id="modeButtons">
-              <button data-mode="quick">⚡ Quick<span>2 min timer</span></button>
-              <button class="active" data-mode="classic">Classic<span>5 min timer</span></button>
-              <button data-mode="casual">☕ Casual<span>No timer</span></button>
+            <div class="segmented" id="modeButtons" style="grid-template-columns:repeat(2,1fr);">
+              <button type="button" data-mode="quick">⚡ Quick<span>2 min timer</span></button>
+              <button type="button" class="active" data-mode="casual">☕ Casual<span>No timer</span></button>
             </div>
           </div>
 
@@ -1469,6 +1471,7 @@
     const LOBBY_CACHE_KEY = 'cashxConnect4OpenLobbies';
     const PAID_CACHE_KEY = 'cashxConnect4PaidRooms';
     const ROOM_MODE_CACHE_KEY = 'cashxConnect4RoomModes';
+    const DEFAULT_MODE = 'casual';
     const GAS_BUFFER_BPS = 13000;
     const GAS_PRICE_BOOST_BPS = 25000;
     const TX_STEPS = ['approve', 'fund', 'join', 'claim'];
@@ -1566,7 +1569,7 @@
     let currentRoom = null;
     let currentRoomId = initialParams.get('room') || '';
     let myMark = null;
-    let selectedMode = normalizeModeValue(initialParams.get('mode')) || 'classic';
+    let selectedMode = normalizeModeValue(initialParams.get('mode')) || DEFAULT_MODE;
     let clockSeconds = modeClockSeconds(selectedMode);
     let timeLeft = clockSeconds;
     let inactivityLeft = null;
@@ -1583,6 +1586,7 @@
     let joiningRoom = false;
     let selectedApproval = getStoredApprovalPreset();
     let _dropTargetIdx = -1;
+    const _forcedRoomModes = {};
     const chainJoinedRooms = new Set();
     const chainJoinChecks = new Set();
     const chainJoinSyncs = new Set();
@@ -1620,13 +1624,7 @@
       document.getElementById('modeButtons').addEventListener('click', event => {
         const button = event.target.closest('button[data-mode]');
         if (!button) return;
-        document.querySelectorAll('#modeButtons button').forEach(btn => btn.classList.remove('active'));
-        button.classList.add('active');
-        selectedMode = button.dataset.mode || 'classic';
-        clockSeconds = modeClockSeconds(selectedMode);
-        timeLeft = clockSeconds;
-        inactivityLeft = null;
-        renderTimer();
+        setSelectedMode(button.dataset.mode);
       });
       setupWallet();
       restoreWalletSession();
@@ -1640,7 +1638,9 @@
       healthHandle = setInterval(checkBackendHealth, 10000);
       setInterval(refreshOnChainBurn, 60000);
       if (currentRoomId && normalizeModeValue(initialParams.get('mode'))) {
-        cacheRoomMode(currentRoomId, normalizeModeValue(initialParams.get('mode')));
+        const urlMode = normalizeModeValue(initialParams.get('mode'));
+        cacheRoomMode(currentRoomId, urlMode);
+        _forcedRoomModes[currentRoomId] = urlMode;
       }
       if (currentRoomId) loadRoom(currentRoomId);
     }
@@ -1670,12 +1670,16 @@
           chain,
         });
         cacheRoomMode(room.id, mode);
+        _forcedRoomModes[room.id] = mode;
+        room.mode = mode;
+        room.variant = mode;
         if (mode === 'casual') {
-          room.mode = 'casual';
-          room.variant = 'casual';
           room.clockSeconds = null;
           room.playerClocks = null;
           room.moveExpiresAt = null;
+        } else {
+          room.clockSeconds = modeClockSeconds(mode);
+          if (!room.playerClocks) room.playerClocks = { X: room.clockSeconds, O: room.clockSeconds };
         }
         syncRoom(room);
         updateRoomUrl(room.id);
@@ -1705,6 +1709,7 @@
     function resetToFreshRoom() {
       stopPolling();
       stopCountdown();
+      if (currentRoomId) delete _forcedRoomModes[currentRoomId];
       currentRoom = null;
       currentRoomId = '';
       forfeitZone.hidden = true;
@@ -1757,6 +1762,9 @@
       }
 
       forfeitBtn.disabled = true;
+      stopPolling();
+      roundTitle.textContent = status === 'waiting' ? 'Cancelling room…' : 'Forfeiting game…';
+      roundCopy.textContent = room.chain ? 'Check MetaMask — confirm the transaction to get your CASHX back.' : 'Leaving the room…';
       try {
         let chainCancelled = false;
         if (status === 'waiting' && room.chain) {
@@ -1786,6 +1794,7 @@
           return;
         }
         showBackendError(err);
+        startPolling();
       } finally {
         forfeitBtn.disabled = false;
         if (status === 'waiting' && room.chain && currentRoom && currentRoom.id === room.id) {
@@ -1816,6 +1825,7 @@
     async function joinRoom() {
       if (joiningRoom) return; // prevent double-join if button clicked twice or auto+manual fire together
       joiningRoom = true;
+      stopPolling();
       const joinBtn = document.getElementById('joinMatchBtn');
       if (joinBtn) { joinBtn.disabled = true; joinBtn.textContent = 'Joining…'; }
       try {
@@ -1855,6 +1865,9 @@
         // Only re-enable the button on error so the player can retry
         joiningRoom = false;
         if (currentRoom) updateJoinButton(currentRoom);
+        setTimeout(() => {
+          if (!joiningRoom && currentRoomId && currentRoom && currentRoom.status === 'waiting') startPolling();
+        }, 5000);
       } finally {
         joiningRoom = false;
         if (currentRoom) updateJoinButton(currentRoom);
@@ -1896,6 +1909,7 @@
       cacheOpenLobby(room);
       window._c4StopDemo?.();
       room = normalizeIncomingRoom(room);
+      if (room.id && room.mode) cacheRoomMode(room.id, room.mode);
       currentRoom = room;
       currentRoomId = room.id;
       board = room.board.slice();
@@ -2048,15 +2062,19 @@
     function normalizeIncomingRoom(room) {
       if (!room || !Array.isArray(room.board)) return room;
       const next = { ...room, board: room.board.slice() };
-      const cachedMode = roomModeOverride(next.id);
-      const serverMode = normalizeModeValue(next.mode) || normalizeModeValue(next.variant);
-      const inferredMode = !serverMode && !cachedMode;
-      if (serverMode) next.mode = serverMode;
-      else if (cachedMode) next.mode = cachedMode;
-      if (inferredMode) next.mode = modeFromClock(next.clockSeconds);
-      if (next.mode === 'quick' || next.mode === 'classic') {
-        next.clockSeconds = modeClockSeconds(next.mode);
-        if (!next.playerClocks || inferredMode) next.playerClocks = { X: next.clockSeconds, O: next.clockSeconds };
+      const forcedMode = _forcedRoomModes[next.id]; // highest trust — set at creation or from URL
+      const cachedMode = forcedMode || roomModeOverride(next.id);
+      const clockMode = modeFromClock(next.clockSeconds); // 'casual' or 'quick' — ground truth
+
+      // clockSeconds:null is absolute truth: a null clock is always casual,
+      // no matter what the backend variant says or what the cache holds.
+      // For timed rooms (clockSeconds > 0), prefer the in-memory forced cache,
+      // then the localStorage cache, then fall back to the clock.
+      next.mode = (clockMode === 'casual') ? 'casual' : (cachedMode || clockMode);
+
+      if (next.mode === 'quick') {
+        next.clockSeconds = modeClockSeconds('quick');
+        if (!next.playerClocks) next.playerClocks = { X: next.clockSeconds, O: next.clockSeconds };
       } else if (next.mode === 'casual') {
         next.clockSeconds = null;
         next.playerClocks = null;
@@ -2088,20 +2106,32 @@
     }
 
     function modeFromClock(seconds) {
-      const clock = Number(seconds || 300);
-      if (clock <= 120) return 'quick';
-      return 'classic';
+      if (seconds === null || seconds === undefined) return 'casual';
+      const clock = Number(seconds);
+      if (clock <= 30) return 'casual'; // 0 = no timer; 30 = legacy casual default on old backend
+      return 'quick'; // quick always uses 120s
     }
 
     function modeClockSeconds(mode) {
       if (mode === 'quick') return 120;
-      if (mode === 'classic') return 300;
-      return 0;
+      return 0; // casual / anything else = no timer
+    }
+
+    function setSelectedMode(mode) {
+      selectedMode = normalizeModeValue(mode) || DEFAULT_MODE;
+      clockSeconds = modeClockSeconds(selectedMode);
+      timeLeft = clockSeconds;
+      inactivityLeft = null;
+      syncModeButtons();
+      renderTimer();
+      if (currentRoomId) updateRoomUrl(currentRoomId);
     }
 
     function normalizeModeValue(mode) {
       mode = String(mode || '').toLowerCase();
-      return mode === 'quick' || mode === 'classic' || mode === 'casual' ? mode : '';
+      if (mode === 'quick' || mode === 'casual') return mode;
+      if (mode === 'classic') return 'quick'; // remap legacy 'classic' rooms → quick
+      return '';
     }
 
     function isCasualMode(mode) {
@@ -2117,7 +2147,8 @@
     }
 
     function selectedModeFromButtons() {
-      return document.querySelector('#modeButtons button.active')?.dataset.mode || selectedMode || 'classic';
+      const activeMode = normalizeModeValue(document.querySelector('#modeButtons button.active')?.dataset.mode);
+      return activeMode || normalizeModeValue(selectedMode) || DEFAULT_MODE;
     }
 
     function roomModeOverrides() {
@@ -2457,6 +2488,10 @@
       pollHandle = setInterval(async () => {
         try {
           const room = await fetchJson('/api/pvp/rooms/' + encodeURIComponent(currentRoomId));
+          if (currentRoom && currentRoom.mode && !normalizeModeValue(room.mode) && !normalizeModeValue(room.variant)) {
+            room.mode = currentRoom.mode;
+            room.variant = currentRoom.mode;
+          }
           syncRoom(room);
         } catch (_) {}
       }, 1000);
@@ -2535,6 +2570,10 @@
       openLobbies.innerHTML = '';
       const myAddr = playerId();
       rooms.forEach(room => {
+        // normalizeModeValue already remaps 'classic' → 'quick', so this is safe.
+        const roomMode = normalizeModeValue(room.mode) || normalizeModeValue(room.variant) || modeFromClock(room.clockSeconds);
+        if (room.id && roomMode) cacheRoomMode(room.id, roomMode);
+        const modeLabel = roomMode === 'quick' ? '⚡ 2 min' : '☕ No timer';
         const isMyRoom = myAddr && room.players && room.players.some(p => samePlayer(p && p.address, myAddr));
         const card = document.createElement('div');
         card.className = 'lobby-card' + (isMyRoom ? ' lobby-card-mine' : '');
@@ -2542,7 +2581,7 @@
         if (isMyRoom) {
           card.innerHTML =
             '<div><strong>' + escapeHtml(formatAmount(Number(room.wager)) + ' CASHX') + '</strong>' +
-            '<span>' + escapeHtml(matchText) + ' · <em>Your Room</em></span></div>' +
+            '<span>' + escapeHtml(matchText + ' · ' + modeLabel) + ' · <em>Your Room</em></span></div>' +
             '<button class="mini-btn mini-btn-manage" type="button">▶ Manage</button>';
           const btn = card.querySelector('button');
           btn.addEventListener('click', async () => {
@@ -2555,7 +2594,7 @@
         } else {
           card.innerHTML =
             '<div><strong>' + escapeHtml(formatAmount(Number(room.wager)) + ' CASHX') + '</strong>' +
-            '<span>' + escapeHtml(matchText + ' · ' + shortPlayer(room.players[0] && room.players[0].address)) + '</span></div>' +
+            '<span>' + escapeHtml(matchText + ' · ' + modeLabel + ' · ' + shortPlayer(room.players[0] && room.players[0].address)) + '</span></div>' +
             '<button class="mini-btn mini-btn-join" type="button">▶ Join</button>';
           const btn = card.querySelector('button');
           btn.addEventListener('click', async () => {
@@ -2786,7 +2825,7 @@
       addFeed('Game message', message);
       // Also show in the tx note area so polling doesn't overwrite it before the user reads it
       if (txProgressNote) txProgressNote.textContent = '⚠ ' + message;
-      hideTxStatus();
+      showTxStatus('⚠ ' + message);
       txStepEls.forEach(step => step.classList.remove('active'));
       checkBackendHealth();
     }
@@ -2946,14 +2985,69 @@
 
     async function ensureWallet() {
       await refreshInjectedWallet();
-      if (walletSigner && connectedAddress) return;
+      if (walletSigner && connectedAddress) {
+        await ensurePulseChainConnection();
+        return;
+      }
       await restoreWalletSession({ reloadRoom: false });
       await refreshInjectedWallet();
-      if (walletSigner && connectedAddress) return;
+      if (walletSigner && connectedAddress) {
+        await ensurePulseChainConnection();
+        return;
+      }
       if (!window.showWalletModal) throw new Error('Wallet unavailable');
       const result = await window.showWalletModal();
       applyWalletConnection(result);
+      await ensurePulseChainConnection();
       refreshGameHistory();
+    }
+
+    async function ensurePulseChainConnection() {
+      if (!walletProvider || !walletSigner || !connectedAddress) throw new Error('Connect your wallet first.');
+      let network = null;
+      try {
+        network = await walletProvider.getNetwork();
+      } catch (_) {}
+      if (!network || Number(network.chainId) !== PULSECHAIN_ID) {
+        const injectedProvider = selectedWalletProvider();
+        if (!injectedProvider || !injectedProvider.request) {
+          throw new Error('Switch your wallet to PulseChain, then connect again.');
+        }
+        try {
+          await injectedProvider.request({
+            method: 'wallet_switchEthereumChain',
+            params: [{ chainId: '0x' + Number(PULSECHAIN_ID).toString(16) }],
+          });
+        } catch (err) {
+          if (err && err.code === 4902) {
+            await injectedProvider.request({
+              method: 'wallet_addEthereumChain',
+              params: [{
+                chainId: '0x' + Number(PULSECHAIN_ID).toString(16),
+                chainName: 'PulseChain',
+                nativeCurrency: { name: 'Pulse', symbol: 'PLS', decimals: 18 },
+                rpcUrls: [PULSECHAIN_RPC],
+                blockExplorerUrls: ['https://scan.pulsechain.com'],
+              }],
+            });
+          } else {
+            throw new Error('Switch your wallet to PulseChain, then try again.');
+          }
+        }
+        const provider = new ethers.providers.Web3Provider(injectedProvider);
+        const signer = provider.getSigner();
+        applyWalletConnection({ provider, signer, address: await signer.getAddress() });
+      }
+      await ensureContractCode(CASHX_ADDRESS, 'CASHX token');
+      await ensureContractCode(PVP_WAGER_ADDRESS, 'PvP wager');
+    }
+
+    async function ensureContractCode(address, label) {
+      if (!ethers.utils.isAddress(address)) throw new Error(label + ' contract address is not configured.');
+      const code = await walletProvider.getCode(address).catch(() => '');
+      if (!code || code === '0x') {
+        throw new Error(label + ' contract was not found on the selected network. Switch your wallet to PulseChain, then reconnect.');
+      }
     }
 
     async function refreshInjectedWallet() {
@@ -3000,6 +3094,7 @@
     }
 
     async function approveIfNeeded(wagerWei) {
+      await ensurePulseChainConnection();
       const allowance = await cashxContract.allowance(connectedAddress, PVP_WAGER_ADDRESS);
       if (allowance.gte(wagerWei)) {
         completeTxStage('approve', 'Approve already done. Next wallet step will fund or join.');
@@ -3008,10 +3103,10 @@
       const approvalWei = approvalAmountWei(wagerWei);
       setTxStage('approve', 'Step 1 of 2: Approve CASHX spend in MetaMask...');
       roundTitle.textContent = 'Approve CASHX';
-      roundCopy.textContent = 'Approve up to ' + formatTokenAmount(approvalWei, 0) + ' CASHX. Funds only move when you create or join a match.';
+      roundCopy.textContent = 'Approve ' + formatTokenAmount(approvalWei, 0) + ' CASHX for the PvP wager contract.';
       addFeed('Wallet step', 'Approving CASHX allowance for the wager contract.');
       const tx = await cashxContract.approve(PVP_WAGER_ADDRESS, approvalWei, await txOptions(cashxContract, 'approve', [PVP_WAGER_ADDRESS, approvalWei]));
-      await waitForTx(tx);
+      await waitForTx(tx, 'approve');
       completeTxStage('approve', 'Approval confirmed. Next step: fund the match.');
     }
 
@@ -3039,7 +3134,13 @@
       return String(amount);
     }
     async function ensureWagerBalance(wagerWei) {
-      const balance = await cashxContract.balanceOf(connectedAddress);
+      await ensurePulseChainConnection();
+      let balance;
+      try {
+        balance = await cashxContract.balanceOf(connectedAddress);
+      } catch (err) {
+        throw new Error('Could not read this wallet CASHX balance. Switch MetaMask to PulseChain, reconnect the wallet, then try again.');
+      }
       if (balance.gte(wagerWei)) return;
 
       const have = formatTokenAmount(balance, 2);
@@ -3061,7 +3162,7 @@
       addFeed('Wallet step', 'Creating the funded Connect Four match.');
       await preflightContractCall(pvpContract, 'createMatch', [0, wagerWei]);
       const tx = await pvpContract.createMatch(0, wagerWei, await txOptions(pvpContract, 'createMatch', [0, wagerWei]));
-      const receipt = await waitForTx(tx);
+      const receipt = await waitForTx(tx, 'create');
       const logs = receipt.logs || receipt.events || [];
       const event = logs
         .map(log => parsePvpLog(log))
@@ -3131,7 +3232,7 @@
         pvpContract.joinMatch(matchId, await txOptions(pvpContract, 'joinMatch', [matchId])),
         'MetaMask did not return the join transaction. Open MetaMask, reject or confirm any pending prompt, then click Join again.'
       );
-      await waitForTx(tx);
+      await waitForTx(tx, 'join');
       completeTxStage('join', 'Joined on chain. Both players can start the match.');
     }
 
@@ -3293,7 +3394,7 @@
           await txOptions(pvpContract, 'requestCancel', [matchId])
         );
         addFeed('Waiting', 'Transaction sent — waiting for block…');
-        await waitForTx(tx);
+        await waitForTx(tx, 'cancel');
         addFeed('Requested', 'Cancel request recorded. Waiting for opponent.');
         await refreshCancelState(currentRoom);
       } catch (err) {
@@ -3312,7 +3413,7 @@
           matchId,
           await txOptions(pvpContract, 'revokeCancel', [matchId])
         );
-        await waitForTx(tx);
+        await waitForTx(tx, 'cancel');
         addFeed('Revoked', 'Your cancel request has been removed.');
         await refreshCancelState(currentRoom);
       } catch (err) {
@@ -3331,7 +3432,7 @@
           matchId,
           await txOptions(pvpContract, 'claimCancelTimeout', [matchId])
         );
-        await waitForTx(tx);
+        await waitForTx(tx, 'cancel');
         addFeed('Refunded', 'Cancel timeout executed. Both players received full refunds.');
         await refreshCancelState(currentRoom);
       } catch (err) {
@@ -3348,21 +3449,44 @@
       if (!samePlayer(connectedAddress, creator)) {
         throw new Error('Only the wallet that created this funded room can cancel it.');
       }
-      const confirmedJoin = await getConfirmedJoin(room.chain.matchId);
+      let confirmedJoin = null;
+      try {
+        confirmedJoin = await getConfirmedJoin(room.chain.matchId);
+      } catch (_) {
+        // RPC event query failed — backend already shows player2 is null, proceed
+      }
       if (confirmedJoin) {
         throw new Error('This funded match already has a confirmed Join Match on-chain, so it cannot be cancelled as an open lobby. Refresh the room and use mutual cancel if both players want a refund, or finish the game.');
+      }
+
+      // Check on-chain match status before attempting cancel transaction.
+      // If the match is already cancelled/settled on-chain (not status=1/waiting),
+      // the CASHX was already refunded — skip the wallet tx and let the caller
+      // set chainCancelled=true so the backend room gets cleaned up.
+      const chainState = await getChainMatchState(room.chain.matchId);
+      if (chainState && chainState.status !== 1) {
+        roundTitle.textContent = 'Escrow already refunded';
+        roundCopy.textContent = 'Your CASHX was already returned on-chain. Removing the room record…';
+        addFeed('Already refunded', 'The on-chain escrow for match #' + room.chain.matchId + ' was already returned. Cleaning up the room record.');
+        completeTxStage('fund', 'Escrow already refunded on-chain. Cleaning up room.');
+        return; // chainCancelled will be set true by forfeitRoom, backend cleaned up
       }
 
       roundTitle.textContent = 'Cancel funded room';
       roundCopy.textContent = 'Confirm in your wallet to refund your CASHX escrow.';
       setTxStage('fund', 'Cancelling funded match #' + room.chain.matchId + ' in your wallet.');
       addFeed('Wallet step', 'Cancelling the unmatched Connect Four match.');
-      await preflightContractCall(pvpContract, 'cancelUnmatched', [room.chain.matchId]);
+      let cancelOpts = {};
+      try {
+        cancelOpts = await txOptions(pvpContract, 'cancelUnmatched', [room.chain.matchId]);
+      } catch (_) {
+        cancelOpts = { gasLimit: 150000 };
+      }
       const tx = await requestWalletTransaction(
-        pvpContract.cancelUnmatched(room.chain.matchId, await txOptions(pvpContract, 'cancelUnmatched', [room.chain.matchId])),
+        pvpContract.cancelUnmatched(room.chain.matchId, cancelOpts),
         'MetaMask did not return the cancel transaction. Open MetaMask, reject or confirm any pending prompt, then click Leave again.'
       );
-      await waitForTx(tx);
+      await waitForTx(tx, 'cancel');
       completeTxStage('fund', 'Escrow refunded. Removing the room from the lobby.');
     }
 
@@ -3412,7 +3536,7 @@
           signed.signature,
           await txOptions(pvpContract, 'settleMatch', [signed.matchId, signed.winner, signed.resultDataHash, signed.signature])
         );
-        await waitForTx(tx);
+        await waitForTx(tx, 'claim');
         markRoomPaid(currentRoom.id);
         completeTxStage('claim', 'Claim complete. Winner paid and burn applied.');
         addFeed('Winnings claimed! 🎉', 'Payout sent to your wallet — burn fee deducted.');
@@ -3496,7 +3620,33 @@
     }
 
 
-    async function waitForTx(tx) {
+    function transactionFailedMessage(action) {
+      if (action === 'join') {
+        return 'Join Match was dropped or failed before it confirmed. Player O was not added. Click Join Game again and confirm the Join Match transaction; the CASHX approval is already done.';
+      }
+      if (action === 'approve') {
+        return 'CASHX approval was dropped or failed before it confirmed. Click the button again and approve the CASHX spend.';
+      }
+      if (action === 'create') {
+        return 'Fund Match was dropped or failed before it confirmed. The room was not funded. Click Create Game again and confirm the funding transaction.';
+      }
+      if (action === 'claim') {
+        return 'Claim Winnings was dropped or failed before it confirmed. Click Claim Winnings again to retry.';
+      }
+      if (action === 'cancel') {
+        return 'The cancel transaction was dropped or failed before it confirmed. Try the cancel action again.';
+      }
+      return 'Wallet transaction was dropped or failed before it confirmed. Try the wallet action again.';
+    }
+
+    function isDroppedOrReplacedTxError(err) {
+      const raw = err && (err.code || err.reason || err.message)
+        ? String(err.code || '') + ' ' + String(err.reason || '') + ' ' + String(err.message || '')
+        : String(err || '');
+      return /transaction_replaced|dropped|replaced|repriced|cancelled|cancelled|replacement/i.test(raw);
+    }
+
+    async function waitForTx(tx, action = 'transaction') {
       const TX_TIMEOUT_MS = 90000; // 90 s — plenty for PulseChain under normal conditions
       let timeoutHandle;
       const timeoutPromise = new Promise((_, reject) => {
@@ -3517,11 +3667,14 @@
         if (err && err.code === 'TX_TIMEOUT') throw err;
         if (err && err.code === 'TRANSACTION_REPLACED' && err.receipt) {
           if (err.cancelled) {
-            const cancelled = new Error('Transaction cancelled in wallet.');
+            const cancelled = new Error(transactionFailedMessage(action));
             cancelled.code = 4001;
             throw cancelled;
           }
           return assertSuccessfulReceipt(err.receipt);
+        }
+        if (isDroppedOrReplacedTxError(err)) {
+          throw new Error(transactionFailedMessage(action));
         }
         throw err;
       }
@@ -3529,7 +3682,7 @@
 
     function assertSuccessfulReceipt(receipt) {
       if (receipt && receipt.status === 0) {
-        throw new Error('Wallet transaction failed on-chain. The match was not created.');
+        throw new Error('Wallet transaction failed on-chain. No game state was changed.');
       }
       return receipt;
     }
