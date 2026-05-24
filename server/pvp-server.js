@@ -84,6 +84,7 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .map(v => v.trim())
   .filter(Boolean);
 const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+const allowProdLocalhostCors = String(process.env.ALLOW_LOCALHOST_CORS || 'false').toLowerCase() === 'true';
 if (isProd && !allowedOrigins.length) {
   throw new Error('CORS_ORIGINS is required in production');
 }
@@ -91,8 +92,8 @@ app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true); // server-to-server
     if (!isProd) return cb(null, true); // dev mode: allow all
-    // Always allow localhost/127.0.0.1 for local testing
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+    // Production: do not allow localhost unless explicitly enabled (DNS rebinding risk)
+    if (allowProdLocalhostCors && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
     return cb(null, allowedOrigins.includes(origin));
   },
 }));

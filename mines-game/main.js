@@ -252,12 +252,12 @@ async function lockBet() {
   updateUi();
 
   try {
-    const secret = ethers.utils.hexlify(ethers.utils.randomBytes(32));
+    const revealNonce = ethers.utils.hexlify(ethers.utils.randomBytes(32));
     const picks = state.selected.slice();
     const mineCount = Number(els.mineSelect.value);
     const commitHash = ethers.utils.keccak256(ethers.utils.defaultAbiCoder.encode(
       ['address', 'uint8', 'uint8[]', 'bytes32'],
-      [state.player, mineCount, picks, secret]
+      [state.player, mineCount, picks, revealNonce]
     ));
 
     const allowance = await state.cashxContract.allowance(state.player, MINES_GAME_ADDRESS);
@@ -281,7 +281,7 @@ async function lockBet() {
       gameId: placed.gameId,
       txHash: receipt.transactionHash,
       picks,
-      secret,
+      revealNonce,
       mineCount,
       betAmount: betAmount.toString(),
       targetBlock: placed.targetBlock,
@@ -321,7 +321,7 @@ async function revealPendingGame() {
     const tx = await state.minesContract.revealGame(
       state.pending.gameId,
       state.pending.picks,
-      state.pending.secret
+      state.pending.revealNonce
     );
     updateBanner('Revealing result on-chain...');
     const receipt = await tx.wait();

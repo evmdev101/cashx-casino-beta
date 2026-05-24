@@ -1,0 +1,16 @@
+**/node_modules
+**/.git
+**/.npm-cache
+server/data
+cards
+*.png
+*.jpg
+*.jpeg
+*.gif
+*.svg
+*.ico
+*.mp4
+*.mov
+*.webm
+.DS_Store
+

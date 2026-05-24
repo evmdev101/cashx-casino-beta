@@ -20,6 +20,7 @@ const MAX_MINE_COUNT = 16;
 const HOUSE_EDGE_BPS = 300n;
 const BPS = 10000n;
 const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+const allowProdLocalhostCors = String(process.env.ALLOW_LOCALHOST_CORS || 'false').toLowerCase() === 'true';
 const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .split(',')
   .map(v => v.trim())
@@ -75,8 +76,8 @@ app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true); // server-to-server
     if (!isProd) return cb(null, true); // dev mode: allow all
-    // Always allow localhost/127.0.0.1 for local testing
-    if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
+    // Production: do not allow localhost unless explicitly enabled (DNS rebinding risk)
+    if (allowProdLocalhostCors && /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
     return cb(null, allowedOrigins.includes(origin));
   },
 }));
