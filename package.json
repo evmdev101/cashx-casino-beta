@@ -25,7 +25,7 @@
   },
   "homepage": "https://github.com/evmdev101/cashx-casino-beta#readme",
   "devDependencies": {
-    "@eslint/js": "9.29.0",
+    "@eslint/js": "10.0.1",
     "eslint": "9.29.0",
     "globals": "15.15.0"
   }
