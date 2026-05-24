@@ -7,7 +7,8 @@
     "lib": "lib"
   },
   "scripts": {
-    "test": "node -e \"console.log('ok')\"",
+    "lint": "eslint server scripts test eslint.config.mjs",
+    "test": "node --test",
     "audit:server": "node scripts/audit-server.mjs",
     "check:server": "node scripts/check-server.mjs"
   },
@@ -22,5 +23,10 @@
   "bugs": {
     "url": "https://github.com/evmdev101/cashx-casino-beta/issues"
   },
-  "homepage": "https://github.com/evmdev101/cashx-casino-beta#readme"
+  "homepage": "https://github.com/evmdev101/cashx-casino-beta#readme",
+  "devDependencies": {
+    "@eslint/js": "^9.29.0",
+    "eslint": "^9.29.0",
+    "globals": "^15.15.0"
+  }
 }

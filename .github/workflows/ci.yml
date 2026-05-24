@@ -1,0 +1,38 @@
+name: ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+
+      - name: Install (root)
+        run: npm install
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Root tests
+        run: npm test
+
+      - name: Server config check
+        run: npm run check:server
+
+      - name: Install (server)
+        working-directory: server
+        run: npm ci
+
+      - name: Node syntax check (server)
+        working-directory: server
+        run: node --check mines-server.js && node --check pvp-server.js
+

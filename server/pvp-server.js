@@ -84,13 +84,15 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .map(v => v.trim())
   .filter(Boolean);
 const isProd = String(process.env.NODE_ENV || '').toLowerCase() === 'production';
+if (isProd && !allowedOrigins.length) {
+  throw new Error('CORS_ORIGINS is required in production');
+}
 app.use(cors({
   origin(origin, cb) {
     if (!origin) return cb(null, true); // server-to-server
     if (!isProd) return cb(null, true); // dev mode: allow all
     // Always allow localhost/127.0.0.1 for local testing
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
-    if (!allowedOrigins.length) return cb(null, true); // no list configured → allow all (set CORS_ORIGINS to restrict)
     return cb(null, allowedOrigins.includes(origin));
   },
 }));
@@ -750,7 +752,7 @@ function normalizeOptionalAddress(value) {
 function normalizeAddress(value) {
   try {
     return getAddress(String(value || '').trim());
-  } catch (_) {
+  } catch {
     throw new Error('Bad wallet address');
   }
 }

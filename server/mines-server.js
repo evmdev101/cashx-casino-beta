@@ -25,6 +25,10 @@ const allowedOrigins = String(process.env.CORS_ORIGINS || '')
   .map(v => v.trim())
   .filter(Boolean);
 
+if (isProd && !allowedOrigins.length) {
+  throw new Error('CORS_ORIGINS is required in production');
+}
+
 if (!isAddress(CONTRACT_ADDRESS)) {
   if (isProd) throw new Error('MINES_CONTRACT_ADDRESS must be a valid address in production');
   console.warn('MINES_CONTRACT_ADDRESS is not configured yet.');
@@ -73,7 +77,6 @@ app.use(cors({
     if (!isProd) return cb(null, true); // dev mode: allow all
     // Always allow localhost/127.0.0.1 for local testing
     if (/^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return cb(null, true);
-    if (!allowedOrigins.length) return cb(null, true); // no list configured → allow all (set CORS_ORIGINS to restrict)
     return cb(null, allowedOrigins.includes(origin));
   },
 }));
