@@ -255,10 +255,10 @@ async function placeBet(betOver) {
 
     // Step 2: Place committed bet
     const direction = betOver ? 'OVER' : 'UNDER';
-    const secret = randomBytes32();
+    const revealNonce = randomBytes32();
     const commitHash = ethers.utils.solidityKeccak256(
       ['address', 'bytes32'],
-      [playerAddress, secret]
+      [playerAddress, revealNonce]
     );
 
     setStatus(
@@ -298,7 +298,7 @@ async function placeBet(betOver) {
     await waitForBlockAfter(placed.targetBlock.toNumber());
 
     setStatus('Step 3 of 3: Reveal your roll in MetaMask…', 'pending');
-    const revealTx = await diceContract.revealBet(placed.betId, secret);
+    const revealTx = await diceContract.revealBet(placed.betId, revealNonce);
     setStatus('Revealing roll… waiting for confirmation…', 'pending');
 
     let revealReceipt;
